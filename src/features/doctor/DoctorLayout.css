@@ -1,0 +1,23 @@
+.nilo-clinician {
+  height: 100vh;
+  overflow: hidden;
+  background-color: var(--m3-background);
+  color: var(--m3-on-surface);
+  font-family: 'Geist', system-ui, sans-serif;
+}
+
+.nilo-clinician__body {
+  display: flex;
+  margin-top: 64px;
+  height: calc(100vh - 64px);
+}
+
+.nilo-clinician__main {
+  flex: 1;
+  min-width: 0;
+  background-color: #fcfdfe;
+  position: relative;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}

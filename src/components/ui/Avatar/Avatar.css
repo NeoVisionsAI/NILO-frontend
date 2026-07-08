@@ -1,0 +1,14 @@
+.nilo-avatar {
+  border-radius: var(--radius-full);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.nilo-avatar--fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-primary-100);
+  color: var(--color-primary-800);
+  font-weight: var(--font-semibold);
+}

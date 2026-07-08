@@ -1,0 +1,32 @@
+.nilo-loadingbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  z-index: 2000;
+  background-color: rgba(0, 97, 148, 0.15);
+  overflow: hidden;
+}
+
+.nilo-loadingbar__indicator {
+  height: 100%;
+  width: 40%;
+  background-color: #006194;
+  border-radius: 0 3px 3px 0;
+  animation: nilo-loadingbar-slide 1.1s ease-in-out infinite;
+}
+
+@keyframes nilo-loadingbar-slide {
+  0% {
+    transform: translateX(-100%);
+    width: 40%;
+  }
+  50% {
+    width: 60%;
+  }
+  100% {
+    transform: translateX(260%);
+    width: 40%;
+  }
+}

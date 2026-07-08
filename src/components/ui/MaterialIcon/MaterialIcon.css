@@ -1,0 +1,6 @@
+.nilo-micon {
+  line-height: 1;
+  display: inline-flex;
+  user-select: none;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}

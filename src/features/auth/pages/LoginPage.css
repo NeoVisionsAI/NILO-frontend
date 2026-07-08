@@ -1,0 +1,386 @@
+/**
+ * Login de NILO.
+ * Paleta Material 3 (scoped al login para no afectar al resto de la app) y
+ * tipografía Geist. Diseño responsive: contenido centrado en móvil y anclado
+ * abajo en pantallas grandes, tal como el diseño original.
+ */
+.nilo-login {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--m3-background);
+  color: var(--m3-on-surface);
+  font-family: 'Geist', system-ui, sans-serif;
+  overflow: hidden;
+}
+
+/* ---------- Fondo atmosférico ---------- */
+.nilo-login__bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  opacity: 0.3;
+}
+
+.nilo-login__blob {
+  position: absolute;
+  border-radius: 9999px;
+}
+
+.nilo-login__blob--primary {
+  top: -25%;
+  right: -25%;
+  width: 1000px;
+  height: 1000px;
+  max-width: 90vw;
+  max-height: 90vw;
+  background: rgba(0, 97, 148, 0.1);
+  filter: blur(150px);
+}
+
+.nilo-login__blob--secondary {
+  bottom: -25%;
+  left: -25%;
+  width: 800px;
+  height: 800px;
+  max-width: 80vw;
+  max-height: 80vw;
+  background: rgba(108, 248, 187, 0.2);
+  filter: blur(120px);
+}
+
+/* ---------- Contenido principal ---------- */
+.nilo-login__main {
+  position: relative;
+  z-index: 10;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 80px 24px 128px;
+  animation: nilo-login-fade 0.6s ease both;
+}
+
+@keyframes nilo-login-fade {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.nilo-login__content {
+  width: 100%;
+  max-width: 64rem;
+}
+
+/* ---------- Marca ---------- */
+.nilo-login__brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 64px;
+}
+
+.nilo-login__brand-icon {
+  width: 128px;
+  height: 128px;
+  border-radius: 24px;
+  background-color: var(--m3-primary-container);
+  color: var(--m3-on-primary-container);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 32px;
+  box-shadow: 0 20px 40px -12px rgba(0, 97, 148, 0.35);
+}
+
+.nilo-login__title {
+  font-size: 60px;
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--m3-primary);
+}
+
+.nilo-login__subtitle {
+  margin-top: 8px;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-weight: 500;
+  font-size: 18px;
+  color: var(--m3-on-surface-variant);
+}
+
+/* ---------- Formulario ---------- */
+.nilo-login__form {
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+}
+
+.nilo-login__fields {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 32px;
+  max-width: 28rem;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.nilo-login__group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.nilo-login__label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 4px;
+}
+
+.nilo-login__label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--m3-on-surface-variant);
+  padding-left: 4px;
+  transition: color 0.2s ease;
+}
+
+.nilo-login__group:focus-within .nilo-login__label {
+  color: var(--m3-primary);
+}
+
+.nilo-login__forgot {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--m3-primary);
+  padding-left: 0;
+}
+
+.nilo-login__forgot:hover {
+  text-decoration: underline;
+}
+
+.nilo-login__input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.nilo-login__input-icon {
+  position: absolute;
+  left: 16px;
+  color: var(--m3-outline);
+  pointer-events: none;
+}
+
+.nilo-login__input {
+  width: 100%;
+  padding: 20px 24px 20px 48px;
+  background-color: var(--m3-surface-lowest);
+  border: 1px solid var(--m3-outline-variant);
+  border-radius: 12px;
+  font-size: 18px;
+  color: var(--m3-on-surface);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.nilo-login__input--password {
+  padding-right: 56px;
+}
+
+.nilo-login__input::placeholder {
+  color: rgba(112, 120, 129, 0.4);
+}
+
+.nilo-login__input:focus {
+  outline: none;
+  border-color: var(--m3-primary);
+  box-shadow: 0 0 0 3px rgba(0, 97, 148, 0.2);
+}
+
+.nilo-login__toggle {
+  position: absolute;
+  right: 16px;
+  color: var(--m3-outline);
+  display: inline-flex;
+  transition: color 0.2s ease;
+}
+
+.nilo-login__toggle:hover {
+  color: var(--m3-primary);
+}
+
+/* ---------- Error ---------- */
+.nilo-login__error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 28rem;
+  margin: 0 auto;
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background-color: var(--m3-error-container);
+  color: var(--m3-error);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* ---------- Acciones ---------- */
+.nilo-login__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+}
+
+.nilo-login__remember {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 16px;
+  color: var(--m3-on-surface-variant);
+  cursor: pointer;
+}
+
+.nilo-login__remember input {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 1px solid var(--m3-outline-variant);
+  accent-color: var(--m3-primary);
+  cursor: pointer;
+}
+
+.nilo-login__submit {
+  width: 100%;
+  max-width: 28rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--m3-on-primary);
+  background-color: var(--m3-primary);
+  border-radius: 16px;
+  box-shadow: 0 20px 40px -12px rgba(0, 97, 148, 0.4);
+  transition:
+    background-color 0.2s ease,
+    transform 0.1s ease;
+}
+
+.nilo-login__submit:hover:not(:disabled) {
+  background-color: var(--m3-primary-container);
+}
+
+.nilo-login__submit:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.nilo-login__submit:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.nilo-login__submit:disabled .material-symbols-outlined {
+  animation: nilo-login-spin 0.9s linear infinite;
+}
+
+@keyframes nilo-login-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------- Pie ---------- */
+.nilo-login__footer {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  margin-top: auto;
+}
+
+.nilo-login__footer-inner {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 24px 24px 32px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border-top: 1px solid rgba(191, 199, 210, 0.2);
+  font-size: 14px;
+  color: var(--m3-outline);
+}
+
+.nilo-login__dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 9999px;
+  background-color: var(--m3-outline);
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 768px) {
+  .nilo-login__main {
+    justify-content: center;
+    padding: 48px 20px;
+  }
+
+  .nilo-login__brand {
+    margin-bottom: 40px;
+  }
+
+  .nilo-login__brand-icon {
+    width: 96px;
+    height: 96px;
+    border-radius: 20px;
+    margin-bottom: 24px;
+  }
+
+  .nilo-login__brand-icon .material-symbols-outlined {
+    font-size: 48px !important;
+  }
+
+  .nilo-login__title {
+    font-size: 44px;
+  }
+
+  .nilo-login__subtitle {
+    font-size: 15px;
+    letter-spacing: 0.15em;
+  }
+
+  .nilo-login__form {
+    gap: 32px;
+  }
+
+  .nilo-login__input {
+    padding: 16px 20px 16px 44px;
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .nilo-login__footer-inner {
+    flex-direction: column;
+    gap: 8px;
+    text-align: center;
+  }
+}

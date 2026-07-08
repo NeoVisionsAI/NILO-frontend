@@ -1,0 +1,47 @@
+.nilo-auth {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.nilo-auth__panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-8);
+  padding: var(--space-12);
+  max-width: 480px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.nilo-auth__aside {
+  background: linear-gradient(135deg, var(--color-primary-700), var(--color-primary-900));
+  color: var(--color-text-inverse);
+  display: flex;
+  align-items: center;
+  padding: var(--space-12);
+}
+
+.nilo-auth__aside-content {
+  max-width: 420px;
+}
+
+.nilo-auth__aside-content h2 {
+  font-size: var(--text-3xl);
+  margin-bottom: var(--space-4);
+}
+
+.nilo-auth__aside-content p {
+  font-size: var(--text-lg);
+  opacity: 0.9;
+}
+
+@media (max-width: 800px) {
+  .nilo-auth {
+    grid-template-columns: 1fr;
+  }
+  .nilo-auth__aside {
+    display: none;
+  }
+}

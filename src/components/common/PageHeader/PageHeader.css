@@ -1,0 +1,23 @@
+.nilo-page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+  flex-wrap: wrap;
+}
+
+.nilo-page-header__title {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+}
+
+.nilo-page-header__desc {
+  color: var(--color-text-muted);
+  margin-top: var(--space-1);
+}
+
+.nilo-page-header__actions {
+  display: flex;
+  gap: var(--space-2);
+}

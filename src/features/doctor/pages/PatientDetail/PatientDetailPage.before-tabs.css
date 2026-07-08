@@ -1,0 +1,258 @@
+.nilo-pdetail {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 24px 28px;
+  min-height: 100%;
+}
+
+/* ---------- Cabecera ---------- */
+.nilo-pdetail__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--m3-outline-variant);
+}
+
+.nilo-pdetail__identity {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  min-width: 0;
+}
+
+.nilo-pdetail__avatar {
+  flex-shrink: 0;
+  width: 96px;
+  height: 96px;
+  border-radius: 9999px;
+  object-fit: cover;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+
+.nilo-pdetail__avatar--initials {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.nilo-pdetail__info {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding-top: 8px;
+}
+
+.nilo-pdetail__name {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--m3-on-surface);
+  line-height: 1.2;
+}
+
+/* Toggle de monitorización */
+.nilo-pdetail__monitor {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.nilo-pdetail__toggle {
+  position: relative;
+  width: 44px;
+  height: 26px;
+  border-radius: 9999px;
+  background-color: var(--m3-outline-variant);
+  transition: background-color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.nilo-pdetail__toggle:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.nilo-pdetail__toggle--on {
+  background-color: var(--m3-primary);
+}
+
+.nilo-pdetail__toggle-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 9999px;
+  background-color: #ffffff;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.2);
+  transition: transform 0.2s ease;
+}
+
+.nilo-pdetail__toggle--on .nilo-pdetail__toggle-thumb {
+  transform: translateX(18px);
+}
+
+.nilo-pdetail__monitor-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--m3-on-surface-variant);
+}
+
+/* Acciones (derecha) */
+.nilo-pdetail__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.nilo-pdetail__node-select {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1.5px solid var(--m3-outline-variant);
+  background-color: var(--m3-surface);
+  min-width: 180px;
+}
+
+.nilo-pdetail__node-icon {
+  color: var(--m3-primary);
+  flex-shrink: 0;
+}
+
+.nilo-pdetail__node-select select {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--m3-on-surface);
+  outline: none;
+  cursor: pointer;
+}
+
+.nilo-pdetail__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 9999px;
+  font-size: 14px;
+  font-weight: 600;
+  transition:
+    background-color 0.15s ease,
+    transform 0.1s ease;
+}
+
+.nilo-pdetail__btn:active {
+  transform: scale(0.97);
+}
+
+.nilo-pdetail__btn--outlined {
+  background-color: var(--m3-surface);
+  border: 1.5px solid var(--m3-primary);
+  color: var(--m3-primary);
+}
+
+.nilo-pdetail__btn--outlined:hover {
+  background-color: rgba(147, 204, 255, 0.15);
+}
+
+.nilo-pdetail__btn--danger {
+  background-color: rgba(220, 38, 38, 0.1);
+  border: 1.5px solid #dc2626;
+  color: #dc2626;
+}
+
+.nilo-pdetail__btn--danger:hover {
+  background-color: rgba(220, 38, 38, 0.18);
+}
+
+.nilo-pdetail__btn--ghost {
+  background-color: transparent;
+  border: 1.5px solid var(--m3-outline-variant);
+  color: var(--m3-on-surface);
+}
+
+/* ---------- Zona de estadísticas (placeholder) ---------- */
+.nilo-pdetail__stats {
+  flex: 1;
+  min-height: 320px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 20px;
+  border: 2px dashed var(--m3-outline-variant);
+  background-color: var(--m3-surface-container-lowest);
+}
+
+.nilo-pdetail__stats-label {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--m3-outline);
+}
+
+/* ---------- Estado vacío / no encontrado ---------- */
+.nilo-pdetail__empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: var(--m3-outline);
+  min-height: 400px;
+}
+
+.nilo-pdetail__empty p {
+  font-size: 16px;
+}
+
+@media (max-width: 768px) {
+  .nilo-pdetail {
+    padding: 16px;
+  }
+
+  .nilo-pdetail__header {
+    flex-direction: column;
+  }
+
+  .nilo-pdetail__actions {
+    width: 100%;
+  }
+
+  .nilo-pdetail__node-select {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .nilo-pdetail__name {
+    font-size: 22px;
+  }
+
+  .nilo-pdetail__avatar {
+    width: 72px;
+    height: 72px;
+  }
+
+  .nilo-pdetail__avatar--initials {
+    font-size: 24px;
+  }
+}

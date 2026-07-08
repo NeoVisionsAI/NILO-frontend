@@ -1,0 +1,10 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: nilo-frontend:latest
+    container_name: nilo-frontend
+    ports:
+      - "8080:80"
+    restart: unless-stopped

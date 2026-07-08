@@ -1,0 +1,27 @@
+.nilo-tabnav {
+  display: flex;
+  gap: var(--space-1);
+  border-bottom: 1px solid var(--color-border);
+  overflow-x: auto;
+}
+
+.nilo-tabnav__link {
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--color-text-muted);
+  border-bottom: 2px solid transparent;
+  transition:
+    color var(--transition-fast),
+    border-color var(--transition-fast);
+  white-space: nowrap;
+}
+
+.nilo-tabnav__link:hover {
+  color: var(--color-text);
+}
+
+.nilo-tabnav__link--active {
+  color: var(--color-primary-700);
+  border-bottom-color: var(--color-primary-700);
+}

@@ -1,0 +1,437 @@
+.nilo-csidebar {
+  position: relative;
+  width: 15%;
+  min-width: 260px;
+  flex-shrink: 0;
+  background-color: var(--m3-surface-container-low);
+  /* Separador más grueso entre Contenedor A y Contenedor B */
+  border-right: 3px solid var(--m3-outline-variant);
+  transition:
+    width 0.22s ease,
+    min-width 0.22s ease;
+}
+
+.nilo-csidebar--collapsed {
+  width: 64px;
+  min-width: 64px;
+}
+
+/* Contenido interno (recorta el scroll; el asa queda fuera) */
+.nilo-csidebar__inner {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ---------- Rail colapsado ---------- */
+.nilo-csidebar__rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 0;
+}
+
+.nilo-csidebar__rail-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--m3-on-surface-variant);
+  transition: background-color 0.2s ease;
+}
+
+.nilo-csidebar__rail-btn:hover {
+  background-color: var(--m3-surface-container-high);
+  color: var(--m3-primary);
+}
+
+/* ---------- Secciones (acordeones) ---------- */
+.nilo-csidebar__section {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Abierta: ocupa el espacio disponible. Cerrada: solo su cabecera. */
+.nilo-csidebar__section--open {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.nilo-csidebar__section--closed {
+  flex: 0 0 auto;
+}
+
+.nilo-csidebar__section--first {
+  border-bottom: 1px solid var(--m3-outline-variant);
+}
+
+.nilo-csidebar__section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding-right: 8px;
+  background-color: var(--m3-surface-container-low);
+}
+
+.nilo-csidebar__section-toggle {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  transition: background-color 0.2s ease;
+}
+
+.nilo-csidebar__section-toggle:hover {
+  background-color: var(--m3-surface-container-high);
+}
+
+.nilo-csidebar__section-chevron {
+  color: var(--m3-outline);
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.nilo-csidebar__section-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--m3-on-surface-variant);
+}
+
+/* Acciones de cabecera: lupa + añadir */
+.nilo-csidebar__head-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.nilo-csidebar__search-btn {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--m3-on-surface-variant);
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.1s ease;
+}
+
+.nilo-csidebar__search-btn:hover {
+  background-color: var(--m3-surface-container-high);
+  color: var(--m3-primary);
+}
+
+.nilo-csidebar__search-btn--active {
+  background-color: var(--m3-primary-fixed);
+  color: var(--m3-primary);
+}
+
+.nilo-csidebar__search-btn:active {
+  transform: scale(0.92);
+}
+
+/* Barra de búsqueda desplegable */
+.nilo-csidebar__search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 12px;
+  padding: 0 10px;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  border-radius: 10px;
+  background-color: var(--m3-surface-container-high);
+  transition:
+    max-height 0.22s ease,
+    opacity 0.18s ease,
+    padding 0.22s ease,
+    margin 0.22s ease;
+}
+
+.nilo-csidebar__search--open {
+  max-height: 44px;
+  opacity: 1;
+  padding: 8px 10px;
+  margin: 0 12px 8px;
+}
+
+.nilo-csidebar__search-icon {
+  flex-shrink: 0;
+  color: var(--m3-outline);
+}
+
+.nilo-csidebar__search-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  color: var(--m3-on-surface);
+  outline: none;
+}
+
+.nilo-csidebar__search-input::placeholder {
+  color: var(--m3-outline);
+}
+
+.nilo-csidebar__search-input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.nilo-csidebar__search-clear {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--m3-outline);
+  transition: color 0.15s ease;
+}
+
+.nilo-csidebar__search-clear:hover {
+  color: var(--m3-on-surface);
+}
+
+/* Botón de añadir (paciente / nodo): pastilla tonal con "+" */
+.nilo-csidebar__add {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--m3-primary-fixed);
+  color: var(--m3-primary);
+  box-shadow: inset 0 0 0 1px rgba(0, 97, 148, 0.12);
+  transition:
+    background-color 0.2s ease,
+    transform 0.1s ease,
+    box-shadow 0.2s ease;
+}
+
+.nilo-csidebar__add:hover {
+  background-color: var(--m3-primary-fixed-dim);
+  box-shadow: inset 0 0 0 1px rgba(0, 97, 148, 0.24);
+}
+
+.nilo-csidebar__add:active {
+  transform: scale(0.92);
+}
+
+/* CTA del estado vacío (reutiliza el estilo de los antiguos botones grandes) */
+.nilo-csidebar__cta {
+  margin-top: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 700;
+  transition:
+    background-color 0.2s ease,
+    transform 0.1s ease;
+}
+
+.nilo-csidebar__cta:active {
+  transform: scale(0.96);
+}
+
+.nilo-csidebar__cta--primary {
+  background-color: var(--m3-primary);
+  color: var(--m3-on-primary);
+  box-shadow: 0 6px 16px -8px rgba(0, 97, 148, 0.6);
+}
+
+.nilo-csidebar__cta--primary:hover {
+  background-color: var(--m3-primary-container);
+}
+
+.nilo-csidebar__cta--outlined {
+  background-color: var(--m3-surface);
+  border: 1.5px solid var(--m3-primary);
+  color: var(--m3-primary);
+}
+
+.nilo-csidebar__cta--outlined:hover {
+  background-color: rgba(147, 204, 255, 0.15);
+}
+
+.nilo-csidebar__section-body {
+  flex: 1;
+  min-height: 0;
+  padding: 8px 16px 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Estado vacío */
+.nilo-csidebar__empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--m3-outline);
+  gap: 8px;
+}
+
+.nilo-csidebar__empty p {
+  font-size: 12px;
+}
+
+/* ---------- Items de lista (pacientes / nodos) ---------- */
+.nilo-csidebar__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  color: var(--m3-on-surface);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.nilo-csidebar__item:hover {
+  background-color: var(--m3-surface-container-high);
+}
+
+.nilo-csidebar__item--selected {
+  background-color: var(--m3-primary-fixed);
+  box-shadow: inset 0 0 0 1px rgba(0, 97, 148, 0.15);
+}
+
+.nilo-csidebar__item--selected:hover {
+  background-color: var(--m3-primary-fixed-dim);
+}
+
+/* Avatar circular del paciente (foto o iniciales) */
+.nilo-csidebar__avatar {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 9999px;
+  object-fit: cover;
+}
+
+.nilo-csidebar__avatar--initials {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.nilo-csidebar__item + .nilo-csidebar__item {
+  margin-top: 2px;
+}
+
+.nilo-csidebar__item-icon {
+  flex-shrink: 0;
+  color: var(--m3-primary);
+}
+
+.nilo-csidebar__item-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.nilo-csidebar__item-primary {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nilo-csidebar__item-secondary {
+  font-size: 11px;
+  color: var(--m3-on-surface-variant);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- Asa del separador ---------- */
+.nilo-csidebar__handle {
+  position: absolute;
+  top: 50%;
+  right: -14px;
+  transform: translateY(-50%);
+  width: 26px;
+  height: 44px;
+  border-radius: 9999px;
+  background-color: var(--m3-surface-container-lowest);
+  border: 1px solid var(--m3-outline-variant);
+  color: var(--m3-on-surface-variant);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 30;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.nilo-csidebar__handle:hover {
+  color: var(--m3-primary);
+  background-color: var(--m3-surface-container-high);
+}
+
+/* ---------- Overlay móvil ---------- */
+.nilo-csidebar__overlay {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .nilo-csidebar {
+    position: fixed;
+    top: 64px;
+    left: 0;
+    bottom: 0;
+    z-index: 45;
+    width: 280px;
+    min-width: 280px;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
+  }
+  .nilo-csidebar--mobile-open {
+    transform: translateX(0);
+  }
+  /* En móvil se usa el drawer; el asa de colapsar se oculta. */
+  .nilo-csidebar__handle {
+    display: none;
+  }
+  .nilo-csidebar__overlay--visible {
+    display: block;
+    position: fixed;
+    inset: 64px 0 0 0;
+    background-color: rgba(15, 23, 42, 0.35);
+    z-index: 44;
+  }
+}

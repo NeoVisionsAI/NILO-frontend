@@ -1,0 +1,44 @@
+.nilo-stat {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.nilo-stat__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.nilo-stat__label {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.nilo-stat__icon {
+  color: var(--color-primary-600);
+  display: inline-flex;
+}
+
+.nilo-stat__value {
+  font-size: var(--text-3xl);
+  font-weight: var(--font-bold);
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+}
+
+.nilo-stat__unit {
+  font-size: var(--text-base);
+  font-weight: var(--font-medium);
+  color: var(--color-text-muted);
+}
+
+.nilo-stat__trend {
+  align-self: flex-start;
+}

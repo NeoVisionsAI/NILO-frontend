@@ -1,0 +1,25 @@
+.nilo-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+}
+
+.nilo-spinner--full {
+  min-height: 60vh;
+}
+
+.nilo-spinner__ring {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  border: 3px solid var(--color-primary-100);
+  border-top-color: var(--color-primary-600);
+  animation: nilo-spin 0.8s linear infinite;
+}
+
+@keyframes nilo-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

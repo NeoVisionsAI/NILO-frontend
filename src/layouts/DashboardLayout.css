@@ -1,0 +1,23 @@
+.nilo-dashboard {
+  display: flex;
+  min-height: 100vh;
+}
+
+.nilo-dashboard__main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.nilo-dashboard__content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.nilo-dashboard__inner {
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  padding: var(--space-6);
+  width: 100%;
+}
