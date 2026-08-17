@@ -19,25 +19,6 @@
 .nilo-condata__context {
   display: flex;
   align-items: center;
-  gap: 14px;
-  min-width: 0;
-}
-
-.nilo-condata__badge {
-  flex-shrink: 0;
-  padding: 4px 10px;
-  border-radius: 9999px;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--m3-primary);
-  background: var(--m3-primary-fixed);
-}
-
-.nilo-condata__title-wrap {
-  display: flex;
-  align-items: center;
   gap: 12px;
   min-width: 0;
 }
@@ -52,6 +33,10 @@
   justify-content: center;
   background: var(--m3-surface-container-highest);
   color: var(--m3-primary);
+}
+
+.nilo-condata__title-wrap {
+  min-width: 0;
 }
 
 .nilo-condata__title {
@@ -84,6 +69,26 @@
 .nilo-condata__back:hover {
   color: var(--m3-on-surface);
   background: var(--m3-surface-container-highest);
+}
+
+.nilo-condata__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.nilo-condata__add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 9999px;
+  background: var(--m3-primary);
+  color: var(--m3-on-primary);
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .nilo-condata__body {

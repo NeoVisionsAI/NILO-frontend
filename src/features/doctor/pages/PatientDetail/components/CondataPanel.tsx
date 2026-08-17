@@ -8,40 +8,42 @@ interface CondataPanelProps {
   subtitle?: string
   onBack?: () => void
   backLabel?: string
+  headerAction?: ReactNode
   children: ReactNode
 }
 
-/** Contenedor CONDATA: contexto visible + área de contenido. */
+/** Contenedor principal del detalle de paciente (contexto + contenido). */
 export function CondataPanel({
   icon,
   title,
   subtitle,
   onBack,
   backLabel = 'Volver',
+  headerAction,
   children,
 }: CondataPanelProps) {
   return (
-    <section className="nilo-condata" aria-label="CONDATA">
+    <section className="nilo-condata" aria-label={title}>
       <header className="nilo-condata__header">
         <div className="nilo-condata__context">
-          <span className="nilo-condata__badge">CONDATA</span>
+          <span className="nilo-condata__icon">
+            <MaterialIcon name={icon} size={20} />
+          </span>
           <div className="nilo-condata__title-wrap">
-            <span className="nilo-condata__icon">
-              <MaterialIcon name={icon} size={20} />
-            </span>
-            <div>
-              <h2 className="nilo-condata__title">{title}</h2>
-              {subtitle && <p className="nilo-condata__subtitle">{subtitle}</p>}
-            </div>
+            <h2 className="nilo-condata__title">{title}</h2>
+            {subtitle && <p className="nilo-condata__subtitle">{subtitle}</p>}
           </div>
         </div>
 
-        {onBack && (
-          <button type="button" className="nilo-condata__back" onClick={onBack}>
-            <MaterialIcon name="arrow_back" size={18} />
-            <span>{backLabel}</span>
-          </button>
-        )}
+        <div className="nilo-condata__header-actions">
+          {headerAction}
+          {onBack && (
+            <button type="button" className="nilo-condata__back" onClick={onBack}>
+              <MaterialIcon name="arrow_back" size={18} />
+              <span>{backLabel}</span>
+            </button>
+          )}
+        </div>
       </header>
 
       <div className="nilo-condata__body">{children}</div>

@@ -15,6 +15,18 @@ export const PATIENT_QUICK_ACTIONS: PatientQuickAction[] = [
     actionKey: 'pain-episode',
   },
   {
+    id: 'clinical-results',
+    label: 'Resultados clínicos',
+    icon: 'biotech',
+    actionKey: 'clinical-results',
+  },
+  {
+    id: 'growth',
+    label: 'Crecimiento',
+    icon: 'straighten',
+    actionKey: 'growth',
+  },
+  {
     id: 'audio-note',
     label: 'Nota de audio',
     icon: 'mic',
