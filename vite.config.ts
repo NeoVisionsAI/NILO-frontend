@@ -38,6 +38,15 @@ export default defineConfig(({ mode }) => {
         },
       },
     ],
+    optimizeDeps: {
+      include: [
+        '@tensorflow/tfjs-core',
+        '@tensorflow/tfjs-backend-webgl',
+        '@tensorflow-models/face-landmarks-detection',
+        '@vladmandic/human',
+        '@vladmandic/face-api',
+      ],
+    },
     build: {
       modulePreload: false,
     },

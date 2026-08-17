@@ -8,10 +8,14 @@ import {
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import { toast } from '@/lib/toast'
 import {
-  drawFaceLandmarks,
-  getFaceLandmarker,
-  landmarksFromResult,
-} from './faceLandmarker'
+  detectionToLandmarkArrays,
+  disposeLandmarkEngine,
+  getActiveLandmarkEngine,
+  getLandmarkEngineCatalog,
+  isLandmarkEngineAvailable,
+  switchLandmarkEngine,
+  type FaceLandmarkEngineId,
+} from './providers'
 import {
   buildPainEpisodeSession,
   formatPainEpisodeDate,
@@ -96,6 +100,10 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
   const [elapsedMs, setElapsedMs] = useState(0)
   const [frameCount, setFrameCount] = useState(0)
   const [faceDetected, setFaceDetected] = useState(false)
+  const [landmarkEngine, setLandmarkEngine] = useState<FaceLandmarkEngineId>('mediapipe')
+  const [engineLoading, setEngineLoading] = useState(true)
+  const landmarkEngineRef = useRef<FaceLandmarkEngineId>('mediapipe')
+  const skipEngineToastRef = useRef(true)
 
   recordingRef.current = recording
 
@@ -231,11 +239,42 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
   useEffect(() => {
     let cancelled = false
 
+    async function loadEngine() {
+      setEngineLoading(true)
+      try {
+        landmarkEngineRef.current = landmarkEngine
+        await switchLandmarkEngine(landmarkEngine)
+        if (cancelled) return
+        if (!skipEngineToastRef.current) {
+          const label =
+            getLandmarkEngineCatalog().find((item) => item.id === landmarkEngine)?.label ??
+            landmarkEngine
+          toast.success(`Motor activo: ${label}`)
+        }
+        skipEngineToastRef.current = false
+      } catch (err) {
+        if (!cancelled) {
+          toast.error(err instanceof Error ? err.message : 'No se pudo cargar el motor.')
+        }
+      } finally {
+        if (!cancelled) setEngineLoading(false)
+      }
+    }
+
+    void loadEngine()
+    return () => {
+      cancelled = true
+      disposeLandmarkEngine()
+    }
+  }, [landmarkEngine])
+
+  useEffect(() => {
+    if (engineLoading || loadState !== 'loading') return
+
+    let cancelled = false
+
     async function init() {
       try {
-        await getFaceLandmarker()
-        if (cancelled) return
-
         if (canUseLiveCamera()) {
           await startCamera()
           if (cancelled) return
@@ -257,10 +296,15 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
     void init()
     return () => {
       cancelled = true
+    }
+  }, [engineLoading, loadState, startCamera])
+
+  useEffect(() => {
+    return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current)
       stopStream()
     }
-  }, [startCamera, stopStream])
+  }, [stopStream])
 
   useEffect(() => {
     if (loadState !== 'ready') return
@@ -280,9 +324,9 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
         syncCanvasSize()
 
         try {
-          const landmarker = await getFaceLandmarker()
-          const results = landmarker.detectForVideo(video, performance.now())
-          const hasFace = Boolean(results.faceLandmarks?.length)
+          const engine = await getActiveLandmarkEngine()
+          const detection = await engine.detect(video, performance.now())
+          const hasFace = detection.faces.length > 0
           setFaceDetected(hasFace)
 
           const ctx = canvas.getContext('2d')
@@ -297,13 +341,14 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
               ctx.fillRect(0, 0, w, h)
             }
 
-            drawFaceLandmarks(ctx, results, video, w, h, mirrorVideoRef.current, showFace)
+            engine.draw(ctx, detection, video, w, h, mirrorVideoRef.current, showFace)
 
             if (recordingRef.current && hasFace) {
               const t = Math.round(performance.now() - recordingStartRef.current)
               framesRef.current.push({
                 t,
-                landmarks: landmarksFromResult(results),
+                engine: engine.meta.id,
+                landmarks: detectionToLandmarkArrays(detection),
               })
               setFrameCount(framesRef.current.length)
             }
@@ -321,7 +366,7 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
       running = false
       if (rafRef.current) cancelAnimationFrame(rafRef.current)
     }
-  }, [loadState, showFace, syncCanvasSize])
+  }, [loadState, showFace, syncCanvasSize, landmarkEngine, engineLoading])
 
   useEffect(() => {
     function onResize() {
@@ -441,6 +486,7 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
       startedAt,
       endedAt,
       [...framesRef.current],
+      landmarkEngineRef.current,
     )
     console.info('[PainEpisode] sesión registrada (local):', session)
     toast.success(`Sesión finalizada: ${session.frames.length} frames capturados.`)
@@ -564,6 +610,35 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
             </div>
 
             <footer className="nilo-pain-modal__controls">
+              <div className="nilo-pain-modal__controls-row nilo-pain-modal__controls-row--engine">
+                <label className="nilo-pain-modal__engine-wrap">
+                  <MaterialIcon name="biotech" size={20} />
+                  <select
+                    value={landmarkEngine}
+                    onChange={(e) => {
+                      const next = e.target.value as FaceLandmarkEngineId
+                      if (!isLandmarkEngineAvailable(next)) return
+                      setLandmarkEngine(next)
+                    }}
+                    disabled={recording || engineLoading}
+                    aria-label="Motor de landmarks faciales"
+                  >
+                    {getLandmarkEngineCatalog().map((engine) => (
+                      <option key={engine.id} value={engine.id} disabled={!engine.available}>
+                        {engine.label} · {engine.landmarkCount} pts
+                        {engine.available ? '' : ' (pendiente)'}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {engineLoading && (
+                  <span className="nilo-pain-modal__engine-loading">
+                    <MaterialIcon name="progress_activity" size={18} />
+                    Cargando motor…
+                  </span>
+                )}
+              </div>
+
               <div className="nilo-pain-modal__controls-row nilo-pain-modal__controls-row--toolbar">
                 <div className="nilo-pain-modal__controls-toolbar">
                   {inputMode === 'live' && cameras.length === 2 ? (
