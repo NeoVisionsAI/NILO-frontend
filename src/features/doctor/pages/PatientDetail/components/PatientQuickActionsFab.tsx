@@ -66,9 +66,9 @@ export function PatientQuickActionsFab({ onSelect }: PatientQuickActionsFabProps
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-haspopup="menu"
-        aria-label={open ? 'Cerrar acciones rápidas' : 'Acciones rápidas'}
+        aria-label={open ? 'Cerrar funcionalidades' : 'Funcionalidades del paciente'}
       >
-        <MaterialIcon name={open ? 'close' : 'add'} size={28} />
+        <MaterialIcon name={open ? 'close' : 'format_list_bulleted'} size={28} />
       </button>
     </div>
   )

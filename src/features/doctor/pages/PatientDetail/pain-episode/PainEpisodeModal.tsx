@@ -58,16 +58,24 @@ function resolveDualCameras(cameras: CameraDevice[]) {
   return { front, back }
 }
 
-interface PainEpisodeModalProps {
+interface PainEpisodeCapturePanelProps {
   patientId: string
   patientName: string
+  embedded?: boolean
   onClose: () => void
+  onComplete?: (session: PainEpisodeSessionData) => void
 }
 
 type LoadState = 'loading' | 'pick-source' | 'ready' | 'error'
 type InputMode = 'live' | 'file'
 
-export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisodeModalProps) {
+export function PainEpisodeCapturePanel({
+  patientId,
+  patientName,
+  embedded = false,
+  onClose,
+  onComplete,
+}: PainEpisodeCapturePanelProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -444,6 +452,7 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
     )
     console.info('[PainEpisode] sesión registrada (local):', session)
     toast.success(`Sesión finalizada: ${session.frames.length} frames capturados.`)
+    onComplete?.(session)
   }
 
   function handleBackToSourcePicker() {
@@ -455,25 +464,32 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
   }
 
   return (
-    <div className="nilo-pain-modal" role="dialog" aria-modal="true" aria-labelledby="pain-modal-title">
-      <div className="nilo-pain-modal__backdrop" onClick={() => !recording && onClose()} />
+    <div
+      className={`nilo-pain-modal${embedded ? ' nilo-pain-modal--embedded' : ''}`}
+      role={embedded ? 'region' : 'dialog'}
+      aria-modal={embedded ? undefined : true}
+      aria-labelledby="pain-modal-title"
+    >
+      {!embedded && <div className="nilo-pain-modal__backdrop" onClick={() => !recording && onClose()} />}
 
       <div className="nilo-pain-modal__panel">
-        <header className="nilo-pain-modal__header">
-          <div>
-            <p className="nilo-pain-modal__eyebrow">Episodio de dolor</p>
-            <h2 id="pain-modal-title">{patientName}</h2>
-          </div>
-          <button
-            type="button"
-            className="nilo-pain-modal__close"
-            onClick={onClose}
-            disabled={recording}
-            aria-label="Cerrar"
-          >
-            <MaterialIcon name="close" size={24} />
-          </button>
-        </header>
+        {!embedded && (
+          <header className="nilo-pain-modal__header">
+            <div>
+              <p className="nilo-pain-modal__eyebrow">Episodio de dolor</p>
+              <h2 id="pain-modal-title">{patientName}</h2>
+            </div>
+            <button
+              type="button"
+              className="nilo-pain-modal__close"
+              onClick={onClose}
+              disabled={recording}
+              aria-label="Cerrar"
+            >
+              <MaterialIcon name="close" size={24} />
+            </button>
+          </header>
+        )}
 
         <input
           ref={fileInputRef}
@@ -678,3 +694,6 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
     </div>
   )
 }
+
+/** @deprecated Usar PainEpisodeCapturePanel embebido en CONDATA. */
+export const PainEpisodeModal = PainEpisodeCapturePanel

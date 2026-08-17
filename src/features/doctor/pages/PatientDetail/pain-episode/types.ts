@@ -7,7 +7,7 @@ export interface PainEpisodeFrame {
 
 /** Episodio de dolor con captura de landmarks faciales. */
 export interface PainEpisode {
-  id?: string
+  id: string
   patientId: string
   startedAt: string
   endedAt: string

@@ -1,3 +1,47 @@
+.nilo-pain-modal--embedded {
+  position: relative;
+  inset: auto;
+  z-index: auto;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+
+.nilo-pain-modal--embedded .nilo-pain-modal__panel {
+  max-height: none;
+  background: transparent;
+}
+
+.nilo-pain-modal--embedded .nilo-pain-modal__controls {
+  padding-bottom: 12px;
+}
+
+@media (min-width: 1025px) {
+  .nilo-pain-modal--embedded {
+    inset: auto;
+    padding: 0;
+  }
+
+  .nilo-pain-modal--embedded .nilo-pain-modal__panel {
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
+    height: 100%;
+  }
+
+  .nilo-pain-modal--embedded .nilo-pain-modal__stage {
+    flex: 1;
+    aspect-ratio: auto;
+    min-height: 320px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .nilo-pain-modal--embedded .nilo-pain-modal__stage {
+    min-height: 280px;
+  }
+}
+
 .nilo-pain-modal {
   position: fixed;
   inset: 0;

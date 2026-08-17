@@ -7,6 +7,11 @@ import { patientDisplayName, patientProfileToInput } from '@/types'
 import { useClinicalData } from '../../context/ClinicalDataContext'
 import { ROOT_PATHS } from '@/router/paths'
 import { RecordFormPanel } from './components/RecordFormPanel'
+import { CondataPanel } from './components/CondataPanel'
+import {
+  PainEpisodeCondata,
+  type PainEpisodeCondataView,
+} from './components/condata/PainEpisodeCondata'
 import {
   findPatientSection,
   resolvePatientSections,
@@ -17,10 +22,14 @@ import {
 import { SectionContent } from './SectionContent'
 import { PatientQuickActionsFab } from './components/PatientQuickActionsFab'
 import type { PatientQuickAction } from './patient-quick-actions'
-import { PainEpisodeModal } from './pain-episode/PainEpisodeModal'
+import type { PainEpisode } from './pain-episode/types'
+import { LiveTab } from './tabs/LiveTab'
 import './PatientDetailPage.css'
+import './components/CondataPanel.css'
 
 const AVATAR_COLORS = ['#0369a1', '#0f766e', '#7c3aed', '#be123c', '#b45309', '#4338ca', '#0891b2']
+
+type CondataMode = 'live' | 'section' | 'module'
 
 function colorForName(name: string): string {
   let hash = 0
@@ -36,12 +45,6 @@ function getInitials(name: string): string {
   return (first + last).toUpperCase()
 }
 
-/**
- * Vista de detalle del paciente (Contenedor B).
- * Pestañas dinámicas por sección + «Añadir registro» contextual (solo fuera de Live).
- *
- * Para volver al diseño anterior: restaurar PatientDetailPage.before-tabs.tsx/.css
- */
 export function PatientDetailPage() {
   const { patientId = '' } = useParams()
   const navigate = useNavigate()
@@ -49,23 +52,32 @@ export function PatientDetailPage() {
   const patient = patients.find((p) => p.id === patientId)
 
   const sections = useMemo(() => (patient ? resolvePatientSections(patient) : []), [patient])
-  const defaultSectionId = sections[0]?.id ?? 'live'
+  const recordSections = useMemo(() => sections.filter((section) => section.mode !== 'live'), [sections])
+  const defaultSectionId = recordSections[0]?.id ?? 'clinical-results'
 
+  const [condataMode, setCondataMode] = useState<CondataMode>('live')
   const [activeSectionId, setActiveSectionId] = useState<PatientSectionId>(defaultSectionId)
-  const [viewMode, setViewMode] = useState<SectionViewMode>('browse')
+  const [sectionViewMode, setSectionViewMode] = useState<SectionViewMode>('browse')
+  const [activeModule, setActiveModule] = useState<PatientQuickAction | null>(null)
+  const [moduleView, setModuleView] = useState<PainEpisodeCondataView>('list')
+  const [selectedEpisodeId, setSelectedEpisodeId] = useState<string | null>(null)
+  const [painEpisodes, setPainEpisodes] = useState<PainEpisode[]>([])
   const [assigningNode, setAssigningNode] = useState(false)
   const [togglingMonitor, setTogglingMonitor] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const [painEpisodeOpen, setPainEpisodeOpen] = useState(false)
 
-  const activeSection = findPatientSection(sections, activeSectionId) ?? sections[0]
+  const activeSection = findPatientSection(recordSections, activeSectionId) ?? recordSections[0]
   const showAddButton = activeSection ? sectionAllowsAdd(activeSection) : false
 
   useEffect(() => {
-    setActiveSectionId(sections[0]?.id ?? 'live')
-    setViewMode('browse')
-  }, [patientId, sections])
+    setCondataMode('live')
+    setActiveSectionId(recordSections[0]?.id ?? 'clinical-results')
+    setSectionViewMode('browse')
+    setActiveModule(null)
+    setModuleView('list')
+    setSelectedEpisodeId(null)
+  }, [patientId, recordSections])
 
   if (!patient) {
     return (
@@ -86,9 +98,39 @@ export function PatientDetailPage() {
   const monitoring = p.patient_profile?.monitoring_active ?? false
   const assignedNodeId = p.patient_profile?.node_id ?? ''
 
-  function handleSectionChange(sectionId: PatientSectionId) {
+  function openLive() {
+    setCondataMode('live')
+    setActiveModule(null)
+    setModuleView('list')
+    setSelectedEpisodeId(null)
+    setSectionViewMode('browse')
+  }
+
+  function openSection(sectionId: PatientSectionId) {
+    setCondataMode('section')
     setActiveSectionId(sectionId)
-    setViewMode('browse')
+    setSectionViewMode('browse')
+    setActiveModule(null)
+    setModuleView('list')
+    setSelectedEpisodeId(null)
+  }
+
+  function openModule(action: PatientQuickAction) {
+    if (action.actionKey !== 'pain-episode') {
+      toast.info(`«${action.label}»: pendiente de implementar.`)
+      return
+    }
+
+    setCondataMode('module')
+    setActiveModule(action)
+    setModuleView('list')
+    setSelectedEpisodeId(null)
+    setSectionViewMode('browse')
+  }
+
+  function handlePainEpisodeViewChange(view: PainEpisodeCondataView, episodeId?: string | null) {
+    setModuleView(view)
+    setSelectedEpisodeId(episodeId ?? null)
   }
 
   async function handleNodeChange(e: ChangeEvent<HTMLSelectElement>) {
@@ -126,14 +168,6 @@ export function PatientDetailPage() {
     }
   }
 
-  function handleQuickAction(action: PatientQuickAction) {
-    if (action.actionKey === 'pain-episode') {
-      setPainEpisodeOpen(true)
-      return
-    }
-    toast.info(`«${action.label}»: pendiente de implementar.`)
-  }
-
   async function handleDelete() {
     setDeleting(true)
     try {
@@ -145,6 +179,67 @@ export function PatientDetailPage() {
     } finally {
       setDeleting(false)
     }
+  }
+
+  function renderCondataBody() {
+    if (condataMode === 'live') {
+      return <LiveTab embedded />
+    }
+
+    if (condataMode === 'module' && activeModule?.actionKey === 'pain-episode') {
+      return (
+        <PainEpisodeCondata
+          patientId={p.id}
+          patientName={fullName}
+          episodes={painEpisodes}
+          view={moduleView}
+          selectedEpisodeId={selectedEpisodeId}
+          onViewChange={handlePainEpisodeViewChange}
+          onEpisodeCreated={(episode) => setPainEpisodes((prev) => [episode, ...prev])}
+        />
+      )
+    }
+
+    if (condataMode === 'section' && activeSection) {
+      if (sectionViewMode === 'add') {
+        return <RecordFormPanel section={activeSection} onClose={() => setSectionViewMode('browse')} />
+      }
+      return <SectionContent section={activeSection} />
+    }
+
+    return <LiveTab embedded />
+  }
+
+  function condataTitle() {
+    if (condataMode === 'live') return 'Live'
+    if (condataMode === 'module' && activeModule) return activeModule.label
+    if (condataMode === 'section' && activeSection) return activeSection.label
+    return 'Live'
+  }
+
+  function condataIcon() {
+    if (condataMode === 'live') return 'monitor_heart'
+    if (condataMode === 'module' && activeModule) return activeModule.icon
+    if (condataMode === 'section' && activeSection) return activeSection.icon
+    return 'monitor_heart'
+  }
+
+  function condataSubtitle() {
+    if (condataMode === 'live') return 'Monitorización en tiempo real'
+    if (condataMode === 'module' && activeModule?.actionKey === 'pain-episode') {
+      if (moduleView === 'add') return 'Captura de landmarks faciales'
+      if (moduleView === 'detail') return 'Revisión del episodio'
+      return 'Buscar y registrar episodios'
+    }
+    if (condataMode === 'section' && sectionViewMode === 'add') return 'Nuevo registro'
+    return undefined
+  }
+
+  function condataBackHandler() {
+    if (condataMode === 'module' && activeModule?.actionKey === 'pain-episode' && moduleView !== 'list') {
+      return () => handlePainEpisodeViewChange('list')
+    }
+    return undefined
   }
 
   return (
@@ -164,21 +259,34 @@ export function PatientDetailPage() {
 
           <div className="nilo-pdetail__info">
             <h1 className="nilo-pdetail__name">{fullName}</h1>
-            <label className="nilo-pdetail__monitor">
+            <div className="nilo-pdetail__meta-row">
+              <label className="nilo-pdetail__monitor">
+                <button
+                  type="button"
+                  role="switch"
+                  className={`nilo-pdetail__toggle${monitoring ? ' nilo-pdetail__toggle--on' : ''}`}
+                  aria-checked={monitoring}
+                  disabled={togglingMonitor}
+                  onClick={handleMonitoringToggle}
+                >
+                  <span className="nilo-pdetail__toggle-thumb" />
+                </button>
+                <span className="nilo-pdetail__monitor-label">
+                  {monitoring ? 'Monitoring active' : 'Monitoring inactive'}
+                </span>
+              </label>
+
               <button
                 type="button"
-                role="switch"
-                className={`nilo-pdetail__toggle${monitoring ? ' nilo-pdetail__toggle--on' : ''}`}
-                aria-checked={monitoring}
-                disabled={togglingMonitor}
-                onClick={handleMonitoringToggle}
+                className={`nilo-pdetail__live-btn${condataMode === 'live' ? ' nilo-pdetail__live-btn--active' : ''}`}
+                onClick={openLive}
+                aria-pressed={condataMode === 'live'}
               >
-                <span className="nilo-pdetail__toggle-thumb" />
+                <span className="nilo-pdetail__live-dot" aria-hidden="true" />
+                <MaterialIcon name="monitor_heart" size={18} />
+                <span>Live</span>
               </button>
-              <span className="nilo-pdetail__monitor-label">
-                {monitoring ? 'Monitoring active' : 'Monitoring inactive'}
-              </span>
-            </label>
+            </div>
           </div>
         </div>
 
@@ -223,13 +331,13 @@ export function PatientDetailPage() {
       <div className="nilo-pdetail__workspace">
         <div className="nilo-pdetail__toolbar">
           <nav className="nilo-pdetail__tabs" aria-label="Secciones médicas">
-            {sections.map((section) => (
+            {recordSections.map((section) => (
               <button
                 key={section.id}
                 type="button"
-                className={`nilo-pdetail__tab${activeSectionId === section.id ? ' nilo-pdetail__tab--active' : ''}`}
-                onClick={() => handleSectionChange(section.id)}
-                aria-current={activeSectionId === section.id ? 'page' : undefined}
+                className={`nilo-pdetail__tab${condataMode === 'section' && activeSectionId === section.id ? ' nilo-pdetail__tab--active' : ''}`}
+                onClick={() => openSection(section.id)}
+                aria-current={condataMode === 'section' && activeSectionId === section.id ? 'page' : undefined}
               >
                 <MaterialIcon name={section.icon} size={18} />
                 <span>{section.label}</span>
@@ -237,11 +345,11 @@ export function PatientDetailPage() {
             ))}
           </nav>
 
-          {showAddButton && (
+          {showAddButton && condataMode === 'section' && (
             <button
               type="button"
               className="nilo-pdetail__add-btn"
-              onClick={() => setViewMode('add')}
+              onClick={() => setSectionViewMode('add')}
             >
               <MaterialIcon name="add" size={20} />
               <span>Añadir registro</span>
@@ -250,23 +358,19 @@ export function PatientDetailPage() {
         </div>
 
         <div className="nilo-pdetail__content">
-          {viewMode === 'add' && activeSection ? (
-            <RecordFormPanel section={activeSection} onClose={() => setViewMode('browse')} />
-          ) : activeSection ? (
-            <SectionContent section={activeSection} />
-          ) : null}
+          <CondataPanel
+            icon={condataIcon()}
+            title={condataTitle()}
+            subtitle={condataSubtitle()}
+            onBack={condataBackHandler()}
+            backLabel={moduleView === 'add' ? 'Cancelar captura' : 'Volver a la lista'}
+          >
+            {renderCondataBody()}
+          </CondataPanel>
         </div>
       </div>
 
-      <PatientQuickActionsFab onSelect={handleQuickAction} />
-
-      {painEpisodeOpen && (
-        <PainEpisodeModal
-          patientId={p.id}
-          patientName={fullName}
-          onClose={() => setPainEpisodeOpen(false)}
-        />
-      )}
+      <PatientQuickActionsFab onSelect={openModule} />
 
       <ConfirmDialog
         open={confirmDelete}
