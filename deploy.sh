@@ -8,8 +8,8 @@
 #   ./deploy.sh --logs       # muestra logs en tiempo real
 #   ./deploy.sh --dev        # desarrollo local (npm run dev, sin Docker)
 #
-# URL del backend: edita VITE_API_BASE_URL en .env antes de desplegar.
-# Tras cambiar la URL hay que reconstruir: ./deploy.sh --rebuild
+# La URL de la API se resuelve en runtime desde window.location.hostname:8001.
+# Opcional: VITE_API_PORT en .env si la API no usa el puerto 8001.
 
 set -euo pipefail
 
@@ -123,7 +123,7 @@ cmd_dev() {
     npm ci
   fi
   log "Arrancando servidor de desarrollo en http://localhost:5173"
-  log "API configurada en: ${VITE_API_BASE_URL:-http://localhost:8001/api/v1}"
+  log "API en runtime: http://<hostname>:${VITE_API_PORT:-8001}/api/v1"
   npm run dev
 }
 
@@ -137,10 +137,9 @@ cmd_deploy() {
   ensure_env
 
   local port="${FRONTEND_PORT:-8080}"
-  local api_url="${VITE_API_BASE_URL:-http://localhost:8001/api/v1}"
   local tmp_cfg
 
-  log "API (build): $api_url"
+  log "API en runtime: http://<hostname>:${VITE_API_PORT:-8001}/api/v1"
   log "Puerto frontend: $port"
 
   tmp_cfg="$(prepare_docker_config)"
