@@ -15,7 +15,7 @@
 #   API directa: https://192.168.1.43:8443/api/v1
 
 set -euo pipefail
-
+ 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT_DIR"
 
