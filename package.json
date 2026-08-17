@@ -13,11 +13,6 @@
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "^1.0.1",
-    "@tensorflow-models/face-landmarks-detection": "^1.0.6",
-    "@tensorflow/tfjs-backend-webgl": "^4.22.0",
-    "@tensorflow/tfjs-core": "^4.22.0",
-    "@vladmandic/face-api": "^1.7.15",
-    "@vladmandic/human": "^3.3.6",
     "leaflet": "^1.9.4",
     "material-symbols": "^0.31.2",
     "react": "^18.3.1",

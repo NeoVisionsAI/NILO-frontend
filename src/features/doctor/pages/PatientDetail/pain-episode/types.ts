@@ -2,8 +2,6 @@
 export interface PainEpisodeFrame {
   /** Milisegundos desde el inicio de la grabación. */
   t: number
-  /** Motor de detección usado en este frame (PoC comparativa). */
-  engine?: string
   landmarks: Array<Array<{ x: number; y: number; z: number }>>
 }
 
@@ -11,8 +9,6 @@ export interface PainEpisodeFrame {
 export interface PainEpisode {
   id?: string
   patientId: string
-  /** Motor principal usado en la sesión (PoC comparativa). */
-  engine?: string
   startedAt: string
   endedAt: string
   durationMs: number
@@ -45,11 +41,9 @@ export function buildPainEpisodeSession(
   startedAt: Date,
   endedAt: Date,
   frames: PainEpisodeFrame[],
-  engine?: string,
 ): PainEpisodeSessionData {
   return {
     patientId,
-    engine: engine ?? frames[0]?.engine,
     startedAt: startedAt.toISOString(),
     endedAt: endedAt.toISOString(),
     durationMs: endedAt.getTime() - startedAt.getTime(),
