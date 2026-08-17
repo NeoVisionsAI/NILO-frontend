@@ -178,41 +178,46 @@
 
 .nilo-pain-capture__stats {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
   margin: 0;
 }
 
 .nilo-pain-capture__stat {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 12px 14px;
-  border-radius: 12px;
+  gap: 3px;
+  padding: 10px 8px;
+  border-radius: 10px;
   background: var(--m3-surface);
   border: 1px solid var(--m3-outline-variant);
+  min-width: 0;
 }
 
 .nilo-pain-capture__stat dt {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   color: var(--m3-on-surface-variant);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .nilo-pain-capture__stat dd {
   margin: 0;
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--m3-on-surface);
   font-variant-numeric: tabular-nums;
   word-break: break-word;
+  line-height: 1.2;
 }
 
 .nilo-pain-capture__stat-value--timer {
   color: #dc2626;
-  font-size: 22px;
+  font-size: 15px;
 }
 
 .nilo-pain-capture__actions {
@@ -441,9 +446,5 @@
     border-left: none;
     border-top: 1px solid var(--m3-outline-variant);
     flex: 1;
-  }
-
-  .nilo-pain-capture__stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
