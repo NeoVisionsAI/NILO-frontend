@@ -232,8 +232,8 @@ cmd_deploy() {
   local lan_ip="${LAN_IP:-$(hostname -I 2>/dev/null | awk '{print $1}')}"
   local tmp_cfg
 
-  log "Frontend HTTPS: https://${lan_ip:-localhost}:$port"
-  log "API proxy: host.docker.internal:${BACKEND_PORT:-8443} (SNI ${BACKEND_SSL_NAME:-192.168.1.43})"
+  log "Frontend HTTPS: https://${lan_ip:-localhost}:$port (network_mode: host)"
+  log "API proxy: 127.0.0.1:${BACKEND_PORT:-8443} (SNI ${BACKEND_SSL_NAME:-192.168.1.43})"
 
   tmp_cfg="$(prepare_docker_config)"
   # shellcheck disable=SC2064
