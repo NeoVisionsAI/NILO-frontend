@@ -208,6 +208,41 @@
   line-height: 1.5;
 }
 
+.nilo-cmodule__detail-scales {
+  margin-top: 20px;
+}
+
+.nilo-cmodule__scale-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  list-style: none;
+}
+
+.nilo-cmodule__scale-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--m3-surface-container-high);
+  border: 1px solid var(--m3-outline-variant);
+}
+
+.nilo-cmodule__scale-item strong {
+  font-size: 13px;
+  color: var(--m3-on-surface);
+}
+
+.nilo-cmodule__scale-item span {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--m3-primary);
+  font-variant-numeric: tabular-nums;
+}
+
 .nilo-cmodule__action-btn {
   display: inline-flex;
   align-items: center;

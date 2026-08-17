@@ -1,3 +1,5 @@
+import type { RecordedPainScale } from './pain-scales'
+
 /** Un frame de landmarks registrado durante la sesión de dolor. */
 export interface PainEpisodeFrame {
   /** Milisegundos desde el inicio de la grabación. */
@@ -13,6 +15,7 @@ export interface PainEpisode {
   endedAt: string
   durationMs: number
   frames: PainEpisodeFrame[]
+  scales: RecordedPainScale[]
 }
 
 /** Datos de sesión en cliente antes de enviar al backend. */
@@ -41,6 +44,7 @@ export function buildPainEpisodeSession(
   startedAt: Date,
   endedAt: Date,
   frames: PainEpisodeFrame[],
+  scales: RecordedPainScale[] = [],
 ): PainEpisodeSessionData {
   return {
     patientId,
@@ -48,5 +52,8 @@ export function buildPainEpisodeSession(
     endedAt: endedAt.toISOString(),
     durationMs: endedAt.getTime() - startedAt.getTime(),
     frames,
+    scales,
   }
 }
+
+export type { RecordedPainScale } from './pain-scales'

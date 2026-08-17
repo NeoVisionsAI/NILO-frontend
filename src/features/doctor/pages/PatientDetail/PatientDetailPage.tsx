@@ -10,6 +10,7 @@ import { RecordFormPanel } from './components/RecordFormPanel'
 import { CondataPanel } from './components/CondataPanel'
 import {
   PainEpisodeCondata,
+  type PainEpisodeCapturePhase,
   type PainEpisodeCondataView,
 } from './components/condata/PainEpisodeCondata'
 import {
@@ -59,6 +60,8 @@ export function PatientDetailPage() {
   const [sectionViewMode, setSectionViewMode] = useState<SectionViewMode>('browse')
   const [activeModule, setActiveModule] = useState<PatientQuickAction | null>(null)
   const [moduleView, setModuleView] = useState<PainEpisodeCondataView>('list')
+  const [painCapturePhase, setPainCapturePhase] = useState<'capture' | 'summary'>('capture')
+  const [painSummaryBackSignal, setPainSummaryBackSignal] = useState(0)
   const [selectedEpisodeId, setSelectedEpisodeId] = useState<string | null>(null)
   const [painEpisodes, setPainEpisodes] = useState<PainEpisode[]>([])
   const [assigningNode, setAssigningNode] = useState(false)
@@ -75,6 +78,8 @@ export function PatientDetailPage() {
     setActiveModule(null)
     setModuleView('list')
     setSelectedEpisodeId(null)
+    setPainCapturePhase('capture')
+    setPainSummaryBackSignal(0)
   }, [patientId, recordSections])
 
   if (!patient) {
@@ -96,12 +101,18 @@ export function PatientDetailPage() {
   const monitoring = p.patient_profile?.monitoring_active ?? false
   const assignedNodeId = p.patient_profile?.node_id ?? ''
 
+  function resetPainCaptureState() {
+    setPainCapturePhase('capture')
+    setPainSummaryBackSignal(0)
+  }
+
   function openLive() {
     setCondataMode('live')
     setActiveModule(null)
     setModuleView('list')
     setSelectedEpisodeId(null)
     setSectionViewMode('browse')
+    resetPainCaptureState()
   }
 
   function openSection(sectionId: PatientSectionId, action?: PatientQuickAction) {
@@ -119,6 +130,7 @@ export function PatientDetailPage() {
     setModuleView('list')
     setSelectedEpisodeId(null)
     setSectionViewMode('browse')
+    resetPainCaptureState()
   }
 
   function openModule(action: PatientQuickAction) {
@@ -139,6 +151,11 @@ export function PatientDetailPage() {
   function handlePainEpisodeViewChange(view: PainEpisodeCondataView, episodeId?: string | null) {
     setModuleView(view)
     setSelectedEpisodeId(episodeId ?? null)
+    if (view === 'add') resetPainCaptureState()
+  }
+
+  function handlePainCapturePhaseChange(phase: PainEpisodeCapturePhase) {
+    setPainCapturePhase(phase)
   }
 
   function handlePainEpisodeDelete(episodeId: string) {
@@ -209,6 +226,8 @@ export function PatientDetailPage() {
           onViewChange={handlePainEpisodeViewChange}
           onEpisodeCreated={(episode) => setPainEpisodes((prev) => [episode, ...prev])}
           onEpisodeDelete={handlePainEpisodeDelete}
+          onCapturePhaseChange={handlePainCapturePhaseChange}
+          summaryBackSignal={painSummaryBackSignal}
         />
       )
     }
@@ -240,6 +259,7 @@ export function PatientDetailPage() {
   function condataSubtitle() {
     if (condataMode === 'live') return 'Monitorización en tiempo real'
     if (condataMode === 'module' && activeModule?.actionKey === 'pain-episode') {
+      if (moduleView === 'add' && painCapturePhase === 'summary') return 'Escalas de dolor y confirmación'
       if (moduleView === 'add') return 'Captura de landmarks faciales'
       if (moduleView === 'detail') return 'Revisión del episodio'
       return 'Buscar y registrar episodios'
@@ -252,7 +272,13 @@ export function PatientDetailPage() {
   }
 
   function condataBackHandler() {
-    if (condataMode === 'module' && activeModule?.actionKey === 'pain-episode' && moduleView !== 'list') {
+    if (condataMode === 'module' && activeModule?.actionKey === 'pain-episode' && moduleView === 'add') {
+      if (painCapturePhase === 'summary') {
+        return () => setPainSummaryBackSignal((signal) => signal + 1)
+      }
+      return () => handlePainEpisodeViewChange('list')
+    }
+    if (condataMode === 'module' && activeModule?.actionKey === 'pain-episode' && moduleView === 'detail') {
       return () => handlePainEpisodeViewChange('list')
     }
     if (condataMode === 'section' && sectionViewMode === 'add') {
@@ -262,6 +288,9 @@ export function PatientDetailPage() {
   }
 
   function condataBackLabel() {
+    if (condataMode === 'module' && moduleView === 'add' && painCapturePhase === 'summary') {
+      return 'Volver a captura'
+    }
     if (condataMode === 'module' && moduleView === 'add') return 'Cancelar captura'
     if (condataMode === 'section' && sectionViewMode === 'add') return 'Volver a la lista'
     return 'Volver a la lista'

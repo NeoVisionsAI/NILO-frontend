@@ -3,6 +3,7 @@ import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { toast } from '@/lib/toast'
 import { PainEpisodeCapturePanel } from '../../pain-episode/PainEpisodeModal'
+import { formatPainScaleValue, findPainScaleDefinition } from '../../pain-episode/pain-scales'
 import {
   formatPainEpisodeDate,
   formatPainEpisodeElapsed,
@@ -12,6 +13,7 @@ import {
 import { CondataModuleLayout } from './CondataModuleLayout'
 
 export type PainEpisodeCondataView = 'list' | 'add' | 'detail'
+export type PainEpisodeCapturePhase = 'capture' | 'summary'
 
 interface PainEpisodeCondataProps {
   patientId: string
@@ -21,6 +23,8 @@ interface PainEpisodeCondataProps {
   onViewChange: (view: PainEpisodeCondataView, episodeId?: string | null) => void
   onEpisodeCreated: (episode: PainEpisode) => void
   onEpisodeDelete: (episodeId: string) => void
+  onCapturePhaseChange?: (phase: PainEpisodeCapturePhase) => void
+  summaryBackSignal?: number
 }
 
 function sessionToEpisode(session: PainEpisodeSessionData): PainEpisode {
@@ -38,6 +42,8 @@ export function PainEpisodeCondata({
   onViewChange,
   onEpisodeCreated,
   onEpisodeDelete,
+  onCapturePhaseChange,
+  summaryBackSignal = 0,
 }: PainEpisodeCondataProps) {
   const [query, setQuery] = useState('')
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
@@ -98,6 +104,7 @@ export function PainEpisodeCondata({
             <strong>{formatPainEpisodeDate(episode.startedAt)}</strong>
             <span>
               {formatPainEpisodeElapsed(episode.durationMs)} · {episode.frames.length} frames
+              {episode.scales.length > 0 ? ` · ${episode.scales.length} escalas` : ''}
             </span>
           </span>
           <MaterialIcon name="chevron_right" size={22} className="nilo-cmodule__item-chevron" />
@@ -125,6 +132,21 @@ export function PainEpisodeCondata({
           <strong>{selectedEpisode.frames.length}</strong>
         </div>
       </div>
+      {selectedEpisode.scales.length > 0 && (
+        <div className="nilo-cmodule__detail-scales">
+          <p className="nilo-cmodule__detail-label">Escalas de dolor</p>
+          <ul className="nilo-cmodule__scale-list">
+            {selectedEpisode.scales.map((scale) => (
+              <li key={scale.id} className="nilo-cmodule__scale-item">
+                <strong>{scale.scaleName}</strong>
+                <span>
+                  {formatPainScaleValue(scale.value, findPainScaleDefinition(scale.scaleId)?.step ?? 1)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <p className="nilo-cmodule__detail-note">
         Revisión detallada del episodio (landmarks, reproducción, etc.) pendiente de API.
       </p>
@@ -165,8 +187,11 @@ export function PainEpisodeCondata({
         addContent={
           <PainEpisodeCapturePanel
             patientId={patientId}
+            summaryBackSignal={summaryBackSignal}
+            onPhaseChange={onCapturePhaseChange}
             onComplete={(session) => {
               onEpisodeCreated(sessionToEpisode(session))
+              onCapturePhaseChange?.('capture')
               onViewChange('list')
             }}
           />

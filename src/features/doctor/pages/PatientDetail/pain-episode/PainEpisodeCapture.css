@@ -155,6 +155,27 @@
   border-color: rgba(180, 83, 9, 0.25);
 }
 
+.nilo-pain-capture__status-pill--toggle {
+  cursor: pointer;
+  border: 1px solid var(--m3-outline-variant);
+  background: var(--m3-surface);
+}
+
+.nilo-pain-capture__status-pill--toggle:hover:not(:disabled) {
+  background: var(--m3-surface-container-high);
+}
+
+.nilo-pain-capture__status-pill--toggle.nilo-pain-capture__status-pill--on {
+  color: var(--m3-primary);
+  background: var(--m3-primary-fixed);
+  border-color: transparent;
+}
+
+.nilo-pain-capture__status-pill--toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .nilo-pain-capture__stats {
   display: grid;
   grid-template-columns: 1fr;
