@@ -51,14 +51,6 @@
   color: var(--m3-on-surface);
 }
 
-.nilo-pain-modal__header-actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-.nilo-pain-modal__icon-btn,
 .nilo-pain-modal__close {
   flex-shrink: 0;
   width: 40px;
@@ -70,32 +62,13 @@
   color: var(--m3-on-surface-variant);
 }
 
-.nilo-pain-modal__icon-btn:hover:not(:disabled),
 .nilo-pain-modal__close:hover:not(:disabled) {
   background: var(--m3-surface-container-high);
 }
 
-.nilo-pain-modal__icon-btn:disabled,
 .nilo-pain-modal__close:disabled {
   opacity: 0.4;
   cursor: not-allowed;
-}
-
-.nilo-pain-modal__panel:fullscreen,
-.nilo-pain-modal__panel:-webkit-full-screen {
-  width: 100%;
-  height: 100%;
-  max-height: none;
-  border-radius: 0;
-  border: none;
-  box-shadow: none;
-}
-
-.nilo-pain-modal__panel:fullscreen .nilo-pain-modal__stage,
-.nilo-pain-modal__panel:-webkit-full-screen .nilo-pain-modal__stage {
-  flex: 1;
-  aspect-ratio: auto;
-  min-height: 0;
 }
 
 .nilo-pain-modal__stage {

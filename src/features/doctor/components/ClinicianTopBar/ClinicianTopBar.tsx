@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { Avatar } from '@/components/ui/Avatar'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import { useAuth } from '@/hooks/useAuth'
+import { useFullscreen } from '@/hooks/useFullscreen'
+import { toast } from '@/lib/toast'
 import { ROOT_PATHS } from '@/router/paths'
 import './ClinicianTopBar.css'
 
@@ -142,6 +144,7 @@ export function ClinicianTopBar({
 }: ClinicianTopBarProps) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+  const { isFullscreen, toggleFullscreen, supported: fullscreenSupported } = useFullscreen()
   const [openPanel, setOpenPanel] = useState<OpenPanel>(null)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const userRef = useRef<HTMLDivElement>(null)
@@ -166,6 +169,14 @@ export function ClinicianTopBar({
   function handleLogout() {
     logout()
     navigate(ROOT_PATHS.login, { replace: true })
+  }
+
+  async function handleToggleFullscreen() {
+    try {
+      await toggleFullscreen()
+    } catch {
+      toast.error('No se pudo activar pantalla completa en este dispositivo.')
+    }
   }
 
   return (
@@ -234,6 +245,20 @@ export function ClinicianTopBar({
               onClose={() => setOpenPanel(null)}
             />
           </div>
+
+          {fullscreenSupported && (
+            <button
+              type="button"
+              className={`nilo-ctopbar__tab${isFullscreen ? ' nilo-ctopbar__tab--active' : ''}`}
+              onClick={() => void handleToggleFullscreen()}
+              aria-label={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
+              aria-pressed={isFullscreen}
+              title={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
+            >
+              <MaterialIcon name={isFullscreen ? 'fullscreen_exit' : 'fullscreen'} size={20} />
+              <span>Pantalla completa</span>
+            </button>
+          )}
         </div>
 
         <div className="nilo-ctopbar__user-wrap" ref={userRef}>
