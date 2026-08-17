@@ -16,6 +16,8 @@ import {
 } from './medical-sections'
 import { SectionContent } from './SectionContent'
 import { PatientQuickActionsFab } from './components/PatientQuickActionsFab'
+import type { PatientQuickAction } from './patient-quick-actions'
+import { PainEpisodeModal } from './pain-episode/PainEpisodeModal'
 import './PatientDetailPage.css'
 
 const AVATAR_COLORS = ['#0369a1', '#0f766e', '#7c3aed', '#be123c', '#b45309', '#4338ca', '#0891b2']
@@ -55,6 +57,7 @@ export function PatientDetailPage() {
   const [togglingMonitor, setTogglingMonitor] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [painEpisodeOpen, setPainEpisodeOpen] = useState(false)
 
   const activeSection = findPatientSection(sections, activeSectionId) ?? sections[0]
   const showAddButton = activeSection ? sectionAllowsAdd(activeSection) : false
@@ -121,6 +124,14 @@ export function PatientDetailPage() {
     } finally {
       setTogglingMonitor(false)
     }
+  }
+
+  function handleQuickAction(action: PatientQuickAction) {
+    if (action.actionKey === 'pain-episode') {
+      setPainEpisodeOpen(true)
+      return
+    }
+    toast.info(`«${action.label}»: pendiente de implementar.`)
   }
 
   async function handleDelete() {
@@ -247,7 +258,15 @@ export function PatientDetailPage() {
         </div>
       </div>
 
-      <PatientQuickActionsFab />
+      <PatientQuickActionsFab onSelect={handleQuickAction} />
+
+      {painEpisodeOpen && (
+        <PainEpisodeModal
+          patientId={p.id}
+          patientName={fullName}
+          onClose={() => setPainEpisodeOpen(false)}
+        />
+      )}
 
       <ConfirmDialog
         open={confirmDelete}

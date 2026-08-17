@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
-import { toast } from '@/lib/toast'
 import { PATIENT_QUICK_ACTIONS, type PatientQuickAction } from '../patient-quick-actions'
 import './PatientQuickActionsFab.css'
 
@@ -36,7 +35,6 @@ export function PatientQuickActionsFab({ onSelect }: PatientQuickActionsFabProps
   function handleSelect(action: PatientQuickAction) {
     setOpen(false)
     onSelect?.(action)
-    toast.info(`«${action.label}»: pendiente de implementar.`)
   }
 
   return (
