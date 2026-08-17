@@ -10,6 +10,14 @@ import { toast } from '@/lib/toast'
  */
 
 const REFRESH_KEY = 'nilo.refresh'
+export const REQUEST_TIMEOUT_MS = 15_000
+
+function fetchWithTimeout(url: string, init: RequestInit = {}): Promise<Response> {
+  return fetch(url, {
+    ...init,
+    signal: init.signal ?? AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  })
+}
 
 let accessToken: string | null = null
 let refreshToken: string | null = localStorage.getItem(REFRESH_KEY)
@@ -58,7 +66,7 @@ async function refreshTokens(): Promise<boolean> {
   if (!refreshPromise) {
     refreshPromise = (async () => {
       try {
-        const res = await fetch(`${env.apiBaseUrl}/auth/refresh`, {
+        const res = await fetchWithTimeout(`${env.apiBaseUrl}/auth/refresh`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ refresh_token: refreshToken }),
@@ -112,7 +120,7 @@ async function request<T>(path: string, options: RequestOptions = {}, isRetry = 
   startActivity()
   let res: Response
   try {
-    res = await fetch(`${env.apiBaseUrl}${path}`, { ...init, headers })
+    res = await fetchWithTimeout(`${env.apiBaseUrl}${path}`, { ...init, headers })
   } catch {
     endActivity()
     if (!silent) toast.error('No se pudo conectar con el servidor.')

@@ -5,13 +5,14 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-https://192.168.1.43:8443/api/v1}
+        VITE_API_DIRECT: ${VITE_API_DIRECT:-false}
         VITE_APP_NAME: ${VITE_APP_NAME:-NILO}
     image: nilo-frontend:latest
     container_name: nilo-frontend
     network_mode: host
     environment:
       FRONTEND_SSL_PORT: ${FRONTEND_SSL_PORT:-8080}
-      BACKEND_PROXY_HOST: ${BACKEND_PROXY_HOST:-127.0.0.1}
+      BACKEND_PROXY_HOST: ${BACKEND_PROXY_HOST:-192.168.1.43}
       BACKEND_SSL_NAME: ${BACKEND_SSL_NAME:-192.168.1.43}
       BACKEND_PORT: ${BACKEND_PORT:-8443}
     volumes:

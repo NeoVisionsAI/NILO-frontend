@@ -169,8 +169,15 @@ docker_build_image() {
   fi
 
   local api_url="${VITE_API_BASE_URL:-https://192.168.1.43:8443/api/v1}"
+  local api_direct="${VITE_API_DIRECT:-false}"
   local app_name="${VITE_APP_NAME:-NILO}"
-  local -a build_args=(--build-arg "VITE_API_BASE_URL=${api_url}" --build-arg "VITE_APP_NAME=${app_name}" -t "$IMAGE_NAME" .)
+  local -a build_args=(
+    --build-arg "VITE_API_BASE_URL=${api_url}"
+    --build-arg "VITE_API_DIRECT=${api_direct}"
+    --build-arg "VITE_APP_NAME=${app_name}"
+    -t "$IMAGE_NAME"
+    .
+  )
 
   if $no_cache; then
     build_args=(--no-cache "${build_args[@]}")
@@ -234,7 +241,7 @@ cmd_deploy() {
 
   log "Abrir SOLO con HTTPS: https://${lan_ip:-localhost}:${ssl_port}/login"
   warn "NO uses http://…:${ssl_port} — se quedará colgado (puerto TLS)."
-  log "API proxy: 127.0.0.1:${BACKEND_PORT:-8443} (SNI ${BACKEND_SSL_NAME:-192.168.1.43})"
+  log "API proxy: ${BACKEND_PROXY_HOST:-192.168.1.43}:${BACKEND_PORT:-8443} (SNI ${BACKEND_SSL_NAME:-192.168.1.43})"
 
   tmp_cfg="$(prepare_docker_config)"
   # shellcheck disable=SC2064
@@ -256,6 +263,19 @@ cmd_deploy() {
 
   log "Arrancando contenedor…"
   docker compose up -d --no-build
+
+  sleep 2
+  if curl -kf --max-time 8 "https://127.0.0.1:${ssl_port}/" >/dev/null 2>&1; then
+    log "OK: frontend responde en :${ssl_port}"
+  else
+    warn "El frontend no responde en https://127.0.0.1:${ssl_port} — revisa: docker logs nilo-frontend"
+  fi
+  if curl -kf --max-time 8 "https://127.0.0.1:${ssl_port}/api/v1/auth/cors-probe" >/dev/null 2>&1; then
+    log "OK: proxy API /api/v1 responde"
+  else
+    warn "Proxy API falla (504/timeout). Prueba en .env: VITE_API_DIRECT=true y ./deploy.sh --rebuild"
+    warn "O comprueba: curl -k https://${BACKEND_PROXY_HOST:-192.168.1.43}:${BACKEND_PORT:-8443}/health"
+  fi
 
   log "Abre https://${lan_ip:-localhost}:${ssl_port}/login"
   docker compose ps

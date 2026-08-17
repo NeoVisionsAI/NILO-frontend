@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from 'react'
 import { authService, type LoginCredentials } from '@/services/auth.service'
-import { hasSession } from '@/services/api'
+import { hasSession, REQUEST_TIMEOUT_MS } from '@/services/api'
 import type { User } from '@/types'
 
 interface AuthContextValue {
@@ -32,11 +32,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false)
       return
     }
+
+    let cancelled = false
+    const timer = window.setTimeout(() => {
+      if (!cancelled) setIsLoading(false)
+    }, REQUEST_TIMEOUT_MS + 500)
+
     authService
       .me(true)
-      .then(setUser)
-      .catch(() => setUser(null))
-      .finally(() => setIsLoading(false))
+      .then((u) => {
+        if (!cancelled) setUser(u)
+      })
+      .catch(() => {
+        if (!cancelled) setUser(null)
+      })
+      .finally(() => {
+        cancelled = true
+        window.clearTimeout(timer)
+        setIsLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
   }, [])
 
   const login = useCallback(async (credentials: LoginCredentials) => {

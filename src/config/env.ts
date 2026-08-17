@@ -7,11 +7,14 @@ const API_PATH = import.meta.env.VITE_API_PATH ?? '/api/v1'
 
 /**
  * URL base de la API en runtime.
- * - Navegador: misma origen (`/api/v1` vía proxy nginx o Vite) → HTTPS, sin CORS ni mixed content.
- * - Build/SSR: `VITE_API_BASE_URL` (p. ej. https://192.168.1.43:8443/api/v1).
+ * - Por defecto: misma origen (/api/v1 proxied por nginx).
+ * - VITE_API_DIRECT=true: llama al backend directo (útil si el proxy nginx falla; requiere CORS).
  */
 function resolveApiBaseUrl(): string {
   if (typeof window !== 'undefined') {
+    if (import.meta.env.VITE_API_DIRECT === 'true') {
+      return import.meta.env.VITE_API_BASE_URL ?? `https://${window.location.hostname}:8443${API_PATH}`
+    }
     return `${window.location.origin}${API_PATH}`
   }
 
