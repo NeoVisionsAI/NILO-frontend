@@ -1,11 +1,39 @@
-.nilo-condata-module {
+.nilo-cmodule {
   display: flex;
   flex-direction: column;
-  min-height: 100%;
+  flex: 1;
+  min-height: 0;
   height: 100%;
 }
 
-.nilo-condata-module__toolbar {
+.nilo-cmodule__steps {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--m3-outline-variant);
+  background: var(--m3-surface-container-lowest);
+  flex-shrink: 0;
+}
+
+.nilo-cmodule__step {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--m3-on-surface-variant);
+  background: transparent;
+}
+
+.nilo-cmodule__step--active {
+  color: var(--m3-primary);
+  background: var(--m3-primary-fixed);
+}
+
+.nilo-cmodule__toolbar {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -15,7 +43,7 @@
   flex-wrap: wrap;
 }
 
-.nilo-condata-module__search {
+.nilo-cmodule__search {
   flex: 1;
   min-width: 200px;
   display: flex;
@@ -29,7 +57,7 @@
   color: var(--m3-outline);
 }
 
-.nilo-condata-module__search input {
+.nilo-cmodule__search input {
   flex: 1;
   min-width: 0;
   border: none;
@@ -39,12 +67,12 @@
   outline: none;
 }
 
-.nilo-condata-module__search-clear {
+.nilo-cmodule__search-clear {
   display: flex;
   color: var(--m3-outline);
 }
 
-.nilo-condata-module__add-btn {
+.nilo-cmodule__add-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -58,14 +86,41 @@
   flex-shrink: 0;
 }
 
-.nilo-condata-module__list {
+.nilo-cmodule__list {
   flex: 1;
   min-height: 0;
   overflow: auto;
   padding: 12px;
 }
 
-.nilo-condata-module__item {
+.nilo-cmodule__panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.nilo-cmodule__panel--add {
+  overflow: hidden;
+}
+
+.nilo-cmodule__panel--detail {
+  overflow: auto;
+  padding: 24px 20px;
+}
+
+.nilo-cmodule__detail-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 20px calc(12px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--m3-outline-variant);
+  background: var(--m3-surface-container-low);
+  flex-shrink: 0;
+}
+
+.nilo-cmodule__item {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -77,15 +132,15 @@
   transition: background-color 0.15s ease;
 }
 
-.nilo-condata-module__item:hover {
+.nilo-cmodule__item:hover {
   background: var(--m3-surface-container-high);
 }
 
-.nilo-condata-module__item + .nilo-condata-module__item {
+.nilo-cmodule__item + .nilo-cmodule__item {
   margin-top: 4px;
 }
 
-.nilo-condata-module__item-icon {
+.nilo-cmodule__item-icon {
   flex-shrink: 0;
   width: 40px;
   height: 40px;
@@ -97,7 +152,7 @@
   color: #dc2626;
 }
 
-.nilo-condata-module__item-text {
+.nilo-cmodule__item-text {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -105,20 +160,20 @@
   gap: 2px;
 }
 
-.nilo-condata-module__item-text strong {
+.nilo-cmodule__item-text strong {
   font-size: 14px;
 }
 
-.nilo-condata-module__item-text span {
+.nilo-cmodule__item-text span {
   font-size: 12px;
   color: var(--m3-on-surface-variant);
 }
 
-.nilo-condata-module__item-chevron {
+.nilo-cmodule__item-chevron {
   color: var(--m3-outline);
 }
 
-.nilo-condata-module__empty {
+.nilo-cmodule__empty {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -130,17 +185,13 @@
   color: var(--m3-on-surface-variant);
 }
 
-.nilo-condata-module__detail {
-  padding: 24px 20px;
-}
-
-.nilo-condata-module__detail-grid {
+.nilo-cmodule__detail-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 16px;
 }
 
-.nilo-condata-module__detail-label {
+.nilo-cmodule__detail-label {
   display: block;
   font-size: 11px;
   font-weight: 700;
@@ -150,9 +201,32 @@
   margin-bottom: 4px;
 }
 
-.nilo-condata-module__detail-note {
+.nilo-cmodule__detail-note {
   margin-top: 20px;
   font-size: 14px;
   color: var(--m3-on-surface-variant);
   line-height: 1.5;
+}
+
+.nilo-cmodule__action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 9999px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.nilo-cmodule__action-btn--secondary {
+  background: var(--m3-surface-container-high);
+  color: var(--m3-on-surface);
+  border: 1px solid var(--m3-outline-variant);
+}
+
+.nilo-cmodule__action-btn--danger {
+  background: rgba(220, 38, 38, 0.1);
+  color: #dc2626;
+  border: 1px solid rgba(220, 38, 38, 0.25);
 }

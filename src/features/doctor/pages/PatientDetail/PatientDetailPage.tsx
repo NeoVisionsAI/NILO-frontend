@@ -141,6 +141,11 @@ export function PatientDetailPage() {
     setSelectedEpisodeId(episodeId ?? null)
   }
 
+  function handlePainEpisodeDelete(episodeId: string) {
+    setPainEpisodes((prev) => prev.filter((episode) => episode.id !== episodeId))
+    setSelectedEpisodeId(null)
+  }
+
   async function handleNodeChange(e: ChangeEvent<HTMLSelectElement>) {
     const value = e.target.value
     const newNodeId = value || null
@@ -198,12 +203,12 @@ export function PatientDetailPage() {
       return (
         <PainEpisodeCondata
           patientId={p.id}
-          patientName={fullName}
           episodes={painEpisodes}
           view={moduleView}
           selectedEpisodeId={selectedEpisodeId}
           onViewChange={handlePainEpisodeViewChange}
           onEpisodeCreated={(episode) => setPainEpisodes((prev) => [episode, ...prev])}
+          onEpisodeDelete={handlePainEpisodeDelete}
         />
       )
     }
@@ -378,6 +383,13 @@ export function PatientDetailPage() {
             onBack={condataBackHandler()}
             backLabel={condataBackLabel()}
             headerAction={condataHeaderAction()}
+            bodyClassName={
+              condataMode === 'module' &&
+              activeModule?.actionKey === 'pain-episode' &&
+              moduleView === 'add'
+                ? 'nilo-condata__body--fill'
+                : undefined
+            }
           >
             {renderCondataBody()}
           </CondataPanel>

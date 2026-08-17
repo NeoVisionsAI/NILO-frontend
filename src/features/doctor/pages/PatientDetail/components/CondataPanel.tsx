@@ -9,6 +9,7 @@ interface CondataPanelProps {
   onBack?: () => void
   backLabel?: string
   headerAction?: ReactNode
+  bodyClassName?: string
   children: ReactNode
 }
 
@@ -20,6 +21,7 @@ export function CondataPanel({
   onBack,
   backLabel = 'Volver',
   headerAction,
+  bodyClassName,
   children,
 }: CondataPanelProps) {
   return (
@@ -46,7 +48,7 @@ export function CondataPanel({
         </div>
       </header>
 
-      <div className="nilo-condata__body">{children}</div>
+      <div className={`nilo-condata__body${bodyClassName ? ` ${bodyClassName}` : ''}`}>{children}</div>
     </section>
   )
 }
