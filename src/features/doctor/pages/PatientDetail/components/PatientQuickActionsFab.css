@@ -1,0 +1,151 @@
+.nilo-pdetail-fab {
+  position: fixed;
+  right: 28px;
+  bottom: 28px;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.nilo-pdetail-fab__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.2);
+  z-index: -1;
+  animation: nilo-pdetail-fab-fade-in 0.18s ease both;
+}
+
+@keyframes nilo-pdetail-fab-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.nilo-pdetail-fab__menu {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.nilo-pdetail-fab--open .nilo-pdetail-fab__menu {
+  pointer-events: auto;
+}
+
+.nilo-pdetail-fab__option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  opacity: 0;
+  transform: translateY(12px) scale(0.92);
+  pointer-events: none;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+.nilo-pdetail-fab--open .nilo-pdetail-fab__option {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+  transition-delay: calc(var(--fab-index, 0) * 45ms);
+}
+
+.nilo-pdetail-fab__option-label {
+  padding: 8px 14px;
+  border-radius: 12px;
+  background: var(--m3-surface-container-lowest);
+  border: 1px solid var(--m3-outline-variant);
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.12);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--m3-on-surface);
+  white-space: nowrap;
+}
+
+.nilo-pdetail-fab__option-icon {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--m3-surface-container-lowest);
+  border: 1px solid var(--m3-outline-variant);
+  color: var(--m3-primary);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.14);
+  transition:
+    background-color 0.15s ease,
+    transform 0.1s ease;
+}
+
+.nilo-pdetail-fab__option:hover .nilo-pdetail-fab__option-icon {
+  background: var(--m3-primary-fixed);
+  transform: scale(1.05);
+}
+
+.nilo-pdetail-fab__trigger {
+  flex-shrink: 0;
+  width: 60px;
+  height: 60px;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--m3-primary);
+  color: var(--m3-on-primary);
+  box-shadow: 0 8px 24px rgba(0, 97, 148, 0.38);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.nilo-pdetail-fab__trigger:hover {
+  box-shadow: 0 10px 28px rgba(0, 97, 148, 0.45);
+  transform: scale(1.04);
+}
+
+.nilo-pdetail-fab__trigger:active {
+  transform: scale(0.96);
+}
+
+.nilo-pdetail-fab--open .nilo-pdetail-fab__trigger {
+  background: var(--m3-on-surface-variant);
+}
+
+.nilo-pdetail-fab--open .nilo-pdetail-fab__trigger .material-symbols-outlined {
+  transform: rotate(90deg);
+  transition: transform 0.2s ease;
+}
+
+@media (max-width: 768px) {
+  .nilo-pdetail-fab {
+    right: 16px;
+    bottom: 16px;
+  }
+
+  .nilo-pdetail-fab__trigger {
+    width: 56px;
+    height: 56px;
+  }
+
+  .nilo-pdetail-fab__option-icon {
+    width: 44px;
+    height: 44px;
+  }
+
+  .nilo-pdetail-fab__option-label {
+    font-size: 13px;
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}

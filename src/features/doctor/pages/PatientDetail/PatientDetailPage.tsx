@@ -15,6 +15,7 @@ import {
   type SectionViewMode,
 } from './medical-sections'
 import { SectionContent } from './SectionContent'
+import { PatientQuickActionsFab } from './components/PatientQuickActionsFab'
 import './PatientDetailPage.css'
 
 const AVATAR_COLORS = ['#0369a1', '#0f766e', '#7c3aed', '#be123c', '#b45309', '#4338ca', '#0891b2']
@@ -245,6 +246,8 @@ export function PatientDetailPage() {
           ) : null}
         </div>
       </div>
+
+      <PatientQuickActionsFab />
 
       <ConfirmDialog
         open={confirmDelete}
