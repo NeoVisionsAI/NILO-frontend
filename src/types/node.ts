@@ -40,4 +40,8 @@ export interface NodeCreate {
 }
 
 /** Cuerpo para actualizar un nodo (`NodeUpdate`, parcial). */
-export type NodeUpdate = Partial<NodeCreate>
+export type NodeUpdate = Partial<NodeCreate> & {
+  bluetooth_enabled?: boolean
+  wifi_enabled?: boolean
+  wired_enabled?: boolean
+}

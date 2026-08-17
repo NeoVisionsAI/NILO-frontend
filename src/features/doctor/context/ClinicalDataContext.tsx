@@ -15,6 +15,7 @@ import {
   type MonitoringActivePatient,
   type Node,
   type NodeCreate,
+  type NodeUpdate,
   type PatientUser,
   type PatientUserCreate,
   type PatientUserUpdate,
@@ -31,6 +32,7 @@ interface ClinicalDataValue {
   assignPatientNode: (patientId: string, nodeId: string | null) => Promise<PatientUser>
   deletePatient: (id: string) => Promise<void>
   createNode: (body: NodeCreate) => Promise<Node>
+  updateNode: (id: string, body: NodeUpdate) => Promise<Node>
   deleteNode: (id: string) => Promise<void>
 }
 
@@ -118,6 +120,13 @@ export function ClinicalDataProvider({ children }: { children: ReactNode }) {
     return created
   }, [])
 
+  const updateNode = useCallback(async (id: string, body: NodeUpdate) => {
+    const updated = await nodeService.update(id, body)
+    setNodes((prev) => prev.map((n) => (n.id === id ? updated : n)))
+    toast.success(`Nodo «${updated.name}» actualizado.`)
+    return updated
+  }, [])
+
   const deleteNode = useCallback(async (id: string) => {
     await nodeService.remove(id)
     setNodes((prev) => prev.filter((n) => n.id !== id))
@@ -136,6 +145,7 @@ export function ClinicalDataProvider({ children }: { children: ReactNode }) {
       assignPatientNode,
       deletePatient,
       createNode,
+      updateNode,
       deleteNode,
     }),
     [
@@ -149,6 +159,7 @@ export function ClinicalDataProvider({ children }: { children: ReactNode }) {
       assignPatientNode,
       deletePatient,
       createNode,
+      updateNode,
       deleteNode,
     ],
   )

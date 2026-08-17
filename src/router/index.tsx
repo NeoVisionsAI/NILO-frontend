@@ -16,6 +16,7 @@ import {
   PatientsListPage,
   AlertsPage,
   PatientDetailPage,
+  NodeDetailPage,
 } from '@/features/doctor'
 import { NurseLayout, NurseDashboardPage, RoundsPage, TasksPage } from '@/features/nurse'
 import {
@@ -67,6 +68,10 @@ export const router = createBrowserRouter([
       { path: 'pacientes', element: <PatientsListPage /> },
       { path: 'pacientes/nuevo', element: <AddPatientPage /> },
       { path: 'nodos/nuevo', element: <AddNodePage /> },
+      {
+        path: 'nodos/:nodeId',
+        element: <NodeDetailPage />,
+      },
       {
         path: 'pacientes/:patientId',
         element: <PatientDetailPage />,

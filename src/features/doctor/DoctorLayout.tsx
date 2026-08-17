@@ -79,6 +79,7 @@ function DoctorShell() {
     secondary: n.location ?? n.mac_address,
     searchText: [n.name, n.location, n.mac_address, n.city, n.ddns].filter(Boolean).join(' '),
     leading: <MaterialIcon name="router" size={20} className="nilo-ctopbar__item-icon" />,
+    onSelect: () => navigate(`${ROOT_PATHS.doctor}/nodos/${n.id}`),
   }))
 
   function goToPatient(id: string) {

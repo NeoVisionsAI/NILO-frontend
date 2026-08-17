@@ -9,6 +9,13 @@ RUN npm ci
 
 # Copia el código y genera el build de producción
 COPY . .
+
+# Variables Vite (se inyectan en el bundle en tiempo de build)
+ARG VITE_API_BASE_URL=http://localhost:8001/api/v1
+ARG VITE_APP_NAME=NILO
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+ENV VITE_APP_NAME=$VITE_APP_NAME
+
 RUN npm run build
 
 # ---------- Etapa 2: servir con nginx ----------
