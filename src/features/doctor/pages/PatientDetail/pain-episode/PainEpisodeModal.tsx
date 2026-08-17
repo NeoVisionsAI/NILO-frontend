@@ -12,7 +12,13 @@ import {
   getFaceLandmarker,
   landmarksFromResult,
 } from './faceLandmarker'
-import type { PainEpisodeFrame, PainEpisodeSessionData } from './types'
+import {
+  buildPainEpisodeSession,
+  formatPainEpisodeDate,
+  formatPainEpisodeElapsed,
+  type PainEpisodeFrame,
+  type PainEpisodeSessionData,
+} from './types'
 import './PainEpisodeModal.css'
 
 interface CameraDevice {
@@ -72,6 +78,7 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
   const lastVideoTimeRef = useRef(-1)
   const recordingRef = useRef(false)
   const recordingStartRef = useRef(0)
+  const recordingStartedAtRef = useRef<Date | null>(null)
   const framesRef = useRef<PainEpisodeFrame[]>([])
   const mirrorVideoRef = useRef(true)
   const [mirrorVideo, setMirrorVideo] = useState(true)
@@ -85,6 +92,8 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
   const [activeFacingMode, setActiveFacingMode] = useState<CameraFacing | null>(null)
   const [showFace, setShowFace] = useState(true)
   const [recording, setRecording] = useState(false)
+  const [recordingStartedAt, setRecordingStartedAt] = useState<Date | null>(null)
+  const [elapsedMs, setElapsedMs] = useState(0)
   const [frameCount, setFrameCount] = useState(0)
   const [faceDetected, setFaceDetected] = useState(false)
 
@@ -336,6 +345,23 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
   }, [syncCanvasSize])
 
   useEffect(() => {
+    if (!recording) {
+      setElapsedMs(0)
+      return
+    }
+
+    function tick() {
+      if (recordingStartedAtRef.current) {
+        setElapsedMs(Date.now() - recordingStartedAtRef.current.getTime())
+      }
+    }
+
+    tick()
+    const id = window.setInterval(tick, 1000)
+    return () => window.clearInterval(id)
+  }, [recording])
+
+  useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape' && !recording) onClose()
     }
@@ -391,21 +417,31 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
       toast.error('No se detecta rostro. Coloca la cara delante de la cámara.')
       return
     }
+    const startedAt = new Date()
     framesRef.current = []
+    recordingStartedAtRef.current = startedAt
     recordingStartRef.current = performance.now()
+    setRecordingStartedAt(startedAt)
+    setElapsedMs(0)
     setFrameCount(0)
     setRecording(true)
     toast.success('Grabación iniciada.')
   }
 
   function handleStopRecording() {
+    const startedAt = recordingStartedAtRef.current ?? new Date()
+    const endedAt = new Date()
     setRecording(false)
-    const session: PainEpisodeSessionData = {
+    setRecordingStartedAt(null)
+    recordingStartedAtRef.current = null
+    setElapsedMs(0)
+
+    const session: PainEpisodeSessionData = buildPainEpisodeSession(
       patientId,
-      startedAt: new Date(Date.now() - (framesRef.current.at(-1)?.t ?? 0)).toISOString(),
-      endedAt: new Date().toISOString(),
-      frames: [...framesRef.current],
-    }
+      startedAt,
+      endedAt,
+      [...framesRef.current],
+    )
     console.info('[PainEpisode] sesión registrada (local):', session)
     toast.success(`Sesión finalizada: ${session.frames.length} frames capturados.`)
   }
@@ -495,7 +531,7 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
             </div>
           </div>
         ) : (
-          <>
+          <div className="nilo-pain-modal__body">
             <div className="nilo-pain-modal__stage">
               {loadState === 'loading' && (
                 <div className="nilo-pain-modal__loading">
@@ -528,8 +564,9 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
             </div>
 
             <footer className="nilo-pain-modal__controls">
-              <div className="nilo-pain-modal__controls-row">
-                {inputMode === 'live' && cameras.length === 2 ? (
+              <div className="nilo-pain-modal__controls-row nilo-pain-modal__controls-row--toolbar">
+                <div className="nilo-pain-modal__controls-toolbar">
+                  {inputMode === 'live' && cameras.length === 2 ? (
                   <div
                     className="nilo-pain-modal__camera-switch"
                     role="group"
@@ -585,15 +622,31 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
                   </button>
                 ) : null}
 
-                <button
-                  type="button"
-                  className={`nilo-pain-modal__toggle${showFace ? ' nilo-pain-modal__toggle--on' : ''}`}
-                  onClick={() => setShowFace((v) => !v)}
-                  disabled={recording}
-                >
-                  <MaterialIcon name={showFace ? 'face' : 'grid_on'} size={20} />
-                  <span>{showFace ? 'Ver cara' : 'Solo puntos'}</span>
-                </button>
+                  <button
+                    type="button"
+                    className={`nilo-pain-modal__toggle${showFace ? ' nilo-pain-modal__toggle--on' : ''}`}
+                    onClick={() => setShowFace((v) => !v)}
+                    disabled={recording}
+                  >
+                    <MaterialIcon name={showFace ? 'face' : 'grid_on'} size={20} />
+                    <span>{showFace ? 'Ver cara' : 'Solo puntos'}</span>
+                  </button>
+                </div>
+
+                {recording && recordingStartedAt && (
+                  <div className="nilo-pain-modal__recording-meta" aria-live="polite">
+                    <span className="nilo-pain-modal__recording-date">
+                      <MaterialIcon name="event" size={18} />
+                      <span className="nilo-pain-modal__recording-date-text">
+                        {formatPainEpisodeDate(recordingStartedAt)}
+                      </span>
+                    </span>
+                    <span className="nilo-pain-modal__recording-timer">
+                      <MaterialIcon name="timer" size={18} />
+                      {formatPainEpisodeElapsed(elapsedMs)}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="nilo-pain-modal__controls-row">
@@ -619,7 +672,7 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
                 )}
               </div>
             </footer>
-          </>
+          </div>
         )}
       </div>
     </div>
