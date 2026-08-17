@@ -40,7 +40,7 @@ server {
 
 # App HTTPS (cámara, login, etc.)
 server {
-    listen ${FRONTEND_SSL_PORT} ssl;
+  listen 0.0.0.0:${FRONTEND_SSL_PORT} ssl;
     server_name _;
 
     ssl_certificate /etc/nginx/ssl/cert.pem;

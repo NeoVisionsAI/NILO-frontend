@@ -277,7 +277,17 @@ cmd_deploy() {
     warn "O comprueba: curl -k https://${BACKEND_PROXY_HOST:-192.168.1.43}:${BACKEND_PORT:-8443}/health"
   fi
 
-  log "Abre https://${lan_ip:-localhost}:${ssl_port}/login"
+  if [[ -n "${lan_ip:-}" ]]; then
+    if curl -kf --max-time 8 "https://${lan_ip}:${ssl_port}/" >/dev/null 2>&1; then
+      log "OK: accesible por LAN https://${lan_ip}:${ssl_port}"
+    else
+      warn "NO responde en https://${lan_ip}:${ssl_port} — suele ser FIREWALL (ufw/iptables)."
+      warn "  sudo ufw allow ${ssl_port}/tcp && sudo ufw reload"
+      warn "  Diagnóstico: ./scripts/diagnose-access.sh"
+    fi
+  fi
+
+  log "URL: https://${lan_ip:-localhost}:${ssl_port}/login  (solo https://, nunca http://)"
   docker compose ps
 }
 
@@ -297,6 +307,9 @@ main() {
       ;;
     --openssl)
       cmd_openssl
+      ;;
+    --diagnose)
+      bash "$ROOT_DIR/scripts/diagnose-access.sh"
       ;;
     --rebuild|-r)
       shift
