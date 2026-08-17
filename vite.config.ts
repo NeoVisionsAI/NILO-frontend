@@ -24,7 +24,23 @@ export default defineConfig(({ mode }) => {
     env.VITE_API_BASE_URL?.replace(/\/api\/v1\/?$/, '') || 'https://192.168.1.43:8443'
 
   return {
-    plugins: [react()],
+    plugins: [
+      react(),
+      // Vite añade crossorigin a <script>/<link>; sin ACAO en nginx el módulo JS no carga en el navegador.
+      {
+        name: 'nilo-strip-crossorigin',
+        apply: 'build',
+        transformIndexHtml: {
+          order: 'post',
+          handler(html: string) {
+            return html.replace(/\s+crossorigin/g, '')
+          },
+        },
+      },
+    ],
+    build: {
+      modulePreload: false,
+    },
     resolve: {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url)),
