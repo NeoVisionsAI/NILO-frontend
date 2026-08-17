@@ -7,7 +7,8 @@
 #   ./deploy.sh --stop       # para y elimina el contenedor
 #   ./deploy.sh --logs       # muestra logs en tiempo real
 #   ./deploy.sh --dev        # desarrollo local HTTPS (npm run dev + mkcert)
-#   ./deploy.sh --mkcert     # genera certs/ con mkcert (LAN_IP=192.168.1.43)
+#   ./deploy.sh --mkcert     # genera certs/ (mkcert si existe, si no OpenSSL)
+#   ./deploy.sh --openssl    # genera certs/ autofirmado con OpenSSL
 #
 # URLs de desarrollo:
 #   Frontend: https://192.168.1.43:8080  (proxy /api/v1 → backend :8443)
@@ -47,11 +48,43 @@ hint_docker_credentials() {
 hint_mkcert() {
   err "Faltan certificados TLS en ${CERT_DIR}/cert.pem y ${CERT_DIR}/key.pem"
   err ""
-  err "Con mkcert (recomendado, sin avisos en tablet si instalas la CA):"
-  err "  mkcert -install"
-  err "  LAN_IP=192.168.1.43 ./deploy.sh --mkcert"
+  err "Generar certificados:"
+  err "  LAN_IP=192.168.1.43 ./deploy.sh --mkcert     # mkcert o OpenSSL (fallback)"
+  err "  LAN_IP=192.168.1.43 ./deploy.sh --openssl    # solo autofirmado OpenSSL"
   err ""
-  err "O copia los cert.pem/key.pem del repo backend (certs/) si compartís mkcert."
+  err "Instalar mkcert (opcional, CA de confianza local):"
+  err "  https://github.com/FiloSottile/mkcert#installation"
+  err "  p. ej. en Linux: go install filippo.io/mkcert@latest"
+  err ""
+  err "O copia cert.pem/key.pem del repo backend (certs/)."
+}
+
+generate_tls_openssl() {
+  require_cmd openssl
+  local lan_ip="${1:-127.0.0.1}"
+
+  mkdir -p "$ROOT_DIR/$CERT_DIR"
+  log "Generando certificado autofirmado con OpenSSL (SAN: $lan_ip, localhost)…"
+  openssl req -x509 -nodes -days 825 -newkey rsa:2048 \
+    -keyout "$ROOT_DIR/$CERT_DIR/key.pem" -out "$ROOT_DIR/$CERT_DIR/cert.pem" \
+    -subj "/CN=NILO/O=NeoVisions" \
+    -addext "subjectAltName=IP:${lan_ip},IP:127.0.0.1,DNS:localhost"
+  chmod 600 "$ROOT_DIR/$CERT_DIR/key.pem"
+  warn "Certificado autofirmado: en tablet hay que aceptar la advertencia del navegador."
+  warn "Para evitar avisos instala mkcert y vuelve a ejecutar ./deploy.sh --mkcert"
+}
+
+generate_tls_mkcert() {
+  require_cmd mkcert
+  local lan_ip="${1:-127.0.0.1}"
+
+  mkdir -p "$ROOT_DIR/$CERT_DIR"
+  log "Generando certificados mkcert (SAN: $lan_ip, localhost, 127.0.0.1)…"
+  mkcert -install 2>/dev/null || true
+  mkcert -cert-file "$ROOT_DIR/$CERT_DIR/cert.pem" -key-file "$ROOT_DIR/$CERT_DIR/key.pem" \
+    "$lan_ip" localhost 127.0.0.1
+  chmod 600 "$ROOT_DIR/$CERT_DIR/key.pem"
+  log "Certificados en ${CERT_DIR}/. Tablet: instala CA con mkcert -CAROOT → rootCA.pem"
 }
 
 prepare_docker_config() {
@@ -106,7 +139,6 @@ ensure_tls_certs() {
 }
 
 cmd_mkcert() {
-  require_cmd mkcert
   ensure_env
 
   local lan_ip="${LAN_IP:-$(hostname -I 2>/dev/null | awk '{print $1}')}"
@@ -115,12 +147,19 @@ cmd_mkcert() {
     warn "No se detectó IP LAN; se usará solo localhost."
   fi
 
-  mkdir -p "$ROOT_DIR/$CERT_DIR"
-  log "Generando certificados mkcert (SAN: $lan_ip, localhost, 127.0.0.1)…"
-  mkcert -cert-file "$ROOT_DIR/$CERT_DIR/cert.pem" -key-file "$ROOT_DIR/$CERT_DIR/key.pem" \
-    "$lan_ip" localhost 127.0.0.1
-  chmod 600 "$ROOT_DIR/$CERT_DIR/key.pem"
-  log "Certificados en ${CERT_DIR}/. En tablet instala la CA: mkcert -CAROOT → copia rootCA.pem"
+  if command -v mkcert >/dev/null 2>&1; then
+    generate_tls_mkcert "$lan_ip"
+  else
+    warn "mkcert no instalado; usando OpenSSL (certificado autofirmado)."
+    generate_tls_openssl "$lan_ip"
+  fi
+}
+
+cmd_openssl() {
+  ensure_env
+  local lan_ip="${LAN_IP:-$(hostname -I 2>/dev/null | awk '{print $1}')}"
+  [[ -z "$lan_ip" ]] && lan_ip="127.0.0.1"
+  generate_tls_openssl "$lan_ip"
 }
 
 docker_build_image() {
@@ -234,6 +273,9 @@ main() {
       ;;
     --mkcert)
       cmd_mkcert
+      ;;
+    --openssl)
+      cmd_openssl
       ;;
     --rebuild|-r)
       shift

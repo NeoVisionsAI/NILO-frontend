@@ -1,28 +1,39 @@
 # Certificados TLS (desarrollo)
 
-El frontend se sirve en **HTTPS** (`https://192.168.1.43:8080`). La cámara y otras APIs del navegador requieren contexto seguro.
+El frontend se sirve en **HTTPS** (`https://192.168.1.43:8080`).
 
-## Generar con mkcert (recomendado)
-
-En el host de desarrollo:
+## Generar certificados
 
 ```bash
-mkcert -install
 LAN_IP=192.168.1.43 ./deploy.sh --mkcert
 ```
 
-Esto crea `cert.pem` y `key.pem` en esta carpeta.
+- Si tienes **mkcert** instalado → CA de confianza local (sin avisos en PC).
+- Si **no** tienes mkcert → usa **OpenSSL** automáticamente (autofirmado; en tablet acepta la advertencia del navegador).
+
+Solo OpenSSL explícito:
+
+```bash
+LAN_IP=192.168.1.43 ./deploy.sh --openssl
+```
+
+## Instalar mkcert (opcional)
+
+Ver https://github.com/FiloSottile/mkcert#installation
+
+En Linux (con Go):
+
+```bash
+go install filippo.io/mkcert@latest
+mkcert -install
+```
 
 ## Tablet / móvil
 
-Para evitar el aviso de certificado autofirmado, instala la CA de mkcert en el dispositivo:
+**Con mkcert:** copia `rootCA.pem` (`mkcert -CAROOT`) al tablet e instálalo como CA.
 
-1. En el PC: `mkcert -CAROOT` → copia `rootCA.pem` al tablet.
-2. Android: instala como certificado de CA (Ajustes → Seguridad).
-3. iOS: instala el perfil y actívalo en Ajustes → General → Información → Confianza.
-
-Alternativa: aceptar manualmente el certificado la primera vez que abras `https://192.168.1.43:8080`.
+**Con OpenSSL:** abre `https://192.168.1.43:8080` y acepta el certificado la primera vez.
 
 ## Compartir con el backend
 
-Puedes reutilizar los mismos archivos `cert.pem` / `key.pem` del repo backend si incluyen SAN para la IP y puertos usados.
+Puedes copiar `cert.pem` / `key.pem` del repo backend si incluyen la misma IP en SAN.
