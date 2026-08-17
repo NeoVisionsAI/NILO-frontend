@@ -3,6 +3,7 @@ import {
   FilesetResolver,
   DrawingUtils,
   type FaceLandmarkerResult,
+  type NormalizedLandmark,
 } from '@mediapipe/tasks-vision'
 
 const WASM_BASE = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm'
@@ -13,7 +14,7 @@ let landmarkerPromise: Promise<FaceLandmarker> | null = null
 
 export function getFaceLandmarker(): Promise<FaceLandmarker> {
   if (!landmarkerPromise) {
-      landmarkerPromise = (async () => {
+    landmarkerPromise = (async () => {
       const vision = await FilesetResolver.forVisionTasks(WASM_BASE)
       const options = {
         baseOptions: {
@@ -38,27 +39,67 @@ export function getFaceLandmarker(): Promise<FaceLandmarker> {
   return landmarkerPromise
 }
 
+/** Mapea landmarks del frame de vídeo al rectángulo visible (object-fit: cover) + espejo frontal. */
+function remapLandmarksForDisplay(
+  landmarks: NormalizedLandmark[],
+  videoWidth: number,
+  videoHeight: number,
+  displayWidth: number,
+  displayHeight: number,
+  mirror: boolean,
+): NormalizedLandmark[] {
+  const scale = Math.max(displayWidth / videoWidth, displayHeight / videoHeight)
+  const drawW = videoWidth * scale
+  const drawH = videoHeight * scale
+  const offsetX = (displayWidth - drawW) / 2
+  const offsetY = (displayHeight - drawH) / 2
+
+  return landmarks.map((lm) => {
+    let px = lm.x * drawW + offsetX
+    const py = lm.y * drawH + offsetY
+    if (mirror) px = displayWidth - px
+    return {
+      ...lm,
+      x: px / displayWidth,
+      y: py / displayHeight,
+    }
+  })
+}
+
 export function drawFaceLandmarks(
   ctx: CanvasRenderingContext2D,
   results: FaceLandmarkerResult,
+  video: HTMLVideoElement,
+  displayWidth: number,
+  displayHeight: number,
+  mirror: boolean,
   showFaceMesh: boolean,
 ) {
-  if (!results.faceLandmarks?.length) return
+  if (!results.faceLandmarks?.length || !video.videoWidth) return
 
   const drawing = new DrawingUtils(ctx)
 
-  for (const landmarks of results.faceLandmarks) {
+  for (const face of results.faceLandmarks) {
+    const mapped = remapLandmarksForDisplay(
+      face,
+      video.videoWidth,
+      video.videoHeight,
+      displayWidth,
+      displayHeight,
+      mirror,
+    )
+
     if (showFaceMesh) {
-      drawing.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_TESSELATION, {
+      drawing.drawConnectors(mapped, FaceLandmarker.FACE_LANDMARKS_TESSELATION, {
         color: '#38bdf880',
         lineWidth: 1,
       })
-      drawing.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_CONTOURS, {
+      drawing.drawConnectors(mapped, FaceLandmarker.FACE_LANDMARKS_CONTOURS, {
         color: '#22d3ee',
         lineWidth: 1.5,
       })
     }
-    drawing.drawLandmarks(landmarks, {
+    drawing.drawLandmarks(mapped, {
       color: '#f97316',
       lineWidth: 1,
       radius: showFaceMesh ? 1.5 : 2.5,

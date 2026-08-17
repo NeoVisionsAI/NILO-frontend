@@ -85,6 +85,9 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.nilo-pain-modal__video--mirror {
   transform: scaleX(-1);
 }
 
@@ -99,7 +102,6 @@
   width: 100%;
   height: 100%;
   pointer-events: none;
-  transform: scaleX(-1);
 }
 
 .nilo-pain-modal__loading,

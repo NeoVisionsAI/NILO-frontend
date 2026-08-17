@@ -41,6 +41,8 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
   const recordingRef = useRef(false)
   const recordingStartRef = useRef(0)
   const framesRef = useRef<PainEpisodeFrame[]>([])
+  const mirrorVideoRef = useRef(true)
+  const [mirrorVideo, setMirrorVideo] = useState(true)
 
   const [loadState, setLoadState] = useState<LoadState>('loading')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
@@ -80,9 +82,8 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
 
     const w = video.clientWidth
     const h = video.clientHeight
-    const dpr = window.devicePixelRatio || 1
-    canvas.width = Math.floor(w * dpr)
-    canvas.height = Math.floor(h * dpr)
+    canvas.width = w
+    canvas.height = h
     canvas.style.width = `${w}px`
     canvas.style.height = `${h}px`
   }, [])
@@ -117,6 +118,8 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
 
       const track = stream.getVideoTracks()[0]
       const settings = track.getSettings()
+      mirrorVideoRef.current = settings.facingMode !== 'environment'
+      setMirrorVideo(mirrorVideoRef.current)
       if (settings.deviceId) setActiveCameraId(settings.deviceId)
 
       setInputMode('live')
@@ -153,6 +156,8 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
       lastVideoTimeRef.current = -1
       setInputMode('file')
       setSourceLabel(file.name)
+      mirrorVideoRef.current = false
+      setMirrorVideo(false)
       setCameras([])
       setActiveCameraId('')
       setLoadState('ready')
@@ -221,10 +226,9 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
 
           const ctx = canvas.getContext('2d')
           if (ctx) {
-            const dpr = window.devicePixelRatio || 1
-            ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-            const w = canvas.clientWidth
-            const h = canvas.clientHeight
+            const w = canvas.width
+            const h = canvas.height
+            ctx.setTransform(1, 0, 0, 1, 0, 0)
             ctx.clearRect(0, 0, w, h)
 
             if (!showFace) {
@@ -232,7 +236,7 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
               ctx.fillRect(0, 0, w, h)
             }
 
-            drawFaceLandmarks(ctx, results, showFace)
+            drawFaceLandmarks(ctx, results, video, w, h, mirrorVideoRef.current, showFace)
 
             if (recordingRef.current && hasFace) {
               const t = Math.round(performance.now() - recordingStartRef.current)
@@ -414,7 +418,7 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
               )}
               <video
                 ref={videoRef}
-                className={`nilo-pain-modal__video${showFace ? '' : ' nilo-pain-modal__video--hidden'}`}
+                className={`nilo-pain-modal__video${showFace ? '' : ' nilo-pain-modal__video--hidden'}${mirrorVideo ? ' nilo-pain-modal__video--mirror' : ''}`}
                 playsInline
                 muted
               />
