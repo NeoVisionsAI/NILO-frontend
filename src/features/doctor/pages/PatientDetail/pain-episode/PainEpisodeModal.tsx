@@ -508,7 +508,8 @@ export function PainEpisodeCapturePanel({
         </div>
       ) : (
         <>
-          <div className="nilo-pain-capture__stage">
+          <div className="nilo-pain-capture__stage-wrap">
+            <div className="nilo-pain-capture__stage">
             {loadState === 'loading' && (
               <div className="nilo-pain-capture__loading">
                 <MaterialIcon name="progress_activity" size={40} />
@@ -537,6 +538,7 @@ export function PainEpisodeCapturePanel({
             {!faceDetected && loadState === 'ready' && !recording && (
               <div className="nilo-pain-capture__hint">Buscando rostro…</div>
             )}
+            </div>
           </div>
 
           <footer className="nilo-pain-capture__controls">
