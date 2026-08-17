@@ -18,7 +18,6 @@ RUN npm run build
 # ---------- Etapa 2: servir con nginx (HTTPS) ----------
 FROM nginx:1.27-alpine AS runtime
 
-COPY nginx/default.conf.template /etc/nginx/default.conf.template
 COPY nginx/snippets/spa-locations.conf.template /etc/nginx/snippets/spa-locations.conf.template
 COPY docker/docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
