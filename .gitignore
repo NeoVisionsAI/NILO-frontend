@@ -32,5 +32,8 @@ pnpm-debug.log*
 .env.*
 !.env.example
 
+# Certificados TLS locales (autofirmados / mkcert)
+certs/*.pem
+ssl/
 # Testing
 coverage

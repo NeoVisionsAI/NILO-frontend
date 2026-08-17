@@ -1,4 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  CameraError,
+  canUseLiveCamera,
+  insecureCameraDevHint,
+  requestCameraStream,
+} from '@/lib/camera'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import { toast } from '@/lib/toast'
 import {
@@ -20,12 +26,16 @@ interface PainEpisodeModalProps {
   onClose: () => void
 }
 
-type LoadState = 'loading' | 'ready' | 'error'
+type LoadState = 'loading' | 'pick-source' | 'ready' | 'error'
+type InputMode = 'live' | 'file'
 
 export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisodeModalProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const captureInputRef = useRef<HTMLInputElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
+  const fileUrlRef = useRef<string | null>(null)
   const rafRef = useRef<number>()
   const lastVideoTimeRef = useRef(-1)
   const recordingRef = useRef(false)
@@ -34,6 +44,8 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
 
   const [loadState, setLoadState] = useState<LoadState>('loading')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [inputMode, setInputMode] = useState<InputMode>('live')
+  const [sourceLabel, setSourceLabel] = useState('')
   const [cameras, setCameras] = useState<CameraDevice[]>([])
   const [activeCameraId, setActiveCameraId] = useState<string>('')
   const [showFace, setShowFace] = useState(true)
@@ -43,11 +55,23 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
 
   recordingRef.current = recording
 
+  const revokeFileUrl = useCallback(() => {
+    if (fileUrlRef.current) {
+      URL.revokeObjectURL(fileUrlRef.current)
+      fileUrlRef.current = null
+    }
+  }, [])
+
   const stopStream = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop())
     streamRef.current = null
-    if (videoRef.current) videoRef.current.srcObject = null
-  }, [])
+    revokeFileUrl()
+    if (videoRef.current) {
+      videoRef.current.srcObject = null
+      videoRef.current.removeAttribute('src')
+      videoRef.current.load()
+    }
+  }, [revokeFileUrl])
 
   const syncCanvasSize = useCallback(() => {
     const video = videoRef.current
@@ -76,9 +100,10 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
         audio: false,
       }
 
-      const stream = await navigator.mediaDevices.getUserMedia(constraints)
+      const stream = await requestCameraStream(constraints)
       streamRef.current = stream
       video.srcObject = stream
+      video.loop = false
       await video.play()
 
       const devices = await navigator.mediaDevices.enumerateDevices()
@@ -94,7 +119,45 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
       const settings = track.getSettings()
       if (settings.deviceId) setActiveCameraId(settings.deviceId)
 
+      setInputMode('live')
+      setSourceLabel('Cámara en vivo')
       syncCanvasSize()
+    },
+    [stopStream, syncCanvasSize],
+  )
+
+  const startVideoFile = useCallback(
+    async (file: File) => {
+      if (!file.type.startsWith('video/')) {
+        toast.error('Selecciona un archivo de vídeo.')
+        return
+      }
+
+      stopStream()
+      const video = videoRef.current
+      if (!video) return
+
+      const url = URL.createObjectURL(file)
+      fileUrlRef.current = url
+      video.srcObject = null
+      video.src = url
+      video.loop = true
+      video.muted = true
+
+      await new Promise<void>((resolve, reject) => {
+        video.onloadeddata = () => resolve()
+        video.onerror = () => reject(new Error('No se pudo cargar el vídeo.'))
+      })
+
+      await video.play()
+      lastVideoTimeRef.current = -1
+      setInputMode('file')
+      setSourceLabel(file.name)
+      setCameras([])
+      setActiveCameraId('')
+      setLoadState('ready')
+      syncCanvasSize()
+      toast.success('Vídeo cargado. MediaPipe analizará los frames.')
     },
     [stopStream, syncCanvasSize],
   )
@@ -104,16 +167,22 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
 
     async function init() {
       try {
-        if (!navigator.mediaDevices?.getUserMedia) {
-          throw new Error('Este navegador no soporta acceso a la cámara.')
-        }
         await getFaceLandmarker()
         if (cancelled) return
-        await startCamera()
-        if (cancelled) return
-        setLoadState('ready')
+
+        if (canUseLiveCamera()) {
+          await startCamera()
+          if (cancelled) return
+          setLoadState('ready')
+        } else {
+          setLoadState('pick-source')
+        }
       } catch (err) {
         if (cancelled) return
+        if (err instanceof CameraError && err.code === 'insecure') {
+          setLoadState('pick-source')
+          return
+        }
         setLoadState('error')
         setErrorMsg(err instanceof Error ? err.message : 'Error al iniciar la cámara.')
       }
@@ -214,6 +283,12 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
     }
   }
 
+  function handleFilePick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (file) void startVideoFile(file)
+  }
+
   function handleStartRecording() {
     if (!faceDetected) {
       toast.error('No se detecta rostro. Coloca la cara delante de la cámara.')
@@ -234,9 +309,16 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
       endedAt: new Date().toISOString(),
       frames: [...framesRef.current],
     }
-    // TODO: POST al backend cuando exista el endpoint
     console.info('[PainEpisode] sesión registrada (local):', session)
     toast.success(`Sesión finalizada: ${session.frames.length} frames capturados.`)
+  }
+
+  function handleBackToSourcePicker() {
+    if (recording) return
+    stopStream()
+    setFaceDetected(false)
+    setFrameCount(0)
+    setLoadState('pick-source')
   }
 
   return (
@@ -260,10 +342,60 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
           </button>
         </header>
 
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="video/*"
+          className="nilo-pain-modal__file-input"
+          onChange={handleFilePick}
+        />
+        <input
+          ref={captureInputRef}
+          type="file"
+          accept="video/*"
+          capture="user"
+          className="nilo-pain-modal__file-input"
+          onChange={handleFilePick}
+        />
+
         {loadState === 'error' ? (
           <div className="nilo-pain-modal__error">
             <MaterialIcon name="videocam_off" size={48} />
             <p>{errorMsg}</p>
+          </div>
+        ) : loadState === 'pick-source' ? (
+          <div className="nilo-pain-modal__pick-source">
+            <MaterialIcon name="info" size={40} />
+            <p className="nilo-pain-modal__pick-source-title">Desarrollo por HTTP</p>
+            <p className="nilo-pain-modal__pick-source-text">{insecureCameraDevHint()}</p>
+            <div className="nilo-pain-modal__pick-source-actions">
+              <button
+                type="button"
+                className="nilo-pain-modal__btn nilo-pain-modal__btn--record"
+                onClick={() => captureInputRef.current?.click()}
+              >
+                <MaterialIcon name="photo_camera" size={22} />
+                Capturar vídeo (cámara del sistema)
+              </button>
+              <button
+                type="button"
+                className="nilo-pain-modal__btn nilo-pain-modal__btn--secondary"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <MaterialIcon name="video_library" size={22} />
+                Seleccionar vídeo de prueba
+              </button>
+              {canUseLiveCamera() && (
+                <button
+                  type="button"
+                  className="nilo-pain-modal__btn nilo-pain-modal__btn--secondary"
+                  onClick={() => void startCamera().then(() => setLoadState('ready'))}
+                >
+                  <MaterialIcon name="videocam" size={22} />
+                  Usar cámara en vivo
+                </button>
+              )}
+            </div>
           </div>
         ) : (
           <>
@@ -272,6 +404,12 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
                 <div className="nilo-pain-modal__loading">
                   <MaterialIcon name="progress_activity" size={40} />
                   <p>Cargando cámara y MediaPipe…</p>
+                </div>
+              )}
+              {inputMode === 'file' && (
+                <div className="nilo-pain-modal__dev-badge">
+                  <MaterialIcon name="science" size={16} />
+                  Modo prueba · {sourceLabel}
                 </div>
               )}
               <video
@@ -294,20 +432,32 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
 
             <footer className="nilo-pain-modal__controls">
               <div className="nilo-pain-modal__controls-row">
-                <label className="nilo-pain-modal__select-wrap">
-                  <MaterialIcon name="videocam" size={20} />
-                  <select
-                    value={activeCameraId}
-                    onChange={(e) => void handleCameraChange(e.target.value)}
-                    disabled={recording || cameras.length === 0}
+                {inputMode === 'live' ? (
+                  <label className="nilo-pain-modal__select-wrap">
+                    <MaterialIcon name="videocam" size={20} />
+                    <select
+                      value={activeCameraId}
+                      onChange={(e) => void handleCameraChange(e.target.value)}
+                      disabled={recording || cameras.length === 0}
+                    >
+                      {cameras.map((cam) => (
+                        <option key={cam.deviceId} value={cam.deviceId}>
+                          {cam.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : (
+                  <button
+                    type="button"
+                    className="nilo-pain-modal__btn nilo-pain-modal__btn--secondary nilo-pain-modal__btn--compact"
+                    onClick={handleBackToSourcePicker}
+                    disabled={recording}
                   >
-                    {cameras.map((cam) => (
-                      <option key={cam.deviceId} value={cam.deviceId}>
-                        {cam.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                    <MaterialIcon name="swap_horiz" size={20} />
+                    Cambiar vídeo
+                  </button>
+                )}
 
                 <button
                   type="button"

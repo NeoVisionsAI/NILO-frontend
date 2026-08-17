@@ -13,18 +13,26 @@ let landmarkerPromise: Promise<FaceLandmarker> | null = null
 
 export function getFaceLandmarker(): Promise<FaceLandmarker> {
   if (!landmarkerPromise) {
-    landmarkerPromise = (async () => {
+      landmarkerPromise = (async () => {
       const vision = await FilesetResolver.forVisionTasks(WASM_BASE)
-      return FaceLandmarker.createFromOptions(vision, {
+      const options = {
         baseOptions: {
           modelAssetPath: MODEL_URL,
-          delegate: 'GPU',
+          delegate: 'GPU' as const,
         },
-        runningMode: 'VIDEO',
+        runningMode: 'VIDEO' as const,
         numFaces: 1,
         outputFaceBlendshapes: false,
         outputFacialTransformationMatrixes: false,
-      })
+      }
+      try {
+        return await FaceLandmarker.createFromOptions(vision, options)
+      } catch {
+        return FaceLandmarker.createFromOptions(vision, {
+          ...options,
+          baseOptions: { ...options.baseOptions, delegate: 'CPU' },
+        })
+      }
     })()
   }
   return landmarkerPromise

@@ -4,10 +4,14 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8001/api/v1}
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-https://192.168.1.43:8443/api/v1}
         VITE_APP_NAME: ${VITE_APP_NAME:-NILO}
     image: nilo-frontend:latest
     container_name: nilo-frontend
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
-      - "${FRONTEND_PORT:-8080}:80"
+      - "${FRONTEND_PORT:-8080}:443"
+    volumes:
+      - ./certs:/etc/nginx/ssl:ro
     restart: unless-stopped

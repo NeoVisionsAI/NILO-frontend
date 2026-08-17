@@ -1,0 +1,4 @@
+# Certificados TLS de desarrollo (mkcert). No commitear claves privadas.
+
+*.pem
+!README.md

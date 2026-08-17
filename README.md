@@ -14,21 +14,24 @@ Listo para desplegar en un contenedor **Docker** (build + nginx).
 
 ## Puesta en marcha (desarrollo)
 
+Requiere **HTTPS** (cámara, APIs del navegador). Certificados con [mkcert](https://github.com/FiloSottile/mkcert):
+
 ```bash
 npm install
-cp .env.example .env      # ajusta las variables si es necesario
-npm run dev               # http://localhost:5173
+cp .env.example .env
+LAN_IP=192.168.1.43 ./deploy.sh --mkcert   # genera certs/cert.pem + key.pem
+./deploy.sh --dev                          # https://<IP>:5173, proxy /api/v1 → backend :8443
 ```
 
-Con `VITE_USE_MOCKS=true` (por defecto) puedes entrar sin backend usando las
-**cuentas de demostración** (contraseña: `demo`):
+O despliegue Docker:
 
-| Rol           | Correo                   |
-| ------------- | ------------------------ |
-| Administrador | `admin@nilo.health`      |
-| Médico        | `medico@nilo.health`     |
-| Enfermería    | `enfermeria@nilo.health` |
-| Paciente      | `paciente@nilo.health`   |
+```bash
+./deploy.sh --rebuild    # https://192.168.1.43:8080
+```
+
+API backend: `https://192.168.1.43:8443/api/v1`. El frontend llama a `/api/v1` en la misma origen (sin mixed content).
+
+Credenciales demo (backend): ver documentación en `docs/01.login_patient_node_spec.md`.
 
 ## Scripts
 
@@ -42,13 +45,11 @@ Con `VITE_USE_MOCKS=true` (por defecto) puedes entrar sin backend usando las
 ## Despliegue con Docker
 
 ```bash
-# Opción A: docker compose
-docker compose up --build -d      # expone http://localhost:8080
-
-# Opción B: docker a mano
-docker build -t nilo-frontend .
-docker run -p 8080:80 nilo-frontend
+LAN_IP=192.168.1.43 ./deploy.sh --mkcert   # una vez
+./deploy.sh --rebuild                      # https://192.168.1.43:8080
 ```
+
+Ver `certs/README.md` para instalar la CA mkcert en tablet.
 
 El `Dockerfile` es multi-stage: compila con Node y sirve los estáticos con
 nginx, que incluye fallback SPA para que funcione el enrutado del lado cliente.

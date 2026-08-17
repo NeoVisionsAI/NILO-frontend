@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
-# Despliegue del frontend NILO con Docker Compose.
+# Despliegue del frontend NILO con Docker Compose (HTTPS).
 #
 # Uso:
-#   ./deploy.sh              # construye y arranca el contenedor
+#   ./deploy.sh              # construye y arranca (requiere certs/)
 #   ./deploy.sh --rebuild    # fuerza reconstrucción sin caché
 #   ./deploy.sh --stop       # para y elimina el contenedor
 #   ./deploy.sh --logs       # muestra logs en tiempo real
-#   ./deploy.sh --dev        # desarrollo local (npm run dev, sin Docker)
+#   ./deploy.sh --dev        # desarrollo local HTTPS (npm run dev + mkcert)
+#   ./deploy.sh --mkcert     # genera certs/ con mkcert (LAN_IP=192.168.1.43)
 #
-# La URL de la API se resuelve en runtime desde window.location.hostname:8001.
-# Opcional: VITE_API_PORT en .env si la API no usa el puerto 8001.
+# URLs de desarrollo:
+#   Frontend: https://192.168.1.43:8080  (proxy /api/v1 → backend :8443)
+#   API directa: https://192.168.1.43:8443/api/v1
 
 set -euo pipefail
 
@@ -18,6 +20,7 @@ cd "$ROOT_DIR"
 
 ENV_FILE=".env"
 ENV_EXAMPLE=".env.example"
+CERT_DIR="certs"
 IMAGE_NAME="nilo-frontend:latest"
 
 log() { printf '\033[1;34m→\033[0m %s\n' "$*"; }
@@ -41,7 +44,16 @@ hint_docker_credentials() {
   err "Comprueba: docker pull node:22-alpine"
 }
 
-# Config Docker temporal sin credsStore/credHelpers (evita fallos GPG en build).
+hint_mkcert() {
+  err "Faltan certificados TLS en ${CERT_DIR}/cert.pem y ${CERT_DIR}/key.pem"
+  err ""
+  err "Con mkcert (recomendado, sin avisos en tablet si instalas la CA):"
+  err "  mkcert -install"
+  err "  LAN_IP=192.168.1.43 ./deploy.sh --mkcert"
+  err ""
+  err "O copia los cert.pem/key.pem del repo backend (certs/) si compartís mkcert."
+}
+
 prepare_docker_config() {
   local tmp cfg_src
   tmp="$(mktemp -d)"
@@ -71,7 +83,6 @@ ensure_env() {
     if [[ -f "$ENV_EXAMPLE" ]]; then
       cp "$ENV_EXAMPLE" "$ENV_FILE"
       warn "Se creó $ENV_FILE desde $ENV_EXAMPLE."
-      warn "Revisa VITE_API_BASE_URL antes de desplegar en producción."
     else
       err "Falta $ENV_FILE y no existe $ENV_EXAMPLE."
       exit 1
@@ -81,13 +92,44 @@ ensure_env() {
   set -a && source "$ENV_FILE" && set +a
 }
 
+ensure_tls_certs() {
+  local cert="$ROOT_DIR/$CERT_DIR/cert.pem"
+  local key="$ROOT_DIR/$CERT_DIR/key.pem"
+
+  if [[ -f "$cert" && -f "$key" ]]; then
+    log "Certificados TLS encontrados en ${CERT_DIR}/."
+    return 0
+  fi
+
+  hint_mkcert
+  exit 1
+}
+
+cmd_mkcert() {
+  require_cmd mkcert
+  ensure_env
+
+  local lan_ip="${LAN_IP:-$(hostname -I 2>/dev/null | awk '{print $1}')}"
+  if [[ -z "$lan_ip" ]]; then
+    lan_ip="127.0.0.1"
+    warn "No se detectó IP LAN; se usará solo localhost."
+  fi
+
+  mkdir -p "$ROOT_DIR/$CERT_DIR"
+  log "Generando certificados mkcert (SAN: $lan_ip, localhost, 127.0.0.1)…"
+  mkcert -cert-file "$ROOT_DIR/$CERT_DIR/cert.pem" -key-file "$ROOT_DIR/$CERT_DIR/key.pem" \
+    "$lan_ip" localhost 127.0.0.1
+  chmod 600 "$ROOT_DIR/$CERT_DIR/key.pem"
+  log "Certificados en ${CERT_DIR}/. En tablet instala la CA: mkcert -CAROOT → copia rootCA.pem"
+}
+
 docker_build_image() {
   local no_cache=false
   if [[ "${1:-}" == "--no-cache" ]]; then
     no_cache=true
   fi
 
-  local api_url="${VITE_API_BASE_URL:-http://localhost:8001/api/v1}"
+  local api_url="${VITE_API_BASE_URL:-https://192.168.1.43:8443/api/v1}"
   local app_name="${VITE_APP_NAME:-NILO}"
   local -a build_args=(--build-arg "VITE_API_BASE_URL=${api_url}" --build-arg "VITE_APP_NAME=${app_name}" -t "$IMAGE_NAME" .)
 
@@ -118,29 +160,41 @@ cmd_logs() {
 cmd_dev() {
   require_cmd npm
   ensure_env
+  ensure_tls_certs
+
   if [[ ! -d node_modules ]]; then
     log "Instalando dependencias…"
     npm ci
   fi
-  log "Arrancando servidor de desarrollo en http://localhost:5173"
-  log "API en runtime: http://<hostname>:${VITE_API_PORT:-8001}/api/v1"
+
+  local lan_ip="${LAN_IP:-$(hostname -I 2>/dev/null | awk '{print $1}')}"
+  local dev_port="${VITE_DEV_PORT:-5173}"
+  log "Servidor Vite HTTPS en https://${lan_ip:-localhost}:$dev_port"
+  log "API proxied: /api/v1 → ${VITE_API_BASE_URL:-https://192.168.1.43:8443/api/v1}"
   npm run dev
 }
 
 cmd_deploy() {
   local rebuild=false
-  if [[ "${1:-}" == "--rebuild" ]]; then
-    rebuild=true
-  fi
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --rebuild) rebuild=true ;;
+      *) err "Opción desconocida en deploy: $1"; exit 1 ;;
+    esac
+    shift
+  done
 
   require_cmd docker
   ensure_env
+  ensure_tls_certs
 
   local port="${FRONTEND_PORT:-8080}"
+  local lan_ip="${LAN_IP:-$(hostname -I 2>/dev/null | awk '{print $1}')}"
   local tmp_cfg
 
-  log "API en runtime: http://<hostname>:${VITE_API_PORT:-8001}/api/v1"
-  log "Puerto frontend: $port"
+  log "Frontend HTTPS: https://${lan_ip:-localhost}:$port"
+  log "API (proxy nginx): /api/v1 → https://host:8443/api/v1"
 
   tmp_cfg="$(prepare_docker_config)"
   # shellcheck disable=SC2064
@@ -163,7 +217,7 @@ cmd_deploy() {
   log "Arrancando contenedor…"
   docker compose up -d --no-build
 
-  log "Frontend disponible en http://localhost:$port"
+  log "Abre https://${lan_ip:-localhost}:$port (tablet: instala CA mkcert o acepta certificado)"
   docker compose ps
 }
 
@@ -178,11 +232,15 @@ main() {
     --dev|-d)
       cmd_dev
       ;;
+    --mkcert)
+      cmd_mkcert
+      ;;
     --rebuild|-r)
-      cmd_deploy --rebuild
+      shift
+      cmd_deploy --rebuild "$@"
       ;;
     --help|-h)
-      sed -n '2,12p' "$0"
+      sed -n '2,15p' "$0"
       ;;
     --help-credentials)
       hint_docker_credentials
