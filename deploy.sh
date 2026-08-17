@@ -233,7 +233,7 @@ cmd_deploy() {
   local tmp_cfg
 
   log "Frontend HTTPS: https://${lan_ip:-localhost}:$port"
-  log "API (proxy nginx): /api/v1 → https://host:8443/api/v1"
+  log "API (proxy nginx): /api/v1 → https://${BACKEND_HOST:-192.168.1.43}:${BACKEND_PORT:-8443}/api/v1/"
 
   tmp_cfg="$(prepare_docker_config)"
   # shellcheck disable=SC2064
