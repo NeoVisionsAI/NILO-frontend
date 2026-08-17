@@ -20,6 +20,38 @@ interface CameraDevice {
   label: string
 }
 
+type CameraFacing = 'user' | 'environment'
+
+interface CameraStartOptions {
+  deviceId?: string
+  facingMode?: CameraFacing
+}
+
+function classifyCameraLabel(label: string): CameraFacing | null {
+  const normalized = label.toLowerCase()
+  if (/back|rear|environment|world|trasera|posterior/.test(normalized)) return 'environment'
+  if (/front|user|face|selfie|frontal|anterior/.test(normalized)) return 'user'
+  return null
+}
+
+function resolveDualCameras(cameras: CameraDevice[]) {
+  let front: CameraDevice | undefined
+  let back: CameraDevice | undefined
+
+  for (const cam of cameras) {
+    const role = classifyCameraLabel(cam.label)
+    if (role === 'user' && !front) front = cam
+    if (role === 'environment' && !back) back = cam
+  }
+
+  if (cameras.length === 2) {
+    if (!front) front = cameras.find((c) => c.deviceId !== back?.deviceId) ?? cameras[1]
+    if (!back) back = cameras.find((c) => c.deviceId !== front?.deviceId) ?? cameras[0]
+  }
+
+  return { front, back }
+}
+
 interface PainEpisodeModalProps {
   patientId: string
   patientName: string
@@ -50,6 +82,7 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
   const [sourceLabel, setSourceLabel] = useState('')
   const [cameras, setCameras] = useState<CameraDevice[]>([])
   const [activeCameraId, setActiveCameraId] = useState<string>('')
+  const [activeFacingMode, setActiveFacingMode] = useState<CameraFacing | null>(null)
   const [showFace, setShowFace] = useState(true)
   const [recording, setRecording] = useState(false)
   const [frameCount, setFrameCount] = useState(0)
@@ -89,15 +122,27 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
   }, [])
 
   const startCamera = useCallback(
-    async (deviceId?: string) => {
+    async (options?: string | CameraStartOptions) => {
       stopStream()
       const video = videoRef.current
       if (!video) return
 
+      const opts: CameraStartOptions =
+        typeof options === 'string' ? { deviceId: options } : (options ?? { facingMode: 'user' })
+
+      const videoConstraints: MediaTrackConstraints = {
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+      }
+
+      if (opts.deviceId) {
+        videoConstraints.deviceId = { exact: opts.deviceId }
+      } else {
+        videoConstraints.facingMode = opts.facingMode ?? 'user'
+      }
+
       const constraints: MediaStreamConstraints = {
-        video: deviceId
-          ? { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }
-          : { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+        video: videoConstraints,
         audio: false,
       }
 
@@ -118,8 +163,14 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
 
       const track = stream.getVideoTracks()[0]
       const settings = track.getSettings()
-      mirrorVideoRef.current = settings.facingMode !== 'environment'
+      const facingMode =
+        settings.facingMode === 'environment' || settings.facingMode === 'user'
+          ? settings.facingMode
+          : opts.facingMode ?? classifyCameraLabel(track.label) ?? null
+
+      mirrorVideoRef.current = facingMode !== 'environment'
       setMirrorVideo(mirrorVideoRef.current)
+      setActiveFacingMode(facingMode)
       if (settings.deviceId) setActiveCameraId(settings.deviceId)
 
       setInputMode('live')
@@ -160,6 +211,7 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
       setMirrorVideo(false)
       setCameras([])
       setActiveCameraId('')
+      setActiveFacingMode(null)
       setLoadState('ready')
       syncCanvasSize()
       toast.success('Vídeo cargado. MediaPipe analizará los frames.')
@@ -280,12 +332,40 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
 
   async function handleCameraChange(deviceId: string) {
     try {
-      await startCamera(deviceId)
-      setActiveCameraId(deviceId)
+      await startCamera({ deviceId })
     } catch {
       toast.error('No se pudo cambiar de cámara.')
     }
   }
+
+  async function handleSwitchFacing(facing: CameraFacing) {
+    if (recording || activeFacingMode === facing) return
+
+    const { front, back } = resolveDualCameras(cameras)
+    const fallbackDevice = facing === 'user' ? front : back
+
+    try {
+      await startCamera({ facingMode: facing })
+    } catch {
+      if (fallbackDevice) {
+        try {
+          await startCamera({ deviceId: fallbackDevice.deviceId })
+          return
+        } catch {
+          /* continuar al toast */
+        }
+      }
+      toast.error('No se pudo cambiar de cámara.')
+    }
+  }
+
+  const dualCameras = resolveDualCameras(cameras)
+  const isFrontCameraActive =
+    activeFacingMode === 'user' ||
+    (activeFacingMode === null && dualCameras.front?.deviceId === activeCameraId)
+  const isBackCameraActive =
+    activeFacingMode === 'environment' ||
+    (activeFacingMode === null && dualCameras.back?.deviceId === activeCameraId)
 
   function handleFilePick(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -436,13 +516,42 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
 
             <footer className="nilo-pain-modal__controls">
               <div className="nilo-pain-modal__controls-row">
-                {inputMode === 'live' ? (
+                {inputMode === 'live' && cameras.length === 2 ? (
+                  <div
+                    className="nilo-pain-modal__camera-switch"
+                    role="group"
+                    aria-label="Seleccionar cámara"
+                  >
+                    <button
+                      type="button"
+                      className={`nilo-pain-modal__camera-btn${isFrontCameraActive ? ' nilo-pain-modal__camera-btn--active' : ''}`}
+                      onClick={() => void handleSwitchFacing('user')}
+                      disabled={recording}
+                      aria-label="Cámara frontal"
+                      aria-pressed={isFrontCameraActive}
+                      title="Cámara frontal"
+                    >
+                      <MaterialIcon name="photo_camera_front" size={22} />
+                    </button>
+                    <button
+                      type="button"
+                      className={`nilo-pain-modal__camera-btn${isBackCameraActive ? ' nilo-pain-modal__camera-btn--active' : ''}`}
+                      onClick={() => void handleSwitchFacing('environment')}
+                      disabled={recording}
+                      aria-label="Cámara trasera"
+                      aria-pressed={isBackCameraActive}
+                      title="Cámara trasera"
+                    >
+                      <MaterialIcon name="photo_camera" size={22} />
+                    </button>
+                  </div>
+                ) : inputMode === 'live' && cameras.length > 2 ? (
                   <label className="nilo-pain-modal__select-wrap">
                     <MaterialIcon name="videocam" size={20} />
                     <select
                       value={activeCameraId}
                       onChange={(e) => void handleCameraChange(e.target.value)}
-                      disabled={recording || cameras.length === 0}
+                      disabled={recording}
                     >
                       {cameras.map((cam) => (
                         <option key={cam.deviceId} value={cam.deviceId}>
@@ -451,7 +560,7 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
                       ))}
                     </select>
                   </label>
-                ) : (
+                ) : inputMode === 'file' ? (
                   <button
                     type="button"
                     className="nilo-pain-modal__btn nilo-pain-modal__btn--secondary nilo-pain-modal__btn--compact"
@@ -461,7 +570,7 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
                     <MaterialIcon name="swap_horiz" size={20} />
                     Cambiar vídeo
                   </button>
-                )}
+                ) : null}
 
                 <button
                   type="button"

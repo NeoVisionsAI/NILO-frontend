@@ -201,6 +201,44 @@
   background: var(--m3-surface);
 }
 
+.nilo-pain-modal__camera-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 9999px;
+  border: 1px solid var(--m3-outline-variant);
+  background: var(--m3-surface);
+}
+
+.nilo-pain-modal__camera-btn {
+  width: 44px;
+  height: 36px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--m3-on-surface-variant);
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.nilo-pain-modal__camera-btn:hover:not(:disabled) {
+  background: var(--m3-surface-container-high);
+  color: var(--m3-on-surface);
+}
+
+.nilo-pain-modal__camera-btn--active {
+  background: var(--m3-primary-fixed);
+  color: var(--m3-primary);
+}
+
+.nilo-pain-modal__camera-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .nilo-pain-modal__select-wrap select {
   flex: 1;
   min-width: 0;
