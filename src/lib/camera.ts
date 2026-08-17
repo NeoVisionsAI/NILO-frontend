@@ -22,10 +22,7 @@ export function canUseLiveCamera(): boolean {
 /** Instrucciones cuando se abre la app por HTTP (solo legacy). */
 export function insecureCameraDevHint(): string {
   if (typeof window === 'undefined') return ''
-  const httpsUrl =
-    window.location.protocol === 'https:'
-      ? window.location.origin
-      : `https://${window.location.hostname}:8444`
+  const httpsUrl = `https://${window.location.hostname}:8080`
   return (
     `La cámara requiere HTTPS. Estás en ${window.location.origin}. ` +
     `Abre ${httpsUrl} (certificado en certs/). ` +

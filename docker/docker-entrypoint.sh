@@ -6,8 +6,8 @@ if [ ! -f /etc/nginx/ssl/cert.pem ] || [ ! -f /etc/nginx/ssl/key.pem ]; then
   exit 1
 fi
 
-FRONTEND_SSL_PORT="${FRONTEND_SSL_PORT:-8444}"
-FRONTEND_HTTP_PORT="${FRONTEND_HTTP_PORT:-8080}"
+# Una sola URL: https://<IP>:8080  (NO usar http:// en el puerto 8080)
+FRONTEND_SSL_PORT="${FRONTEND_SSL_PORT:-8080}"
 BACKEND_PROXY_HOST="${BACKEND_PROXY_HOST:-127.0.0.1}"
 BACKEND_SSL_NAME="${BACKEND_SSL_NAME:-192.168.1.43}"
 BACKEND_PORT="${BACKEND_PORT:-8443}"
@@ -21,8 +21,8 @@ subst_snippets() {
     > /etc/nginx/snippets/spa-locations.conf
 }
 
-write_default_conf() {
-  cat > /etc/nginx/conf.d/default.conf <<EOF
+cat > /etc/nginx/conf.d/default.conf <<EOF
+# Puerto 80 → HTTPS :8080
 server {
     listen 80;
     server_name _;
@@ -37,22 +37,8 @@ server {
         return 301 https://\$host:${FRONTEND_SSL_PORT}\$request_uri;
     }
 }
-EOF
 
-  if [ "$FRONTEND_HTTP_PORT" != "$FRONTEND_SSL_PORT" ]; then
-    cat >> /etc/nginx/conf.d/default.conf <<EOF
-
-server {
-    listen ${FRONTEND_HTTP_PORT};
-    listen [::]:${FRONTEND_HTTP_PORT};
-    server_name _;
-    return 301 https://\$host:${FRONTEND_SSL_PORT}\$request_uri;
-}
-EOF
-  fi
-
-  cat >> /etc/nginx/conf.d/default.conf <<EOF
-
+# App HTTPS (cámara, login, etc.)
 server {
     listen ${FRONTEND_SSL_PORT} ssl;
     listen [::]:${FRONTEND_SSL_PORT} ssl;
@@ -73,15 +59,10 @@ server {
     include /etc/nginx/snippets/spa-locations.conf;
 }
 EOF
-}
 
-write_default_conf
 subst_snippets
 
-echo "nginx HTTPS en puerto ${FRONTEND_SSL_PORT}"
-if [ "$FRONTEND_HTTP_PORT" != "$FRONTEND_SSL_PORT" ]; then
-  echo "nginx HTTP :${FRONTEND_HTTP_PORT} → redirect https://<host>:${FRONTEND_SSL_PORT}"
-fi
+echo "Abrir: https://<IP>:${FRONTEND_SSL_PORT}  (no http://:${FRONTEND_SSL_PORT})"
 echo "nginx proxy: /api/v1 → https://${BACKEND_PROXY_HOST}:${BACKEND_PORT}/api/v1/ (SNI: ${BACKEND_SSL_NAME})"
 
 exec nginx -g 'daemon off;'

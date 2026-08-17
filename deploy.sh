@@ -228,15 +228,12 @@ cmd_deploy() {
   ensure_env
   ensure_tls_certs
 
-  local http_port="${FRONTEND_HTTP_PORT:-8080}"
-  local ssl_port="${FRONTEND_SSL_PORT:-8444}"
+  local ssl_port="${FRONTEND_SSL_PORT:-8080}"
   local lan_ip="${LAN_IP:-$(hostname -I 2>/dev/null | awk '{print $1}')}"
   local tmp_cfg
 
-  log "Frontend HTTPS: https://${lan_ip:-localhost}:${ssl_port}"
-  if [ "$http_port" != "$ssl_port" ]; then
-    log "Frontend HTTP:  http://${lan_ip:-localhost}:${http_port} → redirect HTTPS :${ssl_port}"
-  fi
+  log "Abrir SOLO con HTTPS: https://${lan_ip:-localhost}:${ssl_port}/login"
+  warn "NO uses http://…:${ssl_port} — se quedará colgado (puerto TLS)."
   log "API proxy: 127.0.0.1:${BACKEND_PORT:-8443} (SNI ${BACKEND_SSL_NAME:-192.168.1.43})"
 
   tmp_cfg="$(prepare_docker_config)"
@@ -260,7 +257,7 @@ cmd_deploy() {
   log "Arrancando contenedor…"
   docker compose up -d --no-build
 
-  log "Abre https://${lan_ip:-localhost}:${ssl_port} (o http://${lan_ip:-localhost}:${http_port} → redirect)"
+  log "Abre https://${lan_ip:-localhost}:${ssl_port}/login"
   docker compose ps
 }
 

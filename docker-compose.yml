@@ -10,8 +10,7 @@ services:
     container_name: nilo-frontend
     network_mode: host
     environment:
-      FRONTEND_HTTP_PORT: ${FRONTEND_HTTP_PORT:-8080}
-      FRONTEND_SSL_PORT: ${FRONTEND_SSL_PORT:-8444}
+      FRONTEND_SSL_PORT: ${FRONTEND_SSL_PORT:-8080}
       BACKEND_PROXY_HOST: ${BACKEND_PROXY_HOST:-127.0.0.1}
       BACKEND_SSL_NAME: ${BACKEND_SSL_NAME:-192.168.1.43}
       BACKEND_PORT: ${BACKEND_PORT:-8443}
