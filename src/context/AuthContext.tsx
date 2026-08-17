@@ -28,7 +28,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Restaura la sesión al cargar: si hay refresh token guardado, el cliente
   // API lo usará automáticamente para obtener un access token válido.
   useEffect(() => {
-    if (!hasSession()) {
+    // En /login no restauramos sesión: evita peticiones API (y preflight CORS) antes de mostrar el formulario.
+    const path = window.location.pathname.replace(/\/$/, '') || '/'
+    if (!hasSession() || path === '/login') {
       setIsLoading(false)
       return
     }
