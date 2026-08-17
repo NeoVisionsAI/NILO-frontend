@@ -32,14 +32,20 @@ require_cmd() {
 
 hint_docker_credentials() {
   err "Fallo al descargar imágenes base (node/nginx)."
-  err "Suele deberse a credsStore/GPG roto en ~/.docker/config.json."
+  err "Si 'docker pull node:22-alpine' funciona pero el build falla, suele ser BuildKit + credsStore/GPG."
   err ""
-  err "Solución rápida (imágenes públicas, no requieren login):"
+  err "deploy.sh ya desactiva BuildKit. Si aún falla, limpia credenciales:"
   err "  cp ~/.docker/config.json ~/.docker/config.json.bak 2>/dev/null || true"
   err "  sed -i '/\"credsStore\"/d; /\"credHelpers\"/d' ~/.docker/config.json"
   err "  ./deploy.sh --rebuild"
-  err ""
-  err "Comprueba también: docker pull node:22-alpine"
+}
+
+docker_compose_build() {
+  # BuildKit usa otro flujo de credenciales; en algunos hosts falla con GPG
+  # aunque "docker pull" directo funcione. El builder clásico evita ese bug.
+  export DOCKER_BUILDKIT=0
+  export COMPOSE_DOCKER_CLI_BUILD=0
+  docker compose build "$@"
 }
 
 check_docker_credentials() {
@@ -106,14 +112,14 @@ cmd_deploy() {
   log "Puerto frontend: $port"
 
   if $rebuild; then
-    log "Construyendo imagen sin caché…"
-    if ! docker compose build --no-cache; then
+    log "Construyendo imagen sin caché (builder clásico, sin BuildKit)…"
+    if ! docker_compose_build --no-cache; then
       hint_docker_credentials
       exit 1
     fi
   else
-    log "Construyendo imagen…"
-    if ! docker compose build; then
+    log "Construyendo imagen (builder clásico, sin BuildKit)…"
+    if ! docker_compose_build; then
       hint_docker_credentials
       exit 1
     fi
