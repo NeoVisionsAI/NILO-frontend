@@ -52,6 +52,42 @@ function resolveDualCameras(cameras: CameraDevice[]) {
   return { front, back }
 }
 
+type FullscreenDocument = Document & {
+  webkitFullscreenElement?: Element | null
+  webkitExitFullscreen?: () => Promise<void> | void
+}
+
+type FullscreenElement = HTMLElement & {
+  webkitRequestFullscreen?: () => Promise<void> | void
+}
+
+function getFullscreenElement(): Element | null {
+  const doc = document as FullscreenDocument
+  return document.fullscreenElement ?? doc.webkitFullscreenElement ?? null
+}
+
+async function requestElementFullscreen(element: HTMLElement) {
+  const el = element as FullscreenElement
+  if (element.requestFullscreen) {
+    await element.requestFullscreen()
+    return
+  }
+  if (el.webkitRequestFullscreen) {
+    await el.webkitRequestFullscreen()
+  }
+}
+
+async function exitDocumentFullscreen() {
+  const doc = document as FullscreenDocument
+  if (document.exitFullscreen) {
+    await document.exitFullscreen()
+    return
+  }
+  if (doc.webkitExitFullscreen) {
+    await doc.webkitExitFullscreen()
+  }
+}
+
 interface PainEpisodeModalProps {
   patientId: string
   patientName: string
@@ -62,6 +98,7 @@ type LoadState = 'loading' | 'pick-source' | 'ready' | 'error'
 type InputMode = 'live' | 'file'
 
 export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisodeModalProps) {
+  const panelRef = useRef<HTMLDivElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -87,6 +124,7 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
   const [recording, setRecording] = useState(false)
   const [frameCount, setFrameCount] = useState(0)
   const [faceDetected, setFaceDetected] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
 
   recordingRef.current = recording
 
@@ -323,6 +361,22 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
   }, [syncCanvasSize])
 
   useEffect(() => {
+    function onFullscreenChange() {
+      const panel = panelRef.current
+      setIsFullscreen(Boolean(panel && getFullscreenElement() === panel))
+      requestAnimationFrame(() => syncCanvasSize())
+    }
+
+    document.addEventListener('fullscreenchange', onFullscreenChange)
+    document.addEventListener('webkitfullscreenchange', onFullscreenChange)
+    return () => {
+      document.removeEventListener('fullscreenchange', onFullscreenChange)
+      document.removeEventListener('webkitfullscreenchange', onFullscreenChange)
+      if (getFullscreenElement()) void exitDocumentFullscreen()
+    }
+  }, [syncCanvasSize])
+
+  useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape' && !recording) onClose()
     }
@@ -405,25 +459,54 @@ export function PainEpisodeModal({ patientId, patientName, onClose }: PainEpisod
     setLoadState('pick-source')
   }
 
+  async function toggleFullscreen() {
+    const panel = panelRef.current
+    if (!panel) return
+
+    try {
+      if (getFullscreenElement() === panel) {
+        await exitDocumentFullscreen()
+      } else {
+        await requestElementFullscreen(panel)
+      }
+    } catch {
+      toast.error('No se pudo activar pantalla completa en este dispositivo.')
+    }
+  }
+
   return (
     <div className="nilo-pain-modal" role="dialog" aria-modal="true" aria-labelledby="pain-modal-title">
       <div className="nilo-pain-modal__backdrop" onClick={() => !recording && onClose()} />
 
-      <div className="nilo-pain-modal__panel">
+      <div ref={panelRef} className="nilo-pain-modal__panel">
         <header className="nilo-pain-modal__header">
           <div>
             <p className="nilo-pain-modal__eyebrow">Episodio de dolor</p>
             <h2 id="pain-modal-title">{patientName}</h2>
           </div>
-          <button
-            type="button"
-            className="nilo-pain-modal__close"
-            onClick={onClose}
-            disabled={recording}
-            aria-label="Cerrar"
-          >
-            <MaterialIcon name="close" size={24} />
-          </button>
+          <div className="nilo-pain-modal__header-actions">
+            {loadState === 'ready' && (
+              <button
+                type="button"
+                className="nilo-pain-modal__icon-btn"
+                onClick={() => void toggleFullscreen()}
+                disabled={recording}
+                aria-label={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
+                title={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
+              >
+                <MaterialIcon name={isFullscreen ? 'fullscreen_exit' : 'fullscreen'} size={24} />
+              </button>
+            )}
+            <button
+              type="button"
+              className="nilo-pain-modal__icon-btn"
+              onClick={onClose}
+              disabled={recording}
+              aria-label="Cerrar"
+            >
+              <MaterialIcon name="close" size={24} />
+            </button>
+          </div>
         </header>
 
         <input
