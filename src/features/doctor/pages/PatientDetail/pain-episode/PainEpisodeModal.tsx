@@ -507,9 +507,8 @@ export function PainEpisodeCapturePanel({
           </div>
         </div>
       ) : (
-        <>
-          <div className="nilo-pain-capture__stage-wrap">
-            <div className="nilo-pain-capture__stage">
+        <div className="nilo-pain-capture__workspace">
+          <div className="nilo-pain-capture__stage">
             {loadState === 'loading' && (
               <div className="nilo-pain-capture__loading">
                 <MaterialIcon name="progress_activity" size={40} />
@@ -519,7 +518,7 @@ export function PainEpisodeCapturePanel({
             {inputMode === 'file' && (
               <div className="nilo-pain-capture__dev-badge">
                 <MaterialIcon name="science" size={16} />
-                Modo prueba · {sourceLabel}
+                Modo prueba
               </div>
             )}
             <video
@@ -529,111 +528,59 @@ export function PainEpisodeCapturePanel({
               muted
             />
             <canvas ref={canvasRef} className="nilo-pain-capture__canvas" />
-            {recording && (
-              <div className="nilo-pain-capture__rec-badge">
-                <span className="nilo-pain-capture__rec-dot" />
-                REC · {frameCount} frames
-              </div>
-            )}
             {!faceDetected && loadState === 'ready' && !recording && (
               <div className="nilo-pain-capture__hint">Buscando rostro…</div>
             )}
-            </div>
           </div>
 
-          <footer className="nilo-pain-capture__controls">
-            <div className="nilo-pain-capture__controls-row nilo-pain-capture__controls-row--toolbar">
-              <div className="nilo-pain-capture__controls-toolbar">
-                {inputMode === 'live' && cameras.length === 2 ? (
-                  <div
-                    className="nilo-pain-capture__camera-switch"
-                    role="group"
-                    aria-label="Seleccionar cámara"
-                  >
-                    <button
-                      type="button"
-                      className={`nilo-pain-capture__camera-btn${isFrontCameraActive ? ' nilo-pain-capture__camera-btn--active' : ''}`}
-                      onClick={() => void handleSwitchFacing('user')}
-                      disabled={recording}
-                      aria-label="Cámara frontal"
-                      aria-pressed={isFrontCameraActive}
-                      title="Cámara frontal"
-                    >
-                      <MaterialIcon name="photo_camera_front" size={22} />
-                    </button>
-                    <button
-                      type="button"
-                      className={`nilo-pain-capture__camera-btn${isBackCameraActive ? ' nilo-pain-capture__camera-btn--active' : ''}`}
-                      onClick={() => void handleSwitchFacing('environment')}
-                      disabled={recording}
-                      aria-label="Cámara trasera"
-                      aria-pressed={isBackCameraActive}
-                      title="Cámara trasera"
-                    >
-                      <MaterialIcon name="photo_camera" size={22} />
-                    </button>
-                  </div>
-                ) : inputMode === 'live' && cameras.length > 2 ? (
-                  <label className="nilo-pain-capture__select-wrap">
-                    <MaterialIcon name="videocam" size={20} />
-                    <select
-                      value={activeCameraId}
-                      onChange={(e) => void handleCameraChange(e.target.value)}
-                      disabled={recording}
-                    >
-                      {cameras.map((cam) => (
-                        <option key={cam.deviceId} value={cam.deviceId}>
-                          {cam.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                ) : inputMode === 'file' ? (
-                  <button
-                    type="button"
-                    className="nilo-pain-capture__btn nilo-pain-capture__btn--secondary nilo-pain-capture__btn--compact"
-                    onClick={handleBackToSourcePicker}
-                    disabled={recording}
-                  >
-                    <MaterialIcon name="swap_horiz" size={20} />
-                    Cambiar vídeo
-                  </button>
-                ) : null}
-
-                <button
-                  type="button"
-                  className={`nilo-pain-capture__toggle${showFace ? ' nilo-pain-capture__toggle--on' : ''}`}
-                  onClick={() => setShowFace((v) => !v)}
-                  disabled={recording}
-                >
-                  <MaterialIcon name={showFace ? 'face' : 'grid_on'} size={20} />
-                  <span>{showFace ? 'Ver cara' : 'Solo puntos'}</span>
-                </button>
-              </div>
-
-              {recording && recordingStartedAt && (
-                <div className="nilo-pain-capture__recording-meta" aria-live="polite">
-                  <span className="nilo-pain-capture__recording-date">
-                    <MaterialIcon name="event" size={18} />
-                    <span className="nilo-pain-capture__recording-date-text">
-                      {formatPainEpisodeDate(recordingStartedAt)}
-                    </span>
-                  </span>
-                  <span className="nilo-pain-capture__recording-timer">
-                    <MaterialIcon name="timer" size={18} />
-                    {formatPainEpisodeElapsed(elapsedMs)}
-                  </span>
-                </div>
-              )}
+          <aside className="nilo-pain-capture__sidebar m3-scroll" aria-label="Controles de captura">
+            <div className="nilo-pain-capture__status-row">
+              <span
+                className={`nilo-pain-capture__status-pill${recording ? ' nilo-pain-capture__status-pill--rec' : ''}`}
+              >
+                {recording && <span className="nilo-pain-capture__rec-dot" aria-hidden="true" />}
+                {recording ? 'Grabando' : 'En espera'}
+              </span>
+              <span
+                className={`nilo-pain-capture__status-pill${faceDetected ? ' nilo-pain-capture__status-pill--ok' : ' nilo-pain-capture__status-pill--warn'}`}
+              >
+                <MaterialIcon name={faceDetected ? 'face' : 'face_retouching_off'} size={16} />
+                {faceDetected ? 'Rostro detectado' : 'Sin rostro'}
+              </span>
             </div>
 
-            <div className="nilo-pain-capture__controls-row">
+            <dl className="nilo-pain-capture__stats">
+              <div className="nilo-pain-capture__stat">
+                <dt>Hora de inicio</dt>
+                <dd>{recordingStartedAt ? formatPainEpisodeDate(recordingStartedAt) : '—'}</dd>
+              </div>
+              <div className="nilo-pain-capture__stat">
+                <dt>Tiempo transcurrido</dt>
+                <dd className="nilo-pain-capture__stat-value--timer">
+                  {recording ? formatPainEpisodeElapsed(elapsedMs) : '00:00'}
+                </dd>
+              </div>
+              <div className="nilo-pain-capture__stat">
+                <dt>Frames capturados</dt>
+                <dd>{frameCount}</dd>
+              </div>
+              <div className="nilo-pain-capture__stat">
+                <dt>Fuente</dt>
+                <dd>{sourceLabel || 'Cámara en vivo'}</dd>
+              </div>
+              <div className="nilo-pain-capture__stat">
+                <dt>Visualización</dt>
+                <dd>{showFace ? 'Cara + puntos' : 'Solo landmarks'}</dd>
+              </div>
+            </dl>
+
+            <div className="nilo-pain-capture__actions">
               {!recording ? (
                 <button
                   type="button"
                   className="nilo-pain-capture__btn nilo-pain-capture__btn--record"
                   onClick={handleStartRecording}
-                  disabled={loadState !== 'ready'}
+                  disabled={loadState !== 'ready' || !faceDetected}
                 >
                   <MaterialIcon name="fiber_manual_record" size={22} />
                   Iniciar grabación
@@ -649,8 +596,77 @@ export function PainEpisodeCapturePanel({
                 </button>
               )}
             </div>
-          </footer>
-        </>
+
+            <div className="nilo-pain-capture__settings">
+              <p className="nilo-pain-capture__settings-title">Opciones</p>
+
+              {inputMode === 'live' && cameras.length === 2 ? (
+                <div className="nilo-pain-capture__setting-group">
+                  <span className="nilo-pain-capture__setting-label">Cámara</span>
+                  <div className="nilo-pain-capture__camera-switch" role="group" aria-label="Seleccionar cámara">
+                    <button
+                      type="button"
+                      className={`nilo-pain-capture__camera-btn${isFrontCameraActive ? ' nilo-pain-capture__camera-btn--active' : ''}`}
+                      onClick={() => void handleSwitchFacing('user')}
+                      disabled={recording}
+                      aria-label="Cámara frontal"
+                      aria-pressed={isFrontCameraActive}
+                    >
+                      <MaterialIcon name="photo_camera_front" size={22} />
+                      Frontal
+                    </button>
+                    <button
+                      type="button"
+                      className={`nilo-pain-capture__camera-btn${isBackCameraActive ? ' nilo-pain-capture__camera-btn--active' : ''}`}
+                      onClick={() => void handleSwitchFacing('environment')}
+                      disabled={recording}
+                      aria-label="Cámara trasera"
+                      aria-pressed={isBackCameraActive}
+                    >
+                      <MaterialIcon name="photo_camera" size={22} />
+                      Trasera
+                    </button>
+                  </div>
+                </div>
+              ) : inputMode === 'live' && cameras.length > 2 ? (
+                <label className="nilo-pain-capture__setting-group nilo-pain-capture__select-wrap">
+                  <span className="nilo-pain-capture__setting-label">Cámara</span>
+                  <select
+                    value={activeCameraId}
+                    onChange={(e) => void handleCameraChange(e.target.value)}
+                    disabled={recording}
+                  >
+                    {cameras.map((cam) => (
+                      <option key={cam.deviceId} value={cam.deviceId}>
+                        {cam.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : inputMode === 'file' ? (
+                <button
+                  type="button"
+                  className="nilo-pain-capture__btn nilo-pain-capture__btn--secondary"
+                  onClick={handleBackToSourcePicker}
+                  disabled={recording}
+                >
+                  <MaterialIcon name="swap_horiz" size={20} />
+                  Cambiar vídeo
+                </button>
+              ) : null}
+
+              <button
+                type="button"
+                className={`nilo-pain-capture__toggle${showFace ? ' nilo-pain-capture__toggle--on' : ''}`}
+                onClick={() => setShowFace((v) => !v)}
+                disabled={recording}
+              >
+                <MaterialIcon name={showFace ? 'face' : 'grid_on'} size={20} />
+                {showFace ? 'Ver cara' : 'Solo puntos'}
+              </button>
+            </div>
+          </aside>
+        </div>
       )}
     </div>
   )
