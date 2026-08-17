@@ -30,6 +30,26 @@ require_cmd() {
   fi
 }
 
+hint_docker_credentials() {
+  err "Fallo al descargar imágenes base (node/nginx)."
+  err "Suele deberse a credsStore/GPG roto en ~/.docker/config.json."
+  err ""
+  err "Solución rápida (imágenes públicas, no requieren login):"
+  err "  cp ~/.docker/config.json ~/.docker/config.json.bak 2>/dev/null || true"
+  err "  sed -i '/\"credsStore\"/d; /\"credHelpers\"/d' ~/.docker/config.json"
+  err "  ./deploy.sh --rebuild"
+  err ""
+  err "Comprueba también: docker pull node:22-alpine"
+}
+
+check_docker_credentials() {
+  local cfg="${HOME}/.docker/config.json"
+  if [[ -f "$cfg" ]] && grep -qE '"credsStore"|"credHelpers"' "$cfg" 2>/dev/null; then
+    warn "~/.docker/config.json define credsStore/credHelpers."
+    warn "Si falla el build con GPG, mira: ./deploy.sh --help-credentials"
+  fi
+}
+
 ensure_env() {
   if [[ ! -f "$ENV_FILE" ]]; then
     if [[ -f "$ENV_EXAMPLE" ]]; then
@@ -76,6 +96,7 @@ cmd_deploy() {
   fi
 
   require_cmd docker
+  check_docker_credentials
   ensure_env
 
   local port="${FRONTEND_PORT:-8080}"
@@ -86,10 +107,16 @@ cmd_deploy() {
 
   if $rebuild; then
     log "Construyendo imagen sin caché…"
-    docker compose build --no-cache
+    if ! docker compose build --no-cache; then
+      hint_docker_credentials
+      exit 1
+    fi
   else
     log "Construyendo imagen…"
-    docker compose build
+    if ! docker compose build; then
+      hint_docker_credentials
+      exit 1
+    fi
   fi
 
   log "Arrancando contenedor…"
@@ -116,6 +143,9 @@ main() {
       ;;
     --help|-h)
       sed -n '2,12p' "$0"
+      ;;
+    --help-credentials)
+      hint_docker_credentials
       ;;
     "")
       cmd_deploy
