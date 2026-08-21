@@ -1,0 +1,306 @@
+.ble-picker__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 220;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+
+.ble-picker__backdrop--visible {
+  opacity: 1;
+}
+
+.ble-picker {
+  width: min(480px, 100%);
+  max-height: min(88vh, 640px);
+  display: flex;
+  flex-direction: column;
+  border-radius: 24px;
+  background: var(--m3-surface-container-lowest);
+  border: 1px solid var(--m3-outline-variant);
+  box-shadow:
+    0 4px 24px rgba(15, 23, 42, 0.08),
+    0 24px 64px rgba(15, 23, 42, 0.18);
+  transform: translateY(16px) scale(0.98);
+  opacity: 0;
+  transition:
+    transform 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.24s ease;
+  overflow: hidden;
+}
+
+.ble-picker--visible {
+  transform: translateY(0) scale(1);
+  opacity: 1;
+}
+
+.ble-picker__header {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 14px;
+  align-items: start;
+  padding: 22px 22px 16px;
+  border-bottom: 1px solid var(--m3-outline-variant);
+  background: linear-gradient(
+    180deg,
+    var(--m3-primary-fixed, rgba(20, 184, 166, 0.12)) 0%,
+    transparent 100%
+  );
+}
+
+.ble-picker__icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: var(--m3-primary);
+  color: var(--m3-on-primary);
+}
+
+.ble-picker__icon--pulse {
+  animation: ble-picker-pulse 1.6s ease-in-out infinite;
+}
+
+.ble-picker__ripple {
+  position: absolute;
+  inset: -6px;
+  border-radius: 20px;
+  border: 2px solid var(--m3-primary);
+  opacity: 0.35;
+  animation: ble-picker-ripple 1.6s ease-out infinite;
+}
+
+.ble-picker__header-text h2 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--m3-on-surface);
+}
+
+.ble-picker__header-text p {
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--m3-on-surface-variant);
+}
+
+.ble-picker__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 9999px;
+  color: var(--m3-on-surface-variant);
+  background: var(--m3-surface-container-high);
+}
+
+.ble-picker__body {
+  flex: 1;
+  min-height: 180px;
+  max-height: 360px;
+  overflow: auto;
+  padding: 12px 16px;
+}
+
+.ble-picker__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 180px;
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--m3-on-surface-variant);
+}
+
+.ble-picker__empty p {
+  max-width: 28ch;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.ble-picker__scan-bar {
+  width: min(240px, 100%);
+  height: 4px;
+  border-radius: 9999px;
+  background: var(--m3-surface-container-highest, #e2e8f0);
+  overflow: hidden;
+  position: relative;
+}
+
+.ble-picker__scan-bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  border-radius: inherit;
+  background: var(--m3-primary);
+  animation: ble-picker-indeterminate 1.2s ease-in-out infinite;
+}
+
+.ble-picker__list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ble-picker__device {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid var(--m3-outline-variant);
+  background: var(--m3-surface);
+  text-align: left;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+
+.ble-picker__device:hover {
+  border-color: var(--m3-primary);
+  background: var(--m3-surface-container-low);
+  transform: translateY(-1px);
+}
+
+.ble-picker__device:active {
+  transform: translateY(0);
+}
+
+.ble-picker__device-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--m3-primary-fixed, rgba(20, 184, 166, 0.15));
+  color: var(--m3-primary);
+}
+
+.ble-picker__device-info {
+  min-width: 0;
+}
+
+.ble-picker__device-info strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--m3-on-surface);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ble-picker__device-meta {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--m3-on-surface-variant);
+}
+
+.ble-picker__signal {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 18px;
+}
+
+.ble-picker__signal-bar {
+  width: 4px;
+  border-radius: 2px;
+  background: var(--m3-outline-variant);
+}
+
+.ble-picker__signal-bar:nth-child(1) { height: 5px; }
+.ble-picker__signal-bar:nth-child(2) { height: 8px; }
+.ble-picker__signal-bar:nth-child(3) { height: 12px; }
+.ble-picker__signal-bar:nth-child(4) { height: 16px; }
+
+.ble-picker__signal-bar--on {
+  background: var(--m3-primary);
+}
+
+.ble-picker__chevron {
+  color: var(--m3-on-surface-variant);
+}
+
+.ble-picker__footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 14px 16px 18px;
+  border-top: 1px solid var(--m3-outline-variant);
+  background: var(--m3-surface-container-low);
+}
+
+.ble-picker__secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 140px;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--m3-on-surface-variant);
+  background: var(--m3-surface-container-high);
+}
+
+.ble-picker__secondary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@keyframes ble-picker-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+}
+
+@keyframes ble-picker-ripple {
+  0% { transform: scale(0.92); opacity: 0.45; }
+  100% { transform: scale(1.18); opacity: 0; }
+}
+
+@keyframes ble-picker-indeterminate {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(320%); }
+}
+
+@media (max-width: 480px) {
+  .ble-picker__backdrop {
+    padding: 12px;
+    align-items: flex-end;
+  }
+
+  .ble-picker {
+    border-radius: 20px 20px 16px 16px;
+    max-height: 92vh;
+  }
+
+  .ble-picker__footer {
+    flex-direction: column;
+  }
+
+  .ble-picker__secondary {
+    width: 100%;
+  }
+}

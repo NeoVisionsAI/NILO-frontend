@@ -2,6 +2,16 @@
 
 interface Bluetooth extends EventTarget {
   requestDevice(options?: RequestDeviceOptions): Promise<BluetoothDevice>
+  requestLEScan?(options?: BluetoothLEScanOptions): Promise<BluetoothLEScan>
+  getAvailability?(): Promise<boolean>
+  addEventListener(
+    type: 'advertisementreceived',
+    listener: (this: Bluetooth, ev: BluetoothAdvertisingEvent) => void,
+  ): void
+  removeEventListener(
+    type: 'advertisementreceived',
+    listener: (this: Bluetooth, ev: BluetoothAdvertisingEvent) => void,
+  ): void
 }
 
 interface Navigator {
@@ -18,6 +28,23 @@ interface BluetoothLEScanFilter {
   services?: BluetoothServiceUUID[]
   name?: string
   namePrefix?: string
+}
+
+interface BluetoothLEScanOptions {
+  filters?: BluetoothLEScanFilter[]
+  keepRepeatedDevices?: boolean
+  acceptAllAdvertisements?: boolean
+}
+
+interface BluetoothLEScan {
+  readonly active: boolean
+  stop(): void
+}
+
+interface BluetoothAdvertisingEvent extends Event {
+  readonly device: BluetoothDevice
+  readonly name?: string
+  readonly rssi?: number
 }
 
 type BluetoothServiceUUID = number | string

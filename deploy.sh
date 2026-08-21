@@ -28,6 +28,107 @@ log() { printf '\033[1;34m→\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m!\033[0m %s\n' "$*"; }
 err() { printf '\033[1;31m✗\033[0m %s\n' "$*" >&2; }
 
+# --- Barra de progreso del deploy ---
+PROGRESS_TOTAL=0
+PROGRESS_CURRENT=0
+PROGRESS_LABEL=""
+PROGRESS_BAR_WIDTH=32
+
+progress_init() {
+  PROGRESS_TOTAL="$1"
+  PROGRESS_CURRENT=0
+  PROGRESS_LABEL=""
+}
+
+progress_render() {
+  local pct=0
+  local filled=0
+  local empty=0
+  local bar_f bar_e
+
+  if (( PROGRESS_TOTAL > 0 )); then
+    pct=$((PROGRESS_CURRENT * 100 / PROGRESS_TOTAL))
+    filled=$((pct * PROGRESS_BAR_WIDTH / 100))
+  fi
+  empty=$((PROGRESS_BAR_WIDTH - filled))
+  bar_f=$(printf '%*s' "$filled" '' | tr ' ' '█')
+  bar_e=$(printf '%*s' "$empty" '' | tr ' ' '░')
+  printf '\r\033[36m[\033[0m%s%s\033[36m]\033[0m %3d%% %s' "$bar_f" "$bar_e" "$pct" "$PROGRESS_LABEL"
+}
+
+progress_step() {
+  PROGRESS_LABEL="$1"
+  PROGRESS_CURRENT=$((PROGRESS_CURRENT + 1))
+  progress_render
+  printf '\n'
+}
+
+progress_done() {
+  PROGRESS_CURRENT=$PROGRESS_TOTAL
+  PROGRESS_LABEL="Completado"
+  progress_render
+  printf '\n'
+}
+
+# Ejecuta un comando; en error muestra log y termina.
+run_step() {
+  local label=$1
+  shift
+  local log_file
+  log_file="$(mktemp "${TMPDIR:-/tmp}/nilo-deploy.XXXXXX")"
+
+  progress_step "$label"
+
+  if "$@" >"$log_file" 2>&1; then
+    rm -f "$log_file"
+    return 0
+  fi
+
+  printf '\n'
+  err "Falló: $label"
+  err "--- Salida del comando ---"
+  tail -n 60 "$log_file" >&2 || cat "$log_file" >&2
+  rm -f "$log_file"
+  exit 1
+}
+
+# Igual que run_step pero muestra la salida en vivo (build Docker, etc.).
+run_step_live() {
+  local label=$1
+  shift
+  local log_file exit_code
+
+  log_file="$(mktemp "${TMPDIR:-/tmp}/nilo-deploy.XXXXXX")"
+  progress_step "$label"
+
+  set +o pipefail
+  "$@" 2>&1 | tee "$log_file"
+  exit_code="${PIPESTATUS[0]}"
+  set -o pipefail
+
+  if (( exit_code == 0 )); then
+    rm -f "$log_file"
+    return 0
+  fi
+
+  printf '\n'
+  err "Falló: $label (código $exit_code)"
+  err "--- Últimas líneas ---"
+  tail -n 40 "$log_file" >&2 || true
+  rm -f "$log_file"
+  exit "$exit_code"
+}
+
+on_deploy_error() {
+  local code=$1
+  local line=$2
+  printf '\n'
+  err "Deploy abortado inesperadamente (código ${code}, línea ${line})."
+  exit "$code"
+}
+
+trap 'on_deploy_error $? $LINENO' ERR
+
 require_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
     err "No se encontró el comando '$1'."
@@ -182,9 +283,6 @@ docker_build_image() {
 
   if [[ "${SKIP_DOCKER_PULL:-}" != "1" ]]; then
     build_args=(--progress=plain --pull "${build_args[@]:1}")
-    log "Descargando imágenes base (node:22-alpine, nginx:1.27-alpine)…"
-    warn "En redes lentas puede tardar varios minutos. Ver capas en la salida siguiente."
-    warn "Si se queda colgado >5 min: Ctrl+C y prueba «docker pull node:22-alpine» en otra terminal."
   else
     warn "SKIP_DOCKER_PULL=1 — build sin forzar descarga de imágenes base."
   fi
@@ -193,8 +291,12 @@ docker_build_image() {
     build_args=(--no-cache "${build_args[@]}")
   fi
 
-  log "Construyendo imagen ${IMAGE_NAME}…"
-  docker build "${build_args[@]}"
+  local pull_hint=""
+  if [[ "${SKIP_DOCKER_PULL:-}" != "1" ]]; then
+    pull_hint=" (incluye descarga node:22-alpine + nginx:1.27-alpine)"
+  fi
+
+  run_step_live "Construyendo imagen ${IMAGE_NAME}${pull_hint}" docker build "${build_args[@]}"
 }
 
 cmd_stop() {
@@ -238,8 +340,10 @@ cmd_deploy() {
   done
 
   require_cmd docker
-  ensure_env
-  ensure_tls_certs
+  progress_init 6
+
+  run_step "Comprobando configuración (.env)" ensure_env
+  run_step "Comprobando certificados TLS" ensure_tls_certs
 
   local ssl_port="${FRONTEND_SSL_PORT:-8080}"
   local lan_ip="${LAN_IP:-$(hostname -I 2>/dev/null | awk '{print $1}')}"
@@ -249,35 +353,45 @@ cmd_deploy() {
   warn "NO uses http://…:${ssl_port} — se quedará colgado (puerto TLS)."
   log "API proxy: ${BACKEND_PROXY_HOST:-192.168.1.43}:${BACKEND_PORT:-8443} (SNI ${BACKEND_SSL_NAME:-192.168.1.43})"
 
+  progress_step "Preparando configuración Docker"
   tmp_cfg="$(prepare_docker_config)"
   # shellcheck disable=SC2064
-  trap "rm -rf '${tmp_cfg}'" RETURN
+  trap "rm -rf '${tmp_cfg}'; on_deploy_error \$? \$LINENO" ERR RETURN
 
   export DOCKER_CONFIG="$tmp_cfg"
   export DOCKER_BUILDKIT=0
   export COMPOSE_DOCKER_CLI_BUILD=0
 
-  if $rebuild; then
-    if ! docker_build_image --no-cache; then
-      hint_docker_credentials
-      exit 1
-    fi
-  elif ! docker_build_image; then
-    hint_docker_credentials
-    exit 1
+  if [[ "${SKIP_DOCKER_PULL:-}" != "1" ]]; then
+    warn "Descarga de imágenes base incluida en el build (puede tardar en redes lentas)."
   fi
 
-  log "Arrancando contenedor…"
-  docker compose up -d --no-build
+  if $rebuild; then
+    docker_build_image --no-cache || {
+      hint_docker_credentials
+      exit 1
+    }
+  else
+    docker_build_image || {
+      hint_docker_credentials
+      exit 1
+    }
+  fi
 
+  run_step "Arrancando contenedor" docker compose up -d --no-build
+
+  progress_step "Comprobando servicios"
   sleep 2
+  local checks_ok=0
   if curl -kf --max-time 8 "https://127.0.0.1:${ssl_port}/" >/dev/null 2>&1; then
     log "OK: frontend responde en :${ssl_port}"
+    checks_ok=$((checks_ok + 1))
   else
     warn "El frontend no responde en https://127.0.0.1:${ssl_port} — revisa: docker logs nilo-frontend"
   fi
   if curl -kf --max-time 8 "https://127.0.0.1:${ssl_port}/api/v1/auth/cors-probe" >/dev/null 2>&1; then
     log "OK: proxy API /api/v1 responde"
+    checks_ok=$((checks_ok + 1))
   else
     warn "Proxy API falla (504/timeout). Prueba en .env: VITE_API_DIRECT=true y ./deploy.sh --rebuild"
     warn "O comprueba: curl -k https://${BACKEND_PROXY_HOST:-192.168.1.43}:${BACKEND_PORT:-8443}/health"
@@ -293,8 +407,14 @@ cmd_deploy() {
     fi
   fi
 
+  progress_done
   log "URL: https://${lan_ip:-localhost}:${ssl_port}/login  (solo https://, nunca http://)"
   docker compose ps
+
+  if (( checks_ok == 0 )); then
+    warn "Deploy terminado pero ninguna comprobación HTTP pasó. Revisa logs: docker logs nilo-frontend"
+    exit 1
+  fi
 }
 
 main() {
