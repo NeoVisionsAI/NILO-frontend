@@ -4,22 +4,22 @@ import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import { toast } from '@/lib/toast'
 import { ROOT_PATHS } from '@/router/paths'
 import { BleDevicePickerModal } from '../components/BleDevicePickerModal'
+import { CardmedDeviceRegistryPanel } from '../components/CardmedDeviceRegistryPanel'
 import { CARDMED_TIMEOUTS } from '../ble/constants'
+import { deviceDisplayLabel, formatDeviceLocation } from '../ble/device-registry'
 import { blobToObjectUrl, chunksToBlob } from '../ble/camera-utils'
 import type { CameraDevice, SavedCardmedDevice, WifiNetwork } from '../ble/types'
 import {
   cardmedErrorMessage,
   isLeScanSupported,
   isWebBluetoothSupported,
-  removeSavedDevice,
-  saveDeviceEntry,
   scanCardmedDevices,
   type ScannedBleDevice,
 } from '../ble/web-bluetooth'
 import { useCardmedConnection } from '../hooks/useCardmedConnection'
 import './CardmedDevicePage.css'
 
-type CardmedTab = 'dashboard' | 'wifi' | 'camera' | 'cardmed' | 'sampling' | 'system'
+type CardmedTab = 'registry' | 'dashboard' | 'wifi' | 'camera' | 'cardmed' | 'sampling' | 'system'
 
 interface PasswordTarget {
   kind: 'scan' | 'saved'
@@ -99,12 +99,10 @@ export function CardmedDevicePage() {
 
   const refreshDashboard = useCallback(async () => {
     await run(async () => {
-      const [health, battery, wifi, storage] = await Promise.all([
-        conn.runCommand('health_status'),
-        conn.runCommand('battery_status'),
-        conn.runCommand('wifi_status', { check_connectivity: true }),
-        conn.runCommand('storage_status'),
-      ])
+      const health = await conn.runCommand('health_status')
+      const battery = await conn.runCommand('battery_status')
+      const wifi = await conn.runCommand('wifi_status', { check_connectivity: true })
+      const storage = await conn.runCommand('storage_status')
       setDashboard({
         health: health.data,
         battery: battery.data,
@@ -175,12 +173,6 @@ export function CardmedDevicePage() {
 
   function handlePickerSelect(entry: ScannedBleDevice) {
     handlePickerClose()
-    saveDeviceEntry({
-      id: entry.id,
-      name: entry.name,
-      lastConnected: new Date().toISOString(),
-    })
-    conn.refreshSaved()
     openPasswordForDevice(entry.device, entry.name)
   }
 
@@ -197,6 +189,18 @@ export function CardmedDevicePage() {
     setPassword('')
   }
 
+  async function handleConnectSaved(saved: SavedCardmedDevice) {
+    if (saved.password) {
+      await run(async () => {
+        await conn.connectPaired(saved)
+        toast.success('Dispositivo conectado.')
+        setTab('dashboard')
+      })
+      return
+    }
+    openSavedConnect(saved)
+  }
+
   async function submitPassword(e: React.FormEvent) {
     e.preventDefault()
     if (!passwordTarget || !password.trim()) return
@@ -205,12 +209,12 @@ export function CardmedDevicePage() {
       if (passwordTarget.kind === 'scan' && passwordTarget.device) {
         await conn.connect(passwordTarget.device, password.trim())
       } else if (passwordTarget.kind === 'saved' && passwordTarget.saved) {
-        await conn.connectBySavedName(passwordTarget.saved, password.trim())
+        await conn.connectPaired(passwordTarget.saved, password.trim())
       }
       setPasswordTarget(null)
       setPassword('')
-      toast.success('Dispositivo conectado.')
-      setTab('dashboard')
+      toast.success('Dispositivo conectado y emparejado.')
+      setTab('registry')
     })
   }
 
@@ -359,13 +363,11 @@ export function CardmedDevicePage() {
 
   async function loadSystem() {
     await run(async () => {
-      const [info, time, events, history, list] = await Promise.all([
-        conn.runCommand('system_info'),
-        conn.runCommand('time_get'),
-        conn.runCommand('events_list'),
-        conn.runCommand('sampler_history'),
-        conn.runCommand<{ commands: string[] }>('commands_list'),
-      ])
+      const info = await conn.runCommand('system_info')
+      const time = await conn.runCommand('time_get')
+      const events = await conn.runCommand('events_list')
+      const history = await conn.runCommand('sampler_history')
+      const list = await conn.runCommand<{ commands: string[] }>('commands_list')
       setSystemInfo({
         system: info.data,
         time: time.data,
@@ -393,6 +395,7 @@ export function CardmedDevicePage() {
   }
 
   const tabs: { id: CardmedTab; label: string; icon: string }[] = [
+    { id: 'registry', label: 'Registro', icon: 'bookmark' },
     { id: 'dashboard', label: 'Estado', icon: 'monitor_heart' },
     { id: 'wifi', label: 'WiFi', icon: 'wifi' },
     { id: 'camera', label: 'Cámara', icon: 'photo_camera' },
@@ -400,6 +403,8 @@ export function CardmedDevicePage() {
     { id: 'sampling', label: 'Muestreo', icon: 'schedule' },
     { id: 'system', label: 'Sistema', icon: 'memory' },
   ]
+
+  const connectedPaired = conn.getConnectedPaired()
 
   return (
     <div className="nilo-cardmed">
@@ -450,36 +455,39 @@ export function CardmedDevicePage() {
           </div>
 
           <div className="nilo-cardmed__saved">
-            <h2>Dispositivos conocidos</h2>
-            {conn.savedDevices.length === 0 ? (
-              <p className="nilo-cardmed__empty">Aún no hay dispositivos guardados.</p>
+            <h2>Dispositivos emparejados</h2>
+            {conn.pairedDevices.length === 0 ? (
+              <p className="nilo-cardmed__empty">Aún no hay dispositivos emparejados.</p>
             ) : (
               <ul className="nilo-cardmed__device-list">
-                {conn.savedDevices.map((item) => (
-                  <li key={item.id} className="nilo-cardmed__device-item">
-                    <div>
-                      <strong>{item.name}</strong>
-                      {item.lastConnected && (
-                        <span>Última conexión: {new Date(item.lastConnected).toLocaleString('es-ES')}</span>
-                      )}
-                    </div>
-                    <div className="nilo-cardmed__device-actions">
-                      <button type="button" onClick={() => openSavedConnect(item)} disabled={busy}>
-                        Conectar
-                      </button>
-                      <button
-                        type="button"
-                        className="nilo-cardmed__danger-btn"
-                        onClick={() => {
-                          removeSavedDevice(item.id)
-                          conn.refreshSaved()
-                        }}
-                      >
-                        Quitar
-                      </button>
-                    </div>
-                  </li>
-                ))}
+                {conn.pairedDevices.map((item) => {
+                  const locationLabel = formatDeviceLocation(item)
+                  return (
+                    <li key={item.id} className="nilo-cardmed__device-item">
+                      <div>
+                        <strong>{deviceDisplayLabel(item)}</strong>
+                        <span>{item.bleName}</span>
+                        <span>Emparejado: {new Date(item.pairedAt).toLocaleString('es-ES')}</span>
+                        {locationLabel && <span>{locationLabel}</span>}
+                      </div>
+                      <div className="nilo-cardmed__device-actions">
+                        <button type="button" onClick={() => void handleConnectSaved(item)} disabled={busy}>
+                          {item.password ? 'Conectar' : 'Contraseña'}
+                        </button>
+                        <button
+                          type="button"
+                          className="nilo-cardmed__danger-btn"
+                          onClick={() => {
+                            conn.removePairing(item.id)
+                            toast.success('Dispositivo desemparejado.')
+                          }}
+                        >
+                          Desemparejar
+                        </button>
+                      </div>
+                    </li>
+                  )
+                })}
               </ul>
             )}
           </div>
@@ -501,6 +509,21 @@ export function CardmedDevicePage() {
           </nav>
 
           <div className="nilo-cardmed__panel m3-scroll">
+            {tab === 'registry' && connectedPaired && (
+              <CardmedDeviceRegistryPanel
+                device={connectedPaired}
+                busy={busy}
+                onSave={(patch) => {
+                  conn.saveDeviceMetadata(connectedPaired.id, patch)
+                  toast.success('Registro guardado.')
+                }}
+                onUnpair={() => {
+                  conn.removePairing(connectedPaired.id)
+                  toast.success('Dispositivo desemparejado.')
+                }}
+              />
+            )}
+
             {tab === 'dashboard' && (
               <div className="nilo-cardmed__section">
                 <div className="nilo-cardmed__row">
@@ -688,9 +711,9 @@ export function CardmedDevicePage() {
             </div>
             <h2>Contraseña del dispositivo</h2>
             <p>
-              {passwordTarget.kind === 'saved'
-                ? `Conectar con «${passwordTarget.saved?.name ?? 'dispositivo'}»`
-                : 'Introduce la contraseña BLE del NiloCardmed seleccionado.'}
+              {passwordTarget.kind === 'saved' && passwordTarget.saved
+                ? `Conectar con «${deviceDisplayLabel(passwordTarget.saved)}»`
+                : 'Introduce la contraseña BLE del NiloCardmed seleccionado. Se guardará el emparejamiento.'}
             </p>
             <label className="nilo-cardmed__modal-field">
               Contraseña

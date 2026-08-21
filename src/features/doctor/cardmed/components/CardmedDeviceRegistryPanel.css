@@ -1,0 +1,123 @@
+.cardmed-registry {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.cardmed-registry__meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--m3-surface-container-low);
+  border: 1px solid var(--m3-outline-variant);
+}
+
+.cardmed-registry__label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--m3-on-surface-variant);
+  margin-bottom: 2px;
+}
+
+.cardmed-registry__meta strong {
+  font-size: 13px;
+  color: var(--m3-on-surface);
+  word-break: break-word;
+}
+
+.cardmed-registry__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--m3-on-surface-variant);
+}
+
+.cardmed-registry__field input,
+.cardmed-registry__field textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--m3-outline-variant);
+  background: var(--m3-surface);
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--m3-on-surface);
+}
+
+.cardmed-registry__field textarea {
+  resize: vertical;
+  min-height: 72px;
+}
+
+.cardmed-registry__hint {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--m3-on-surface-variant);
+}
+
+.cardmed-registry__address-grid {
+  display: grid;
+  grid-template-columns: 1fr 120px;
+  gap: 10px;
+}
+
+.cardmed-registry__field--wide {
+  grid-column: 1 / -1;
+}
+
+.cardmed-registry__geo {
+  font-size: 12px;
+  color: var(--m3-primary);
+}
+
+.cardmed-registry__summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--m3-primary-fixed, rgba(20, 184, 166, 0.12));
+  font-size: 13px;
+  color: var(--m3-on-surface);
+}
+
+.cardmed-registry__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.cardmed-registry__save,
+.cardmed-registry__unpair {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 42px;
+  padding: 0 16px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.cardmed-registry__save {
+  background: var(--m3-primary);
+  color: var(--m3-on-primary);
+}
+
+.cardmed-registry__unpair {
+  background: rgba(220, 38, 38, 0.1);
+  color: #dc2626;
+}
+
+@media (max-width: 640px) {
+  .cardmed-registry__address-grid {
+    grid-template-columns: 1fr;
+  }
+}

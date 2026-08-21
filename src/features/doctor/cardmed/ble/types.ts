@@ -12,7 +12,34 @@ export interface CardmedAuthData {
   device_name: string
 }
 
+export interface CardmedDeviceLocation {
+  address?: string
+  city?: string
+  zip?: string
+  lat?: number | null
+  lon?: number | null
+  /** Texto libre: planta, habitación, referencias… */
+  additionalNotes?: string
+}
+
+/** Dispositivo emparejado guardado en localStorage (metadatos + credenciales BLE). */
 export interface SavedCardmedDevice {
+  /** ID estable del dispositivo Bluetooth (equivalente a MAC en Web Bluetooth). */
+  id: string
+  /** Nombre BLE del dispositivo (no editable). */
+  bleName: string
+  /** Alias definido por el usuario en la app. */
+  displayName?: string
+  /** Contraseña BLE para reconexión automática. */
+  password?: string
+  /** Fecha del primer emparejamiento. */
+  pairedAt: string
+  lastConnected?: string
+  location?: CardmedDeviceLocation
+}
+
+/** @deprecated Usar bleName — conservado para migración desde versiones anteriores. */
+export interface LegacySavedCardmedDevice {
   id: string
   name: string
   lastConnected?: string

@@ -1,5 +1,4 @@
-import { CARDMED_SERVICE_UUID, CARDMED_STORAGE_KEY } from './constants'
-import type { SavedCardmedDevice } from './types'
+import { CARDMED_SERVICE_UUID } from './constants'
 
 export const CARDMED_REQUEST_DEVICE_FILTERS: BluetoothLEScanFilter[] = [
   { namePrefix: 'Nilo' },
@@ -116,44 +115,24 @@ export async function scanCardmedDevices(options?: {
   return Array.from(found.values()).sort((a, b) => (b.rssi ?? -999) - (a.rssi ?? -999))
 }
 
-export function loadSavedDevices(): SavedCardmedDevice[] {
-  try {
-    const raw = localStorage.getItem(CARDMED_STORAGE_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw) as SavedCardmedDevice[]
-    if (!Array.isArray(parsed)) return []
-    return parsed.filter((item) => isCardmedDeviceName(item.name))
-  } catch {
-    return []
-  }
-}
-
-export function saveDeviceEntry(entry: SavedCardmedDevice) {
-  if (!isCardmedDeviceName(entry.name)) return
-
-  const list = loadSavedDevices().filter((item) => item.id !== entry.id)
-  list.unshift(entry)
-  localStorage.setItem(CARDMED_STORAGE_KEY, JSON.stringify(list.slice(0, 20)))
-}
-
-export function removeSavedDevice(deviceId: string) {
-  const list = loadSavedDevices().filter((item) => item.id !== deviceId)
-  localStorage.setItem(CARDMED_STORAGE_KEY, JSON.stringify(list))
-}
-
-export async function requestDeviceByName(name: string): Promise<BluetoothDevice> {
+export async function requestDeviceByBleName(bleName: string): Promise<BluetoothDevice> {
   if (!isWebBluetoothSupported() || !navigator.bluetooth) {
     throw new Error('Web Bluetooth no está disponible.')
   }
 
-  if (!isCardmedDeviceName(name)) {
+  if (!isCardmedDeviceName(bleName)) {
     throw new Error('El dispositivo guardado no coincide con un NiloCardmed.')
   }
 
   return navigator.bluetooth.requestDevice({
-    filters: [{ name }],
+    filters: [{ name: bleName }],
     optionalServices: [CARDMED_SERVICE_UUID],
   })
+}
+
+/** @deprecated Usar requestDeviceByBleName */
+export async function requestDeviceByName(name: string): Promise<BluetoothDevice> {
+  return requestDeviceByBleName(name)
 }
 
 export function cardmedErrorMessage(error: unknown): string {
@@ -161,9 +140,14 @@ export function cardmedErrorMessage(error: unknown): string {
     if (error.name === 'NotFoundError') return 'No se seleccionó ningún dispositivo.'
     if (error.name === 'SecurityError') return 'Permiso Bluetooth denegado.'
     if (error.name === 'AbortError') return 'Escaneo cancelado.'
-    if (error.message === 'timeout') return 'Tiempo de espera agotado.'
+    if (error.message === 'timeout' || error.message.startsWith('timeout BLE')) {
+      return 'Tiempo de espera agotado.'
+    }
     if (error.message === 'SCAN_NOT_SUPPORTED') {
       return 'Escaneo en segundo plano no disponible; usa el selector del sistema.'
+    }
+    if (error.message === 'GATT operation already in progress.') {
+      return 'Operación BLE en curso. Espera un momento e inténtalo de nuevo.'
     }
     return error.message
   }

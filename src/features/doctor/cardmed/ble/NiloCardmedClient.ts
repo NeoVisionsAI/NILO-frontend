@@ -1,3 +1,4 @@
+import { BleGattQueue } from './BleGattQueue'
 import { BleResponseAssembler } from './BleResponseAssembler'
 import { CARDMED_RX_UUID, CARDMED_SERVICE_UUID, CARDMED_TIMEOUTS, CARDMED_TX_UUID } from './constants'
 import type { CardmedAuthData, CardmedResponse } from './types'
@@ -17,6 +18,7 @@ async function writeRaw(rx: BluetoothRemoteGATTCharacteristic, text: string) {
 export class NiloCardmedClient {
   private assembler = new BleResponseAssembler()
   private waiters = new Map<string, Waiter>()
+  private queue = new BleGattQueue()
   private onNotify: (event: Event) => void
   token: string | null = null
   deviceName: string | null = null
@@ -64,29 +66,32 @@ export class NiloCardmedClient {
 
   dispose() {
     this.tx.removeEventListener('characteristicvaluechanged', this.onNotify)
+    this.queue.clear()
     for (const waiter of this.waiters.values()) {
       clearTimeout(waiter.timer)
+      waiter.reject(new Error('disconnected'))
     }
     this.waiters.clear()
     this.assembler.clear()
+    this.token = null
   }
 
   send(payload: Record<string, unknown>, timeoutMs: number = CARDMED_TIMEOUTS.default): Promise<CardmedResponse> {
-    const id = String(payload.id ?? Date.now())
-    const body = { ...payload, id }
+    return this.queue.run(async () => {
+      const id = String(payload.id ?? Date.now())
+      const body = { ...payload, id }
 
-    return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        this.waiters.delete(id)
-        reject(new Error('timeout'))
-      }, timeoutMs)
+      const responsePromise = new Promise<CardmedResponse>((resolve, reject) => {
+        const timer = setTimeout(() => {
+          this.waiters.delete(id)
+          reject(new Error(`timeout BLE id=${id}`))
+        }, timeoutMs)
 
-      this.waiters.set(id, { resolve, reject, timer })
-      writeRaw(this.rx, JSON.stringify(body)).catch((err) => {
-        clearTimeout(timer)
-        this.waiters.delete(id)
-        reject(err instanceof Error ? err : new Error(String(err)))
+        this.waiters.set(id, { resolve, reject, timer })
       })
+
+      await writeRaw(this.rx, JSON.stringify(body))
+      return responsePromise
     })
   }
 

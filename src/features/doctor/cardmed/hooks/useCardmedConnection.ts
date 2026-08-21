@@ -1,13 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { connectGatt, NiloCardmedClient } from '../ble/NiloCardmedClient'
 import { CARDMED_TIMEOUTS } from '../ble/constants'
-import type { CardmedConnectionPhase, SavedCardmedDevice } from '../ble/types'
+import {
+  deviceDisplayLabel,
+  getPairedDevice,
+  loadPairedDevices,
+  pairDevice,
+  touchPairedDevice,
+  unpairDevice,
+  updatePairedDevice,
+} from '../ble/device-registry'
+import type { CardmedConnectionPhase, CardmedDeviceLocation, SavedCardmedDevice } from '../ble/types'
 import {
   cardmedErrorMessage,
-  loadSavedDevices,
   requestCardmedBleDevice,
-  requestDeviceByName,
-  saveDeviceEntry,
+  requestDeviceByBleName,
 } from '../ble/web-bluetooth'
 
 export function useCardmedConnection() {
@@ -15,11 +22,12 @@ export function useCardmedConnection() {
   const deviceRef = useRef<BluetoothDevice | null>(null)
   const [phase, setPhase] = useState<CardmedConnectionPhase>('idle')
   const [deviceLabel, setDeviceLabel] = useState<string | null>(null)
-  const [savedDevices, setSavedDevices] = useState<SavedCardmedDevice[]>(() => loadSavedDevices())
+  const [connectedDeviceId, setConnectedDeviceId] = useState<string | null>(null)
+  const [pairedDevices, setPairedDevices] = useState<SavedCardmedDevice[]>(() => loadPairedDevices())
   const [lastError, setLastError] = useState<string | null>(null)
 
-  const refreshSaved = useCallback(() => {
-    setSavedDevices(loadSavedDevices())
+  const refreshPaired = useCallback(() => {
+    setPairedDevices(loadPairedDevices())
   }, [])
 
   const disconnect = useCallback(() => {
@@ -30,6 +38,7 @@ export function useCardmedConnection() {
     }
     deviceRef.current = null
     setDeviceLabel(null)
+    setConnectedDeviceId(null)
     setPhase('idle')
   }, [])
 
@@ -45,20 +54,13 @@ export function useCardmedConnection() {
   const scanDevice = useCallback(async () => {
     setLastError(null)
     try {
-      const device = await requestCardmedBleDevice()
-      saveDeviceEntry({
-        id: device.id,
-        name: device.name ?? device.id,
-        lastConnected: new Date().toISOString(),
-      })
-      refreshSaved()
-      return device
+      return await requestCardmedBleDevice()
     } catch (err) {
       const message = cardmedErrorMessage(err)
       setLastError(message)
       throw new Error(message)
     }
-  }, [refreshSaved])
+  }, [])
 
   const connect = useCallback(
     async (device: BluetoothDevice, password: string) => {
@@ -81,17 +83,22 @@ export function useCardmedConnection() {
         device.addEventListener('gattserverdisconnected', () => {
           setPhase('disconnected')
           setDeviceLabel(null)
+          setConnectedDeviceId(null)
         })
 
         setPhase('authenticating')
         const auth = await client.auth(password)
-        saveDeviceEntry({
+        const bleName = auth.device_name || device.name || device.id
+
+        const paired = pairDevice({
           id: device.id,
-          name: auth.device_name || device.name || device.id,
-          lastConnected: new Date().toISOString(),
+          bleName,
+          password,
         })
-        refreshSaved()
-        setDeviceLabel(auth.device_name || device.name || 'NiloCardmed')
+
+        refreshPaired()
+        setConnectedDeviceId(device.id)
+        setDeviceLabel(deviceDisplayLabel(paired))
         setPhase('connected')
         return client
       } catch (err) {
@@ -101,16 +108,51 @@ export function useCardmedConnection() {
         throw new Error(message)
       }
     },
-    [refreshSaved],
+    [refreshPaired],
   )
 
-  const connectBySavedName = useCallback(
-    async (saved: SavedCardmedDevice, password: string) => {
-      const device = await requestDeviceByName(saved.name)
-      return connect(device, password)
+  const connectPaired = useCallback(
+    async (saved: SavedCardmedDevice, passwordOverride?: string) => {
+      const password = passwordOverride ?? saved.password
+      if (!password) {
+        throw new Error('Este dispositivo no tiene contraseña guardada.')
+      }
+
+      const device = await requestDeviceByBleName(saved.bleName)
+      await connect(device, password)
+      touchPairedDevice(saved.id)
+      refreshPaired()
     },
-    [connect],
+    [connect, refreshPaired],
   )
+
+  const saveDeviceMetadata = useCallback(
+    (deviceId: string, patch: { displayName?: string; location?: CardmedDeviceLocation }) => {
+      const updated = updatePairedDevice(deviceId, patch)
+      refreshPaired()
+      if (updated && deviceId === connectedDeviceId) {
+        setDeviceLabel(deviceDisplayLabel(updated))
+      }
+      return updated
+    },
+    [connectedDeviceId, refreshPaired],
+  )
+
+  const removePairing = useCallback(
+    (deviceId: string) => {
+      unpairDevice(deviceId)
+      refreshPaired()
+      if (deviceId === connectedDeviceId) {
+        disconnect()
+      }
+    },
+    [connectedDeviceId, disconnect, refreshPaired],
+  )
+
+  const getConnectedPaired = useCallback((): SavedCardmedDevice | undefined => {
+    if (!connectedDeviceId) return undefined
+    return getPairedDevice(connectedDeviceId)
+  }, [connectedDeviceId])
 
   const getClient = useCallback(() => {
     const client = clientRef.current
@@ -146,15 +188,25 @@ export function useCardmedConnection() {
   return {
     phase,
     deviceLabel,
-    savedDevices,
+    connectedDeviceId,
+    pairedDevices,
     lastError,
     scanDevice,
     connect,
-    connectBySavedName,
+    connectPaired,
     disconnect,
     runCommand,
     reauth,
-    refreshSaved,
+    refreshPaired,
+    saveDeviceMetadata,
+    removePairing,
+    getConnectedPaired,
     getClient,
+    /** @deprecated Usar refreshPaired */
+    refreshSaved: refreshPaired,
+    /** @deprecated Usar pairedDevices */
+    savedDevices: pairedDevices,
+    /** @deprecated Usar connectPaired */
+    connectBySavedName: connectPaired,
   }
 }
