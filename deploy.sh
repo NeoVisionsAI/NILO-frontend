@@ -172,6 +172,7 @@ docker_build_image() {
   local api_direct="${VITE_API_DIRECT:-false}"
   local app_name="${VITE_APP_NAME:-NILO}"
   local -a build_args=(
+    --progress=plain
     --build-arg "VITE_API_BASE_URL=${api_url}"
     --build-arg "VITE_API_DIRECT=${api_direct}"
     --build-arg "VITE_APP_NAME=${app_name}"
@@ -179,13 +180,18 @@ docker_build_image() {
     .
   )
 
+  if [[ "${SKIP_DOCKER_PULL:-}" != "1" ]]; then
+    build_args=(--progress=plain --pull "${build_args[@]:1}")
+    log "Descargando imágenes base (node:22-alpine, nginx:1.27-alpine)…"
+    warn "En redes lentas puede tardar varios minutos. Ver capas en la salida siguiente."
+    warn "Si se queda colgado >5 min: Ctrl+C y prueba «docker pull node:22-alpine» en otra terminal."
+  else
+    warn "SKIP_DOCKER_PULL=1 — build sin forzar descarga de imágenes base."
+  fi
+
   if $no_cache; then
     build_args=(--no-cache "${build_args[@]}")
   fi
-
-  log "Descargando imágenes base (node:22-alpine, nginx:1.27-alpine)…"
-  docker pull node:22-alpine
-  docker pull nginx:1.27-alpine
 
   log "Construyendo imagen ${IMAGE_NAME}…"
   docker build "${build_args[@]}"
