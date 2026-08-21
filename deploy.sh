@@ -3,9 +3,7 @@
 #
 # Uso:
 #   ./deploy.sh              # construye y arranca (requiere certs/)
-#   ./deploy.sh --rebuild    # fuerza reconstrucción sin caché
-#   SKIP_DOCKER_PULL=1 ./deploy.sh --rebuild   # build sin contactar Docker Hub
-#   FORCE_DOCKER_PULL=1 ./deploy.sh            # actualiza imágenes base aunque existan en local
+#   ./deploy.sh --rebuild    # reconstruye la app (usa imágenes base locales si existen)
 #   ./deploy.sh --stop       # para y elimina el contenedor
 #   ./deploy.sh --logs       # muestra logs en tiempo real
 #   ./deploy.sh --dev        # desarrollo local HTTPS (npm run dev + mkcert)
@@ -163,17 +161,23 @@ hint_docker_credentials() {
 hint_docker_registry() {
   err "No se pudo contactar con Docker Hub (registry-1.docker.io) — timeout o red lenta."
   err ""
-  err "Si ya tienes las imágenes en este servidor:"
-  err "  SKIP_DOCKER_PULL=1 ./deploy.sh --rebuild"
+  if docker_base_images_present; then
+    err "Las imágenes base ya están en este servidor. Vuelve a ejecutar:"
+    err "  ./deploy.sh --rebuild"
+    err ""
+    err "El script usará la caché local automáticamente (no hace falta ninguna variable)."
+  else
+    err "Faltan node:22-alpine y/o nginx:1.27-alpine en local. Opciones:"
+    err "  1. Cuando haya red: docker pull node:22-alpine && docker pull nginx:1.27-alpine"
+    err "  2. Importar desde otra máquina:"
+    err "     docker save node:22-alpine nginx:1.27-alpine | gzip > nilo-base-images.tar.gz"
+    err "     gunzip -c nilo-base-images.tar.gz | docker load"
+    err "  3. Luego: ./deploy.sh --rebuild"
+  fi
   err ""
-  err "Comprueba conectividad:"
+  err "Diagnóstico:"
   err "  curl -I --max-time 20 https://registry-1.docker.io/v2/"
-  err "  docker pull node:22-alpine"
-  err ""
-  err "Sin Internet en k8-master, importa desde otra máquina:"
-  err "  docker save node:22-alpine nginx:1.27-alpine | gzip > nilo-base-images.tar.gz"
-  err "  scp nilo-base-images.tar.gz k8-master:~/"
-  err "  gunzip -c nilo-base-images.tar.gz | docker load"
+  err "  docker image inspect node:22-alpine nginx:1.27-alpine"
 }
 
 DOCKER_BASE_IMAGES=(node:22-alpine nginx:1.27-alpine)
@@ -341,7 +345,6 @@ docker_build_image() {
     log "FORCE_DOCKER_PULL=1 — se intentará actualizar node:22-alpine y nginx:1.27-alpine."
   elif docker_base_images_present; then
     log "Imágenes base en caché local; build sin contactar Docker Hub."
-    log "  (FORCE_DOCKER_PULL=1 para forzar actualización)"
   else
     use_pull=true
     warn "Faltan imágenes base locales; se descargarán desde Docker Hub."
