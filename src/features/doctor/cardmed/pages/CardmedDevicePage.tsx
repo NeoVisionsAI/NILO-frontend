@@ -66,6 +66,7 @@ export function CardmedDevicePage() {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [scanning, setScanning] = useState(false)
   const [foundDevices, setFoundDevices] = useState<ScannedBleDevice[]>([])
+  const [activePairedId, setActivePairedId] = useState<string | null>(null)
   const scanAbortRef = useRef<AbortController | null>(null)
 
   const bleSupported = useMemo(() => isWebBluetoothSupported(), [])
@@ -190,15 +191,32 @@ export function CardmedDevicePage() {
   }
 
   async function handleConnectSaved(saved: SavedCardmedDevice) {
+    setActivePairedId(saved.id)
+    setTab('registry')
+
     if (saved.password) {
       await run(async () => {
         await conn.connectPaired(saved)
         toast.success('Dispositivo conectado.')
-        setTab('dashboard')
       })
       return
     }
     openSavedConnect(saved)
+  }
+
+  function openPairedDevice(item: SavedCardmedDevice) {
+    setActivePairedId(item.id)
+    setTab('registry')
+    if (item.password) {
+      void handleConnectSaved(item)
+    }
+  }
+
+  function closeDeviceView() {
+    setActivePairedId(null)
+    if (conn.phase === 'connected') {
+      conn.disconnect()
+    }
   }
 
   async function submitPassword(e: React.FormEvent) {
@@ -213,6 +231,11 @@ export function CardmedDevicePage() {
       }
       setPasswordTarget(null)
       setPassword('')
+      if (passwordTarget.kind === 'scan' && passwordTarget.device) {
+        setActivePairedId(passwordTarget.device.id)
+      } else if (passwordTarget.kind === 'saved' && passwordTarget.saved) {
+        setActivePairedId(passwordTarget.saved.id)
+      }
       toast.success('Dispositivo conectado y emparejado.')
       setTab('registry')
     })
@@ -404,7 +427,24 @@ export function CardmedDevicePage() {
     { id: 'system', label: 'Sistema', icon: 'memory' },
   ]
 
-  const connectedPaired = conn.getConnectedPaired()
+  const activePaired = activePairedId
+    ? conn.pairedDevices.find((item) => item.id === activePairedId)
+    : undefined
+  const isBleConnected = conn.phase === 'connected'
+  const showDeviceView = Boolean(activePaired)
+  const visibleTabs = isBleConnected ? tabs : tabs.filter((item) => item.id === 'registry')
+
+  useEffect(() => {
+    if (conn.connectedDeviceId) {
+      setActivePairedId(conn.connectedDeviceId)
+    }
+  }, [conn.connectedDeviceId])
+
+  useEffect(() => {
+    if (!isBleConnected && tab !== 'registry') {
+      setTab('registry')
+    }
+  }, [isBleConnected, tab])
 
   return (
     <div className="nilo-cardmed">
@@ -414,14 +454,22 @@ export function CardmedDevicePage() {
           <span>Volver</span>
         </Link>
         <div className="nilo-cardmed__header-main">
-          <h1>Cardmed Device</h1>
+          <h1>{showDeviceView && activePaired ? deviceDisplayLabel(activePaired) : 'Cardmed Device'}</h1>
           <p>
-            {conn.phase === 'connected'
-              ? `Conectado · ${conn.deviceLabel}`
-              : 'Configura un NiloCardmed vía Bluetooth'}
+            {isBleConnected
+              ? `Conectado · ${conn.deviceLabel ?? activePaired?.bleName}`
+              : showDeviceView && activePaired
+                ? `${activePaired.bleName} · sin conexión BLE`
+                : 'Configura un NiloCardmed vía Bluetooth'}
           </p>
         </div>
-        {conn.phase === 'connected' && (
+        {showDeviceView && (
+          <button type="button" className="nilo-cardmed__back-list" onClick={closeDeviceView} disabled={busy}>
+            <MaterialIcon name="list" size={18} />
+            Lista
+          </button>
+        )}
+        {isBleConnected && (
           <button type="button" className="nilo-cardmed__disconnect" onClick={conn.disconnect} disabled={busy}>
             <MaterialIcon name="bluetooth_disabled" size={18} />
             Desconectar
@@ -440,62 +488,29 @@ export function CardmedDevicePage() {
         <div className="nilo-cardmed__alert nilo-cardmed__alert--error">{conn.lastError}</div>
       )}
 
-      {conn.phase !== 'connected' ? (
-        <section className="nilo-cardmed__connect">
-          <div className="nilo-cardmed__connect-actions">
-            <button type="button" className="nilo-cardmed__primary" onClick={() => void handleScan()} disabled={busy || !bleSupported}>
-              <MaterialIcon name="bluetooth_searching" size={22} />
-              Buscar dispositivos BLE
-            </button>
-            <p className="nilo-cardmed__hint">
-              {leScanSupported
-                ? 'Se abrirá un buscador propio filtrando por «nilo» o «cardmed» en el nombre.'
-                : 'Se abrirá el selector del sistema, filtrado por dispositivos Nilo / Cardmed.'}
-            </p>
-          </div>
-
-          <div className="nilo-cardmed__saved">
-            <h2>Dispositivos emparejados</h2>
-            {conn.pairedDevices.length === 0 ? (
-              <p className="nilo-cardmed__empty">Aún no hay dispositivos emparejados.</p>
-            ) : (
-              <ul className="nilo-cardmed__device-list">
-                {conn.pairedDevices.map((item) => {
-                  const locationLabel = formatDeviceLocation(item)
-                  return (
-                    <li key={item.id} className="nilo-cardmed__device-item">
-                      <div>
-                        <strong>{deviceDisplayLabel(item)}</strong>
-                        <span>{item.bleName}</span>
-                        <span>Emparejado: {new Date(item.pairedAt).toLocaleString('es-ES')}</span>
-                        {locationLabel && <span>{locationLabel}</span>}
-                      </div>
-                      <div className="nilo-cardmed__device-actions">
-                        <button type="button" onClick={() => void handleConnectSaved(item)} disabled={busy}>
-                          {item.password ? 'Conectar' : 'Contraseña'}
-                        </button>
-                        <button
-                          type="button"
-                          className="nilo-cardmed__danger-btn"
-                          onClick={() => {
-                            conn.removePairing(item.id)
-                            toast.success('Dispositivo desemparejado.')
-                          }}
-                        >
-                          Desemparejar
-                        </button>
-                      </div>
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
-          </div>
-        </section>
-      ) : (
+      {showDeviceView && activePaired ? (
         <>
+          {!isBleConnected && (
+            <div className="nilo-cardmed__offline-banner">
+              <MaterialIcon name="bluetooth_disabled" size={22} />
+              <div>
+                <strong>Sin conexión Bluetooth</strong>
+                <p>Puedes editar el registro local. Para WiFi, cámara y estado conecta el dispositivo.</p>
+              </div>
+              <button
+                type="button"
+                className="nilo-cardmed__primary"
+                onClick={() => void handleConnectSaved(activePaired)}
+                disabled={busy || !bleSupported}
+              >
+                <MaterialIcon name="bluetooth_connected" size={18} />
+                Conectar
+              </button>
+            </div>
+          )}
+
           <nav className="nilo-cardmed__tabs" aria-label="Secciones Cardmed">
-            {tabs.map((item) => (
+            {visibleTabs.map((item) => (
               <button
                 key={item.id}
                 type="button"
@@ -509,22 +524,23 @@ export function CardmedDevicePage() {
           </nav>
 
           <div className="nilo-cardmed__panel m3-scroll">
-            {tab === 'registry' && connectedPaired && (
+            {tab === 'registry' && (
               <CardmedDeviceRegistryPanel
-                device={connectedPaired}
+                device={activePaired}
                 busy={busy}
                 onSave={(patch) => {
-                  conn.saveDeviceMetadata(connectedPaired.id, patch)
+                  conn.saveDeviceMetadata(activePaired.id, patch)
                   toast.success('Registro guardado.')
                 }}
                 onUnpair={() => {
-                  conn.removePairing(connectedPaired.id)
+                  conn.removePairing(activePaired.id)
+                  setActivePairedId(null)
                   toast.success('Dispositivo desemparejado.')
                 }}
               />
             )}
 
-            {tab === 'dashboard' && (
+            {tab === 'dashboard' && isBleConnected && (
               <div className="nilo-cardmed__section">
                 <div className="nilo-cardmed__row">
                   <button type="button" onClick={() => void refreshDashboard()} disabled={busy}>
@@ -538,7 +554,7 @@ export function CardmedDevicePage() {
               </div>
             )}
 
-            {tab === 'wifi' && (
+            {tab === 'wifi' && isBleConnected && (
               <div className="nilo-cardmed__section">
                 <div className="nilo-cardmed__row">
                   <button type="button" onClick={() => void handleWifiScan()} disabled={busy}>
@@ -583,7 +599,7 @@ export function CardmedDevicePage() {
               </div>
             )}
 
-            {tab === 'camera' && (
+            {tab === 'camera' && isBleConnected && (
               <div className="nilo-cardmed__section">
                 <div className="nilo-cardmed__row">
                   <button type="button" onClick={() => void handleCameraList()} disabled={busy}>
@@ -610,7 +626,7 @@ export function CardmedDevicePage() {
               </div>
             )}
 
-            {tab === 'cardmed' && (
+            {tab === 'cardmed' && isBleConnected && (
               <div className="nilo-cardmed__section">
                 <div className="nilo-cardmed__row">
                   <button type="button" onClick={() => void loadCardmedConfig()} disabled={busy}>
@@ -643,7 +659,7 @@ export function CardmedDevicePage() {
               </div>
             )}
 
-            {tab === 'sampling' && (
+            {tab === 'sampling' && isBleConnected && (
               <div className="nilo-cardmed__section">
                 <button type="button" onClick={() => void loadSampling()} disabled={busy}>
                   Leer muestreo
@@ -670,7 +686,7 @@ export function CardmedDevicePage() {
               </div>
             )}
 
-            {tab === 'system' && (
+            {tab === 'system' && isBleConnected && (
               <div className="nilo-cardmed__section">
                 <div className="nilo-cardmed__row">
                   <button type="button" onClick={() => void loadSystem()} disabled={busy}>
@@ -691,6 +707,54 @@ export function CardmedDevicePage() {
             )}
           </div>
         </>
+      ) : (
+        <section className="nilo-cardmed__connect">
+          <div className="nilo-cardmed__connect-actions">
+            <button type="button" className="nilo-cardmed__primary" onClick={() => void handleScan()} disabled={busy || !bleSupported}>
+              <MaterialIcon name="bluetooth_searching" size={22} />
+              Buscar dispositivos BLE
+            </button>
+            <p className="nilo-cardmed__hint">
+              {leScanSupported
+                ? 'Se abrirá un buscador propio filtrando por «nilo» o «cardmed» en el nombre.'
+                : 'Se abrirá el selector del sistema, filtrado por dispositivos Nilo / Cardmed.'}
+            </p>
+          </div>
+
+          <div className="nilo-cardmed__saved">
+            <h2>Dispositivos emparejados</h2>
+            {conn.pairedDevices.length === 0 ? (
+              <p className="nilo-cardmed__empty">Aún no hay dispositivos emparejados.</p>
+            ) : (
+              <ul className="nilo-cardmed__device-list">
+                {conn.pairedDevices.map((item) => {
+                  const locationLabel = formatDeviceLocation(item)
+                  return (
+                    <li key={item.id} className="nilo-cardmed__device-item">
+                      <button
+                        type="button"
+                        className="nilo-cardmed__device-main"
+                        onClick={() => openPairedDevice(item)}
+                        disabled={busy}
+                      >
+                        <span className="nilo-cardmed__device-icon-wrap">
+                          <MaterialIcon name="medical_information" size={22} />
+                        </span>
+                        <span className="nilo-cardmed__device-copy">
+                          <strong>{deviceDisplayLabel(item)}</strong>
+                          <span>{item.bleName}</span>
+                          <span>Emparejado: {new Date(item.pairedAt).toLocaleString('es-ES')}</span>
+                          {locationLabel && <span>{locationLabel}</span>}
+                        </span>
+                        <MaterialIcon name="chevron_right" size={24} className="nilo-cardmed__device-chevron" />
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </div>
+        </section>
       )}
 
       <BleDevicePickerModal
