@@ -4,6 +4,8 @@
 # Uso:
 #   ./deploy.sh              # construye y arranca (requiere certs/)
 #   ./deploy.sh --rebuild    # fuerza reconstrucción sin caché
+#   SKIP_DOCKER_PULL=1 ./deploy.sh --rebuild   # build sin contactar Docker Hub
+#   FORCE_DOCKER_PULL=1 ./deploy.sh            # actualiza imágenes base aunque existan en local
 #   ./deploy.sh --stop       # para y elimina el contenedor
 #   ./deploy.sh --logs       # muestra logs en tiempo real
 #   ./deploy.sh --dev        # desarrollo local HTTPS (npm run dev + mkcert)
@@ -158,6 +160,48 @@ hint_docker_credentials() {
   err "Comprueba: docker pull node:22-alpine"
 }
 
+hint_docker_registry() {
+  err "No se pudo contactar con Docker Hub (registry-1.docker.io) — timeout o red lenta."
+  err ""
+  err "Si ya tienes las imágenes en este servidor:"
+  err "  SKIP_DOCKER_PULL=1 ./deploy.sh --rebuild"
+  err ""
+  err "Comprueba conectividad:"
+  err "  curl -I --max-time 20 https://registry-1.docker.io/v2/"
+  err "  docker pull node:22-alpine"
+  err ""
+  err "Sin Internet en k8-master, importa desde otra máquina:"
+  err "  docker save node:22-alpine nginx:1.27-alpine | gzip > nilo-base-images.tar.gz"
+  err "  scp nilo-base-images.tar.gz k8-master:~/"
+  err "  gunzip -c nilo-base-images.tar.gz | docker load"
+}
+
+DOCKER_BASE_IMAGES=(node:22-alpine nginx:1.27-alpine)
+
+docker_base_images_present() {
+  local img
+  for img in "${DOCKER_BASE_IMAGES[@]}"; do
+    if ! docker image inspect "$img" >/dev/null 2>&1; then
+      return 1
+    fi
+  done
+  return 0
+}
+
+log_is_registry_timeout() {
+  local log_file=$1
+  grep -qiE 'registry-1\.docker\.io|Timeout exceeded|awaiting headers|connection refused|i/o timeout|network is unreachable' "$log_file"
+}
+
+hint_docker_build_failure() {
+  local log_file=$1
+  if [[ -f "$log_file" ]] && log_is_registry_timeout "$log_file"; then
+    hint_docker_registry
+  else
+    hint_docker_credentials
+  fi
+}
+
 hint_mkcert() {
   err "Faltan certificados TLS en ${CERT_DIR}/cert.pem y ${CERT_DIR}/key.pem"
   err ""
@@ -284,31 +328,92 @@ docker_build_image() {
   local api_url="${VITE_API_BASE_URL:-https://192.168.1.43:8443/api/v1}"
   local api_direct="${VITE_API_DIRECT:-false}"
   local app_name="${VITE_APP_NAME:-NILO}"
-  local -a build_args=(
-    --progress=plain
-    --build-arg "VITE_API_BASE_URL=${api_url}"
-    --build-arg "VITE_API_DIRECT=${api_direct}"
-    --build-arg "VITE_APP_NAME=${app_name}"
-    -t "$IMAGE_NAME"
-    .
-  )
-
-  if [[ "${SKIP_DOCKER_PULL:-}" != "1" ]]; then
-    build_args=(--progress=plain --pull "${build_args[@]:1}")
-  else
-    warn "SKIP_DOCKER_PULL=1 — build sin forzar descarga de imágenes base."
-  fi
-
-  if $no_cache; then
-    build_args=(--no-cache "${build_args[@]}")
-  fi
-
+  local use_pull=false
   local pull_hint=""
-  if [[ "${SKIP_DOCKER_PULL:-}" != "1" ]]; then
-    pull_hint=" (incluye descarga node:22-alpine + nginx:1.27-alpine)"
+  local max_attempts="${DOCKER_BUILD_RETRIES:-3}"
+  local attempt=1
+  local log_file exit_code label
+
+  if [[ "${SKIP_DOCKER_PULL:-}" == "1" ]]; then
+    warn "SKIP_DOCKER_PULL=1 — build sin descargar imágenes base."
+  elif [[ "${FORCE_DOCKER_PULL:-}" == "1" ]]; then
+    use_pull=true
+    log "FORCE_DOCKER_PULL=1 — se intentará actualizar node:22-alpine y nginx:1.27-alpine."
+  elif docker_base_images_present; then
+    log "Imágenes base en caché local; build sin contactar Docker Hub."
+    log "  (FORCE_DOCKER_PULL=1 para forzar actualización)"
+  else
+    use_pull=true
+    warn "Faltan imágenes base locales; se descargarán desde Docker Hub."
   fi
 
-  run_step_live "Construyendo imagen ${IMAGE_NAME}${pull_hint}" docker build "${build_args[@]}"
+  if $use_pull; then
+    pull_hint=" (descarga node:22-alpine + nginx:1.27-alpine)"
+  fi
+
+  label="Construyendo imagen ${IMAGE_NAME}${pull_hint}"
+  progress_step "$label"
+
+  while (( attempt <= max_attempts )); do
+    local -a build_args=(
+      --progress=plain
+      --build-arg "VITE_API_BASE_URL=${api_url}"
+      --build-arg "VITE_API_DIRECT=${api_direct}"
+      --build-arg "VITE_APP_NAME=${app_name}"
+      -t "$IMAGE_NAME"
+      .
+    )
+
+    if $use_pull; then
+      build_args=(--progress=plain --pull "${build_args[@]:1}")
+    fi
+
+    if $no_cache; then
+      build_args=(--no-cache "${build_args[@]}")
+    fi
+
+    log_file="$(mktemp "${TMPDIR:-/tmp}/nilo-deploy.XXXXXX")"
+
+    if (( attempt > 1 )); then
+      warn "Reintento ${attempt}/${max_attempts}…"
+    fi
+
+    set +o pipefail
+    docker build "${build_args[@]}" 2>&1 | tee "$log_file"
+    exit_code="${PIPESTATUS[0]}"
+    set -o pipefail
+
+    if (( exit_code == 0 )); then
+      rm -f "$log_file"
+      return 0
+    fi
+
+    if [[ -f "$log_file" ]] && log_is_registry_timeout "$log_file"; then
+      if $use_pull && docker_base_images_present; then
+        warn "Docker Hub no responde; continuando con imágenes locales (sin --pull)…"
+        use_pull=false
+        pull_hint=""
+        rm -f "$log_file"
+        continue
+      fi
+    fi
+
+    if (( attempt < max_attempts )); then
+      warn "Build falló (código ${exit_code}); nuevo intento en 8 s…"
+      rm -f "$log_file"
+      attempt=$((attempt + 1))
+      sleep 8
+      continue
+    fi
+
+    printf '\n'
+    err "Falló: $label (código $exit_code)"
+    err "--- Últimas líneas ---"
+    tail -n 40 "$log_file" >&2 || true
+    hint_docker_build_failure "$log_file"
+    rm -f "$log_file"
+    exit "$exit_code"
+  done
 }
 
 cmd_stop() {
@@ -373,20 +478,10 @@ cmd_deploy() {
   export DOCKER_BUILDKIT=0
   export COMPOSE_DOCKER_CLI_BUILD=0
 
-  if [[ "${SKIP_DOCKER_PULL:-}" != "1" ]]; then
-    warn "Descarga de imágenes base incluida en el build (puede tardar en redes lentas)."
-  fi
-
   if $rebuild; then
-    docker_build_image --no-cache || {
-      hint_docker_credentials
-      exit 1
-    }
+    docker_build_image --no-cache
   else
-    docker_build_image || {
-      hint_docker_credentials
-      exit 1
-    }
+    docker_build_image
   fi
 
   run_step "Arrancando contenedor" docker compose up -d --no-build
