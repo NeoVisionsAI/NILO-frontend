@@ -95,6 +95,7 @@ function DoctorShell() {
         nodeItems={nodeItems}
         onAddPatient={() => navigate(`${ROOT_PATHS.doctor}/pacientes/nuevo`)}
         onAddNode={() => navigate(`${ROOT_PATHS.doctor}/nodos/nuevo`)}
+        onOpenCardmed={() => navigate(`${ROOT_PATHS.doctor}/dispositivos/cardmed`)}
       />
 
       <div className="nilo-clinician__body">

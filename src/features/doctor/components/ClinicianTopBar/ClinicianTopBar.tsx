@@ -124,7 +124,7 @@ function ResourcePanel({
   )
 }
 
-type OpenPanel = 'patients' | 'nodes' | null
+type OpenPanel = 'patients' | 'nodes' | 'devices-menu' | null
 
 interface ClinicianTopBarProps {
   onToggleSidebar?: () => void
@@ -132,15 +132,17 @@ interface ClinicianTopBarProps {
   nodeItems: ResourceListItem[]
   onAddPatient: () => void
   onAddNode: () => void
+  onOpenCardmed: () => void
 }
 
-/** Barra superior del área clínica: NILO, Patients, Nodes y perfil del clínico. */
+/** Barra superior del área clínica: NILO, Patients, Devices y perfil del clínico. */
 export function ClinicianTopBar({
   onToggleSidebar,
   patientItems,
   nodeItems,
   onAddPatient,
   onAddNode,
+  onOpenCardmed,
 }: ClinicianTopBarProps) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
@@ -148,18 +150,22 @@ export function ClinicianTopBar({
   const [openPanel, setOpenPanel] = useState<OpenPanel>(null)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const userRef = useRef<HTMLDivElement>(null)
+  const devicesMenuRef = useRef<HTMLDivElement>(null)
 
   const fullName = user ? `${user.firstName} ${user.lastName}` : ''
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (userRef.current && !userRef.current.contains(e.target as Node)) {
+      if (userRef.current && !userRef.current.contains(e.target as globalThis.Node)) {
         setUserMenuOpen(false)
+      }
+      if (devicesMenuRef.current && !devicesMenuRef.current.contains(e.target as globalThis.Node)) {
+        if (openPanel === 'devices-menu') setOpenPanel(null)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+  }, [openPanel])
 
   function togglePanel(panel: OpenPanel) {
     setOpenPanel((prev) => (prev === panel ? null : panel))
@@ -221,16 +227,50 @@ export function ClinicianTopBar({
             />
           </div>
 
-          <div className="nilo-ctopbar__action-wrap">
+          <div className="nilo-ctopbar__action-wrap" ref={devicesMenuRef}>
             <button
               type="button"
-              className={`nilo-ctopbar__tab${openPanel === 'nodes' ? ' nilo-ctopbar__tab--active' : ''}`}
-              onClick={() => togglePanel('nodes')}
-              aria-expanded={openPanel === 'nodes'}
+              className={`nilo-ctopbar__tab${openPanel === 'nodes' || openPanel === 'devices-menu' ? ' nilo-ctopbar__tab--active' : ''}`}
+              onClick={() => {
+                setOpenPanel((prev) => (prev === 'devices-menu' ? null : 'devices-menu'))
+                setUserMenuOpen(false)
+              }}
+              aria-expanded={openPanel === 'devices-menu' || openPanel === 'nodes'}
             >
-              <MaterialIcon name="hub" size={20} />
-              <span>Nodes</span>
+              <MaterialIcon name="devices" size={20} />
+              <span>Devices</span>
+              <MaterialIcon name="expand_more" size={18} className="nilo-ctopbar__tab-chevron" />
             </button>
+
+            {openPanel === 'devices-menu' && (
+              <div className="nilo-ctopbar__devices-menu" role="menu">
+                <button
+                  type="button"
+                  className="nilo-ctopbar__devices-menu-item"
+                  role="menuitem"
+                  onClick={() => {
+                    setOpenPanel('nodes')
+                    setUserMenuOpen(false)
+                  }}
+                >
+                  <MaterialIcon name="hub" size={20} />
+                  <span>Node</span>
+                </button>
+                <button
+                  type="button"
+                  className="nilo-ctopbar__devices-menu-item"
+                  role="menuitem"
+                  onClick={() => {
+                    setOpenPanel(null)
+                    onOpenCardmed()
+                  }}
+                >
+                  <MaterialIcon name="bluetooth" size={20} />
+                  <span>Cardmed Device</span>
+                </button>
+              </div>
+            )}
+
             <ResourcePanel
               open={openPanel === 'nodes'}
               searchPlaceholder="Search nodes…"

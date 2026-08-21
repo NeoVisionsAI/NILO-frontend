@@ -13,6 +13,7 @@ import {
   SummaryPage,
   AddPatientPage,
   AddNodePage,
+  CardmedDevicePage,
   PatientsListPage,
   AlertsPage,
   PatientDetailPage,
@@ -68,6 +69,7 @@ export const router = createBrowserRouter([
       { path: 'pacientes', element: <PatientsListPage /> },
       { path: 'pacientes/nuevo', element: <AddPatientPage /> },
       { path: 'nodos/nuevo', element: <AddNodePage /> },
+      { path: 'dispositivos/cardmed', element: <CardmedDevicePage /> },
       {
         path: 'nodos/:nodeId',
         element: <NodeDetailPage />,
