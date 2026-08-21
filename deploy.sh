@@ -51,8 +51,8 @@ progress_render() {
     filled=$((pct * PROGRESS_BAR_WIDTH / 100))
   fi
   empty=$((PROGRESS_BAR_WIDTH - filled))
-  bar_f=$(printf '%*s' "$filled" '' | tr ' ' '█')
-  bar_e=$(printf '%*s' "$empty" '' | tr ' ' '░')
+  bar_f=$(printf '%*s' "$filled" '' | tr ' ' '#')
+  bar_e=$(printf '%*s' "$empty" '' | tr ' ' '-')
   printf '\r\033[36m[\033[0m%s%s\033[36m]\033[0m %3d%% %s' "$bar_f" "$bar_e" "$pct" "$PROGRESS_LABEL"
 }
 
@@ -122,9 +122,21 @@ run_step_live() {
 on_deploy_error() {
   local code=$1
   local line=$2
+  if (( code == 0 )); then
+    return 0
+  fi
   printf '\n'
   err "Deploy abortado inesperadamente (código ${code}, línea ${line})."
   exit "$code"
+}
+
+DEPLOY_TMP_CFG=""
+
+cleanup_deploy_tmp() {
+  if [[ -n "$DEPLOY_TMP_CFG" ]]; then
+    rm -rf "$DEPLOY_TMP_CFG"
+    DEPLOY_TMP_CFG=""
+  fi
 }
 
 trap 'on_deploy_error $? $LINENO' ERR
@@ -347,18 +359,17 @@ cmd_deploy() {
 
   local ssl_port="${FRONTEND_SSL_PORT:-8080}"
   local lan_ip="${LAN_IP:-$(hostname -I 2>/dev/null | awk '{print $1}')}"
-  local tmp_cfg
 
   log "Abrir SOLO con HTTPS: https://${lan_ip:-localhost}:${ssl_port}/login"
   warn "NO uses http://…:${ssl_port} — se quedará colgado (puerto TLS)."
   log "API proxy: ${BACKEND_PROXY_HOST:-192.168.1.43}:${BACKEND_PORT:-8443} (SNI ${BACKEND_SSL_NAME:-192.168.1.43})"
 
   progress_step "Preparando configuración Docker"
-  tmp_cfg="$(prepare_docker_config)"
-  # shellcheck disable=SC2064
-  trap "rm -rf '${tmp_cfg}'; on_deploy_error \$? \$LINENO" ERR RETURN
+  DEPLOY_TMP_CFG="$(prepare_docker_config)"
+  trap cleanup_deploy_tmp RETURN
+  trap 'cleanup_deploy_tmp; on_deploy_error $? $LINENO' ERR
 
-  export DOCKER_CONFIG="$tmp_cfg"
+  export DOCKER_CONFIG="$DEPLOY_TMP_CFG"
   export DOCKER_BUILDKIT=0
   export COMPOSE_DOCKER_CLI_BUILD=0
 
