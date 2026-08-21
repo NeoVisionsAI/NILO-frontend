@@ -1,0 +1,124 @@
+.cardmed-status {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--m3-outline-variant);
+}
+
+.cardmed-status--connected {
+  background: rgba(22, 163, 74, 0.08);
+  border-color: rgba(22, 163, 74, 0.35);
+}
+
+.cardmed-status--disconnected {
+  background: rgba(220, 38, 38, 0.08);
+  border-color: rgba(220, 38, 38, 0.3);
+}
+
+.cardmed-status--connecting {
+  background: rgba(217, 119, 6, 0.08);
+  border-color: rgba(217, 119, 6, 0.35);
+}
+
+.cardmed-status__indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 9999px;
+  background: var(--m3-surface);
+}
+
+.cardmed-status__dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background: #dc2626;
+  box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.2);
+}
+
+.cardmed-status--connected .cardmed-status__dot {
+  background: #16a34a;
+  box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.22);
+}
+
+.cardmed-status--connecting .cardmed-status__dot {
+  background: #d97706;
+  box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.22);
+  animation: cardmed-status-pulse 1.2s ease-in-out infinite;
+}
+
+.cardmed-status__text {
+  flex: 1;
+  min-width: 180px;
+}
+
+.cardmed-status__text strong {
+  display: block;
+  font-size: 14px;
+  color: var(--m3-on-surface);
+}
+
+.cardmed-status__text p {
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--m3-on-surface-variant);
+}
+
+.cardmed-status__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.cardmed-status__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--m3-surface-container-high);
+  color: var(--m3-on-surface-variant);
+}
+
+.cardmed-status__btn--primary {
+  background: var(--m3-primary);
+  color: var(--m3-on-primary);
+}
+
+.cardmed-status__btn--danger {
+  background: rgba(220, 38, 38, 0.12);
+  color: #dc2626;
+}
+
+.cardmed-status__btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@keyframes cardmed-status-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.15); opacity: 0.75; }
+}
+
+@media (max-width: 640px) {
+  .cardmed-status__actions {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .cardmed-status__btn {
+    flex: 1;
+    min-width: 120px;
+  }
+}

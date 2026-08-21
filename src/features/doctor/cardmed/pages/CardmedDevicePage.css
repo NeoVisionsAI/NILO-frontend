@@ -202,6 +202,7 @@
 }
 
 .nilo-cardmed__device-icon-wrap {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -210,6 +211,28 @@
   border-radius: 12px;
   background: var(--m3-primary-fixed, rgba(20, 184, 166, 0.15));
   color: var(--m3-primary);
+}
+
+.nilo-cardmed__device-dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  background: #dc2626;
+  border: 2px solid var(--m3-surface);
+  box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.35);
+}
+
+.nilo-cardmed__device-dot--live {
+  background: #16a34a;
+  box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.35);
+}
+
+.nilo-cardmed__device-icon-wrap--live {
+  background: rgba(22, 163, 74, 0.12);
+  color: #15803d;
 }
 
 .nilo-cardmed__device-copy {

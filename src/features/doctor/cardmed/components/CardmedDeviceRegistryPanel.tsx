@@ -46,14 +46,12 @@ interface CardmedDeviceRegistryPanelProps {
   device: SavedCardmedDevice
   busy: boolean
   onSave: (patch: { displayName?: string; location?: CardmedDeviceLocation }) => void
-  onUnpair: () => void
 }
 
 export function CardmedDeviceRegistryPanel({
   device,
   busy,
   onSave,
-  onUnpair,
 }: CardmedDeviceRegistryPanelProps) {
   const [form, setForm] = useState<RegistryForm>(() => toForm(device))
   const [geoStatus, setGeoStatus] = useState<string | null>(null)
@@ -213,10 +211,6 @@ export function CardmedDeviceRegistryPanel({
         <button type="button" className="cardmed-registry__save" onClick={handleSave} disabled={busy}>
           <MaterialIcon name="save" size={18} />
           Guardar registro
-        </button>
-        <button type="button" className="cardmed-registry__unpair" onClick={onUnpair} disabled={busy}>
-          <MaterialIcon name="link_off" size={18} />
-          Desemparejar
         </button>
       </div>
     </div>

@@ -5,6 +5,7 @@ import { toast } from '@/lib/toast'
 import { ROOT_PATHS } from '@/router/paths'
 import { BleDevicePickerModal } from '../components/BleDevicePickerModal'
 import { CardmedDeviceRegistryPanel } from '../components/CardmedDeviceRegistryPanel'
+import { CardmedDeviceStatusBar } from '../components/CardmedDeviceStatusBar'
 import { CARDMED_TIMEOUTS } from '../ble/constants'
 import { deviceDisplayLabel, formatDeviceLocation } from '../ble/device-registry'
 import { blobToObjectUrl, chunksToBlob } from '../ble/camera-utils'
@@ -217,6 +218,13 @@ export function CardmedDevicePage() {
     if (conn.phase === 'connected') {
       conn.disconnect()
     }
+  }
+
+  function handleUnpairActive() {
+    if (!activePairedId) return
+    conn.removePairing(activePairedId)
+    setActivePairedId(null)
+    toast.success('Dispositivo desemparejado.')
   }
 
   async function submitPassword(e: React.FormEvent) {
@@ -469,12 +477,6 @@ export function CardmedDevicePage() {
             Lista
           </button>
         )}
-        {isBleConnected && (
-          <button type="button" className="nilo-cardmed__disconnect" onClick={conn.disconnect} disabled={busy}>
-            <MaterialIcon name="bluetooth_disabled" size={18} />
-            Desconectar
-          </button>
-        )}
       </header>
 
       {!bleSupported && (
@@ -490,24 +492,14 @@ export function CardmedDevicePage() {
 
       {showDeviceView && activePaired ? (
         <>
-          {!isBleConnected && (
-            <div className="nilo-cardmed__offline-banner">
-              <MaterialIcon name="bluetooth_disabled" size={22} />
-              <div>
-                <strong>Sin conexión Bluetooth</strong>
-                <p>Puedes editar el registro local. Para WiFi, cámara y estado conecta el dispositivo.</p>
-              </div>
-              <button
-                type="button"
-                className="nilo-cardmed__primary"
-                onClick={() => void handleConnectSaved(activePaired)}
-                disabled={busy || !bleSupported}
-              >
-                <MaterialIcon name="bluetooth_connected" size={18} />
-                Conectar
-              </button>
-            </div>
-          )}
+          <CardmedDeviceStatusBar
+            phase={conn.phase}
+            busy={busy}
+            bleSupported={bleSupported}
+            onConnect={() => void handleConnectSaved(activePaired)}
+            onDisconnect={conn.disconnect}
+            onUnpair={handleUnpairActive}
+          />
 
           <nav className="nilo-cardmed__tabs" aria-label="Secciones Cardmed">
             {visibleTabs.map((item) => (
@@ -531,11 +523,6 @@ export function CardmedDevicePage() {
                 onSave={(patch) => {
                   conn.saveDeviceMetadata(activePaired.id, patch)
                   toast.success('Registro guardado.')
-                }}
-                onUnpair={() => {
-                  conn.removePairing(activePaired.id)
-                  setActivePairedId(null)
-                  toast.success('Dispositivo desemparejado.')
                 }}
               />
             )}
@@ -729,6 +716,7 @@ export function CardmedDevicePage() {
               <ul className="nilo-cardmed__device-list">
                 {conn.pairedDevices.map((item) => {
                   const locationLabel = formatDeviceLocation(item)
+                  const isLive = isBleConnected && conn.connectedDeviceId === item.id
                   return (
                     <li key={item.id} className="nilo-cardmed__device-item">
                       <button
@@ -737,7 +725,11 @@ export function CardmedDevicePage() {
                         onClick={() => openPairedDevice(item)}
                         disabled={busy}
                       >
-                        <span className="nilo-cardmed__device-icon-wrap">
+                        <span className={`nilo-cardmed__device-icon-wrap${isLive ? ' nilo-cardmed__device-icon-wrap--live' : ''}`}>
+                          <span
+                            className={`nilo-cardmed__device-dot${isLive ? ' nilo-cardmed__device-dot--live' : ''}`}
+                            aria-hidden="true"
+                          />
                           <MaterialIcon name="medical_information" size={22} />
                         </span>
                         <span className="nilo-cardmed__device-copy">
