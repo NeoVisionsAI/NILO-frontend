@@ -159,17 +159,28 @@
   min-width: 0;
 }
 
-.nilo-cardmed__connect-hero-copy h2 {
-  font-size: 20px;
-  font-weight: 800;
-  color: var(--m3-on-surface);
-}
-
 .nilo-cardmed__connect-hero-copy p {
   margin-top: 6px;
   font-size: 14px;
   line-height: 1.5;
   color: var(--m3-on-surface-variant);
+}
+
+.nilo-cardmed__connect-note {
+  margin-top: 10px !important;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 13px !important;
+  line-height: 1.45;
+  color: var(--m3-on-surface-variant);
+  background: var(--m3-surface-container-high);
+  border: 1px solid var(--m3-outline-variant);
+}
+
+.nilo-cardmed__connect-hero-copy h2 {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--m3-on-surface);
 }
 
 .nilo-cardmed__connect-actions {

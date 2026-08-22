@@ -690,8 +690,12 @@ export function CardmedDevicePage() {
             <div className="nilo-cardmed__connect-hero-copy">
               <h2>Emparejar NiloCardmed</h2>
               <p>
-                Pulsa el botón y elige tu dispositivo (p. ej. <strong>NiloCardmed-d212bd98</strong>) en el diálogo
-                de Chrome. Web Bluetooth no permite listar BLE en la app; solo el selector del sistema.
+                Pulsa el botón para abrir el <strong>selector Bluetooth de Chrome</strong> (igual que en Ajustes del
+                tablet). Verás todos los dispositivos cercanos; elige <strong>NiloCardmed-d212bd98</strong> (o el tuyo).
+              </p>
+              <p className="nilo-cardmed__connect-note">
+                La app no puede listar BLE por su cuenta — solo este diálogo del sistema. Si la lista sale vacía,
+                revisa permisos Bluetooth y que la PWA esté en HTTPS.
               </p>
             </div>
             <div className="nilo-cardmed__connect-actions">
@@ -701,8 +705,8 @@ export function CardmedDevicePage() {
                 onClick={() => void handleConnectDevice()}
                 disabled={busy || !bleSupported || isBleConnecting}
               >
-                <MaterialIcon name="bluetooth" size={22} />
-                Conectar dispositivo
+                <MaterialIcon name="open_in_new" size={22} />
+                Abrir selector Bluetooth
               </button>
             </div>
           </div>
@@ -716,7 +720,7 @@ export function CardmedDevicePage() {
               <div className="nilo-cardmed__empty-state">
                 <MaterialIcon name="devices_other" size={40} />
                 <p>Aún no hay dispositivos emparejados.</p>
-                <span>Usa «Conectar dispositivo» para añadir el primero.</span>
+                <span>Usa «Abrir selector Bluetooth» para añadir el primero.</span>
               </div>
             ) : (
               <ul className="nilo-cardmed__device-list">

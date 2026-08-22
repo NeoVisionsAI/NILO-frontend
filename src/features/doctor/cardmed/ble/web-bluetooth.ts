@@ -1,14 +1,16 @@
 import { CARDMED_SERVICE_UUID } from './constants'
 
-/**
- * Filtro de descubrimiento Web Bluetooth.
- * El Pi anuncia LocalName `NiloCardmed-<uuid>`; NO incluye el UUID de servicio en advertising.
- * optionalServices es solo para GATT tras conectar, no para descubrimiento.
- */
+/** Filtro preferido cuando Chrome lo respeta (lista ya filtrada). */
 export const CARDMED_DEVICE_FILTER: BluetoothLEScanFilter = { namePrefix: 'NiloCardmed' }
 
-export const CARDMED_REQUEST_DEVICE_OPTIONS: RequestDeviceOptions = {
+export const CARDMED_FILTERED_REQUEST_OPTIONS: RequestDeviceOptions = {
   filters: [CARDMED_DEVICE_FILTER],
+  optionalServices: [CARDMED_SERVICE_UUID],
+}
+
+/** Selector del sistema sin filtro: muestra todos los BLE cercanos (como Ajustes → Bluetooth). */
+export const CARDMED_SYSTEM_PICKER_OPTIONS: RequestDeviceOptions = {
+  acceptAllDevices: true,
   optionalServices: [CARDMED_SERVICE_UUID],
 }
 
@@ -21,42 +23,43 @@ export function isCardmedDeviceName(name: string | undefined | null): boolean {
   return name.startsWith('NiloCardmed')
 }
 
-/** Abre el diálogo nativo de Chrome/Android para elegir un NiloCardmed. Requiere gesto de usuario. */
-export async function requestCardmedBleDevice(): Promise<BluetoothDevice> {
+function assertBluetoothAvailable(): Bluetooth {
   if (!isWebBluetoothSupported() || !navigator.bluetooth) {
     throw new Error('Web Bluetooth no está disponible en este navegador.')
   }
+  return navigator.bluetooth
+}
 
-  const device = await navigator.bluetooth.requestDevice(CARDMED_REQUEST_DEVICE_OPTIONS)
-
+function validateCardmedSelection(device: BluetoothDevice): BluetoothDevice {
   if (!isCardmedDeviceName(device.name)) {
     throw new Error(
-      `«${device.name ?? 'Dispositivo sin nombre'}» no es un NiloCardmed. Elige uno cuyo nombre empiece por «NiloCardmed».`,
+      `«${device.name ?? 'Dispositivo sin nombre'}» no es un NiloCardmed. En el selector elige uno cuyo nombre empiece por «NiloCardmed».`,
     )
   }
-
   return device
 }
 
 /**
- * Diagnóstico temporal: si con esto aparece el dispositivo pero no con namePrefix, el filtro era el bug.
- * Solo disponible en builds de desarrollo.
+ * Abre el selector Bluetooth del sistema (diálogo nativo de Chrome/Android).
+ * Usa acceptAllDevices para listar todos los BLE cercanos; validamos el nombre tras elegir.
+ * Requiere gesto de usuario (tap en botón).
  */
-export async function requestCardmedBleDeviceDebugAcceptAll(): Promise<BluetoothDevice> {
-  if (!import.meta.env.DEV) {
-    throw new Error('Diagnóstico BLE solo disponible en desarrollo.')
-  }
-  if (!isWebBluetoothSupported() || !navigator.bluetooth) {
-    throw new Error('Web Bluetooth no está disponible.')
-  }
-
-  return navigator.bluetooth.requestDevice({
-    acceptAllDevices: true,
-    optionalServices: [CARDMED_SERVICE_UUID],
-  })
+export async function requestCardmedBleDevice(): Promise<BluetoothDevice> {
+  const bluetooth = assertBluetoothAvailable()
+  const device = await bluetooth.requestDevice(CARDMED_SYSTEM_PICKER_OPTIONS)
+  return validateCardmedSelection(device)
 }
 
-/** Repite requestDevice (sin caché de BluetoothDevice). Mismo filtro namePrefix. */
+/**
+ * Mismo selector con filtro namePrefix (lista más corta). Si sale vacía en tu tablet, usa requestCardmedBleDevice().
+ */
+export async function requestCardmedBleDeviceFiltered(): Promise<BluetoothDevice> {
+  const bluetooth = assertBluetoothAvailable()
+  const device = await bluetooth.requestDevice(CARDMED_FILTERED_REQUEST_OPTIONS)
+  return validateCardmedSelection(device)
+}
+
+/** @deprecated Alias de requestCardmedBleDevice */
 export async function requestDeviceByBleName(_bleName: string): Promise<BluetoothDevice> {
   return requestCardmedBleDevice()
 }
@@ -68,8 +71,12 @@ export async function requestDeviceByName(name: string): Promise<BluetoothDevice
 
 export function cardmedErrorMessage(error: unknown): string {
   if (error instanceof Error) {
-    if (error.name === 'NotFoundError') return 'No se seleccionó ningún dispositivo.'
-    if (error.name === 'SecurityError') return 'Permiso Bluetooth denegado.'
+    if (error.name === 'NotFoundError') {
+      return 'No se seleccionó ningún dispositivo. Si la lista estaba vacía, comprueba Bluetooth activo y que el NiloCardmed esté encendido.'
+    }
+    if (error.name === 'SecurityError') {
+      return 'Permiso Bluetooth denegado. Usa HTTPS y concede permiso de dispositivos cercanos.'
+    }
     if (error.name === 'AbortError') return 'Selección cancelada.'
     if (error.message === 'timeout' || error.message.startsWith('timeout BLE')) {
       return 'Tiempo de espera agotado en el dispositivo.'
