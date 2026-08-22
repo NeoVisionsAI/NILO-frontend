@@ -1,36 +1,51 @@
 .cardmed-status {
   display: flex;
-  align-items: center;
-  gap: 14px;
-  flex-wrap: wrap;
-  padding: 14px 16px;
-  border-radius: 16px;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+  border-radius: 20px;
   border: 1px solid var(--m3-outline-variant);
+  box-shadow: 0 6px 24px rgba(15, 23, 42, 0.05);
 }
 
 .cardmed-status--connected {
-  background: rgba(22, 163, 74, 0.08);
+  background:
+    radial-gradient(90% 120% at 0% 0%, rgba(22, 163, 74, 0.12) 0%, transparent 60%),
+    var(--m3-surface-container-lowest);
   border-color: rgba(22, 163, 74, 0.35);
 }
 
 .cardmed-status--disconnected {
-  background: rgba(220, 38, 38, 0.08);
-  border-color: rgba(220, 38, 38, 0.3);
+  background:
+    radial-gradient(90% 120% at 0% 0%, rgba(220, 38, 38, 0.08) 0%, transparent 60%),
+    var(--m3-surface-container-lowest);
+  border-color: rgba(220, 38, 38, 0.28);
 }
 
 .cardmed-status--connecting {
-  background: rgba(217, 119, 6, 0.08);
+  background:
+    radial-gradient(90% 120% at 0% 0%, rgba(217, 119, 6, 0.1) 0%, transparent 60%),
+    var(--m3-surface-container-lowest);
   border-color: rgba(217, 119, 6, 0.35);
 }
 
+.cardmed-status__main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
 .cardmed-status__indicator {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 9999px;
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
   background: var(--m3-surface);
+  box-shadow: inset 0 0 0 1px var(--m3-outline-variant);
 }
 
 .cardmed-status__dot {
@@ -38,18 +53,25 @@
   height: 14px;
   border-radius: 9999px;
   background: #dc2626;
-  box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.2);
+  box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.18);
 }
 
 .cardmed-status--connected .cardmed-status__dot {
   background: #16a34a;
-  box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.22);
+  box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.2);
 }
 
 .cardmed-status--connecting .cardmed-status__dot {
   background: #d97706;
-  box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.22);
-  animation: cardmed-status-pulse 1.2s ease-in-out infinite;
+  box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.2);
+}
+
+.cardmed-status__ring {
+  position: absolute;
+  inset: -4px;
+  border-radius: 20px;
+  border: 2px solid rgba(217, 119, 6, 0.45);
+  animation: cardmed-status-ring 1.4s ease-out infinite;
 }
 
 .cardmed-status__text {
@@ -59,14 +81,15 @@
 
 .cardmed-status__text strong {
   display: block;
-  font-size: 14px;
+  font-size: 15px;
+  font-weight: 700;
   color: var(--m3-on-surface);
 }
 
 .cardmed-status__text p {
-  margin-top: 2px;
-  font-size: 12px;
-  line-height: 1.4;
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 1.45;
   color: var(--m3-on-surface-variant);
 }
 
@@ -82,13 +105,19 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  height: 38px;
-  padding: 0 14px;
+  height: 40px;
+  padding: 0 16px;
   border-radius: 9999px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   background: var(--m3-surface-container-high);
   color: var(--m3-on-surface-variant);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.cardmed-status__btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
 }
 
 .cardmed-status__btn--primary {
@@ -97,18 +126,34 @@
 }
 
 .cardmed-status__btn--danger {
-  background: rgba(220, 38, 38, 0.12);
+  background: rgba(220, 38, 38, 0.1);
   color: #dc2626;
 }
 
 .cardmed-status__btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.cardmed-status__spin {
+  animation: cardmed-status-spin 0.9s linear infinite;
 }
 
 @keyframes cardmed-status-pulse {
   0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.15); opacity: 0.75; }
+  50% { transform: scale(1.12); opacity: 0.8; }
+}
+
+@keyframes cardmed-status-ring {
+  0% { transform: scale(0.92); opacity: 0.55; }
+  100% { transform: scale(1.12); opacity: 0; }
+}
+
+@keyframes cardmed-status-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 @media (max-width: 640px) {

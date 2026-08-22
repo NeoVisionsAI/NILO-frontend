@@ -4,6 +4,7 @@ import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import { toast } from '@/lib/toast'
 import { ROOT_PATHS } from '@/router/paths'
 import { BleDevicePickerModal } from '../components/BleDevicePickerModal'
+import { CardmedBleProgress } from '../components/CardmedBleProgress'
 import { CardmedDeviceRegistryPanel } from '../components/CardmedDeviceRegistryPanel'
 import { CardmedDeviceStatusBar } from '../components/CardmedDeviceStatusBar'
 import { deviceDisplayLabel, formatDeviceLocation } from '../ble/device-registry'
@@ -488,6 +489,7 @@ export function CardmedDevicePage() {
     ? conn.pairedDevices.find((item) => item.id === activePairedId)
     : undefined
   const isBleConnected = conn.phase === 'connected'
+  const isBleConnecting = conn.phase === 'connecting' || conn.phase === 'authenticating'
   const showDeviceView = Boolean(activePaired)
   const visibleTabs = isBleConnected ? tabs : tabs.filter((item) => item.id === 'registry')
 
@@ -537,6 +539,13 @@ export function CardmedDevicePage() {
 
       {conn.lastError && (conn.phase === 'error' || conn.phase === 'disconnected') && (
         <div className="nilo-cardmed__alert nilo-cardmed__alert--error">{conn.lastError}</div>
+      )}
+
+      {isBleConnecting && (
+        <CardmedBleProgress
+          phase={conn.phase === 'authenticating' ? 'authenticating' : 'connecting'}
+          variant="page"
+        />
       )}
 
       {showDeviceView && activePaired ? (
@@ -757,25 +766,37 @@ export function CardmedDevicePage() {
         </>
       ) : (
         <section className="nilo-cardmed__connect">
-          <div className="nilo-cardmed__connect-actions">
-            <button type="button" className="nilo-cardmed__primary" onClick={() => void handleQuickSystemPicker()} disabled={busy || !bleSupported}>
-              <MaterialIcon name="bluetooth" size={22} />
-              Buscar NiloCardmed (rápido)
-            </button>
-            <button type="button" className="nilo-cardmed__secondary-scan" onClick={() => void handleScan()} disabled={busy || !bleSupported}>
-              <MaterialIcon name="bluetooth_searching" size={20} />
-              Escaneo en la app
-            </button>
-            <p className="nilo-cardmed__hint">
-              Recomendado: <strong>Buscar NiloCardmed (rápido)</strong> abre el selector del sistema (como Ajustes
-              Bluetooth). El escaneo en la app lista todos los BLE detectados; en algunas tablets es más lento o vacío.
-            </p>
+          <div className="nilo-cardmed__connect-hero">
+            <div className="nilo-cardmed__connect-hero-icon" aria-hidden="true">
+              <MaterialIcon name="medical_information" size={32} />
+            </div>
+            <div className="nilo-cardmed__connect-hero-copy">
+              <h2>Emparejar NiloCardmed</h2>
+              <p>Conecta un dispositivo CardMed por Bluetooth para configurarlo y monitorizarlo.</p>
+            </div>
+            <div className="nilo-cardmed__connect-actions">
+              <button type="button" className="nilo-cardmed__primary" onClick={() => void handleQuickSystemPicker()} disabled={busy || !bleSupported || isBleConnecting}>
+                <MaterialIcon name="bluetooth" size={22} />
+                Buscar NiloCardmed (rápido)
+              </button>
+              <button type="button" className="nilo-cardmed__secondary-scan" onClick={() => void handleScan()} disabled={busy || !bleSupported || isBleConnecting}>
+                <MaterialIcon name="bluetooth_searching" size={20} />
+                Escaneo en la app
+              </button>
+            </div>
           </div>
 
           <div className="nilo-cardmed__saved">
-            <h2>Dispositivos emparejados</h2>
+            <div className="nilo-cardmed__saved-header">
+              <h2>Dispositivos emparejados</h2>
+              <span className="nilo-cardmed__saved-count">{conn.pairedDevices.length}</span>
+            </div>
             {conn.pairedDevices.length === 0 ? (
-              <p className="nilo-cardmed__empty">Aún no hay dispositivos emparejados.</p>
+              <div className="nilo-cardmed__empty-state">
+                <MaterialIcon name="devices_other" size={40} />
+                <p>Aún no hay dispositivos emparejados.</p>
+                <span>Usa «Buscar NiloCardmed» para añadir el primero.</span>
+              </div>
             ) : (
               <ul className="nilo-cardmed__device-list">
                 {conn.pairedDevices.map((item) => {
@@ -829,35 +850,44 @@ export function CardmedDevicePage() {
       {passwordTarget && (
         <div className="nilo-cardmed__modal-backdrop nilo-cardmed__modal-backdrop--visible">
           <form className="nilo-cardmed__modal nilo-cardmed__modal--visible" onSubmit={(e) => void submitPassword(e)}>
-            <div className="nilo-cardmed__modal-icon">
-              <MaterialIcon name="lock" size={26} />
-            </div>
-            <h2>Contraseña del dispositivo</h2>
-            <p>
-              {passwordTarget.kind === 'saved' && passwordTarget.saved
-                ? `Conectar con «${deviceDisplayLabel(passwordTarget.saved)}»`
-                : 'Introduce la contraseña BLE del NiloCardmed seleccionado. Se guardará el emparejamiento.'}
-            </p>
-            <label className="nilo-cardmed__modal-field">
-              Contraseña
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoFocus
-                autoComplete="off"
-                placeholder="Contraseña BLE"
+            {isBleConnecting ? (
+              <CardmedBleProgress
+                phase={conn.phase === 'authenticating' ? 'authenticating' : 'connecting'}
+                variant="modal"
               />
-            </label>
-            <div className="nilo-cardmed__modal-actions">
-              <button type="button" className="nilo-cardmed__modal-cancel" onClick={() => setPasswordTarget(null)}>
-                Cancelar
-              </button>
-              <button type="submit" className="nilo-cardmed__primary" disabled={busy || !password.trim()}>
-                <MaterialIcon name="bluetooth_connected" size={18} />
-                Conectar
-              </button>
-            </div>
+            ) : (
+              <>
+                <div className="nilo-cardmed__modal-icon">
+                  <MaterialIcon name="lock" size={26} />
+                </div>
+                <h2>Contraseña del dispositivo</h2>
+                <p>
+                  {passwordTarget.kind === 'saved' && passwordTarget.saved
+                    ? `Conectar con «${deviceDisplayLabel(passwordTarget.saved)}»`
+                    : 'Introduce la contraseña BLE del NiloCardmed seleccionado. Se guardará el emparejamiento.'}
+                </p>
+                <label className="nilo-cardmed__modal-field">
+                  Contraseña
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoFocus
+                    autoComplete="off"
+                    placeholder="Contraseña BLE"
+                  />
+                </label>
+                <div className="nilo-cardmed__modal-actions">
+                  <button type="button" className="nilo-cardmed__modal-cancel" onClick={() => setPasswordTarget(null)}>
+                    Cancelar
+                  </button>
+                  <button type="submit" className="nilo-cardmed__primary" disabled={busy || !password.trim()}>
+                    <MaterialIcon name="bluetooth_connected" size={18} />
+                    Conectar
+                  </button>
+                </div>
+              </>
+            )}
           </form>
         </div>
       )}

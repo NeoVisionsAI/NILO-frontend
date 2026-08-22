@@ -1,5 +1,6 @@
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import type { CardmedConnectionPhase } from '../ble/types'
+import { CardmedBleProgress } from './CardmedBleProgress'
 import './CardmedDeviceStatusBar.css'
 
 interface CardmedDeviceStatusBarProps {
@@ -65,43 +66,50 @@ export function CardmedDeviceStatusBar({
       : 'Conectar'
 
   return (
-    <div className={`cardmed-status ${statusClass}`} role="status" aria-live="polite">
-      <div className="cardmed-status__indicator" aria-hidden="true">
-        <span className="cardmed-status__dot" />
-      </div>
+    <div className={`cardmed-status ${statusClass}`}>
+      <div className="cardmed-status__main" role="status" aria-live="polite">
+        <div className="cardmed-status__indicator" aria-hidden="true">
+          <span className="cardmed-status__dot" />
+          {isConnecting && <span className="cardmed-status__ring" />}
+        </div>
 
-      <div className="cardmed-status__text">
-        <strong>{statusLabel}</strong>
-        <p>{statusDetail}</p>
-      </div>
+        <div className="cardmed-status__text">
+          <strong>{statusLabel}</strong>
+          <p>{statusDetail}</p>
+        </div>
 
-      <div className="cardmed-status__actions">
-        {isConnected ? (
-          <button type="button" className="cardmed-status__btn" onClick={onDisconnect} disabled={busy || Boolean(blockingCommand)}>
-            <MaterialIcon name="bluetooth_disabled" size={18} />
-            Desconectar
-          </button>
-        ) : (
+        <div className="cardmed-status__actions">
+          {isConnected ? (
+            <button type="button" className="cardmed-status__btn" onClick={onDisconnect} disabled={busy || Boolean(blockingCommand)}>
+              <MaterialIcon name="bluetooth_disabled" size={18} />
+              Desconectar
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="cardmed-status__btn cardmed-status__btn--primary"
+              onClick={connectHandler}
+              disabled={busy || !bleSupported || isConnecting}
+            >
+              <MaterialIcon name={isConnecting ? 'sync' : 'bluetooth_connected'} size={18} className={isConnecting ? 'cardmed-status__spin' : undefined} />
+              {connectLabel}
+            </button>
+          )}
           <button
             type="button"
-            className="cardmed-status__btn cardmed-status__btn--primary"
-            onClick={connectHandler}
-            disabled={busy || !bleSupported || isConnecting}
+            className="cardmed-status__btn cardmed-status__btn--danger"
+            onClick={onUnpair}
+            disabled={busy || isConnecting}
           >
-            <MaterialIcon name={isConnecting ? 'sync' : 'bluetooth_connected'} size={18} />
-            {connectLabel}
+            <MaterialIcon name="link_off" size={18} />
+            Desemparejar
           </button>
-        )}
-        <button
-          type="button"
-          className="cardmed-status__btn cardmed-status__btn--danger"
-          onClick={onUnpair}
-          disabled={busy || isConnecting}
-        >
-          <MaterialIcon name="link_off" size={18} />
-          Desemparejar
-        </button>
+        </div>
       </div>
+
+      {isConnecting && (
+        <CardmedBleProgress phase={phase === 'authenticating' ? 'authenticating' : 'connecting'} variant="compact" />
+      )}
     </div>
   )
 }
