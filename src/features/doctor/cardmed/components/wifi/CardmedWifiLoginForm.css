@@ -1,0 +1,108 @@
+.wifi-login {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 28px 24px;
+  border-radius: 24px;
+  border: 1px solid var(--m3-outline-variant);
+  background: var(--m3-surface-container-lowest);
+}
+
+.wifi-login__intro {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  margin-bottom: 22px;
+}
+
+.wifi-login__intro h2 {
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.wifi-login__intro p {
+  margin-top: 4px;
+  font-size: 14px;
+  color: var(--m3-on-surface);
+}
+
+.wifi-login__hint {
+  display: block;
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--m3-on-surface-variant);
+}
+
+.wifi-login__form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.wifi-login__label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--m3-on-surface-variant);
+}
+
+.wifi-login__row {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.wifi-login__input-wrap {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--m3-outline-variant);
+  border-radius: 12px;
+  background: var(--m3-surface);
+  overflow: hidden;
+}
+
+.wifi-login__input-wrap input {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  padding: 0 12px;
+  border: none;
+  background: transparent;
+  font-size: 15px;
+}
+
+.wifi-login__input-wrap input:focus {
+  outline: none;
+}
+
+.wifi-login__toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  color: var(--m3-on-surface-variant);
+}
+
+.wifi-login__submit {
+  flex-shrink: 0;
+  height: 44px;
+  padding: 0 20px;
+}
+
+.wifi-login__error {
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #dc2626;
+}
+
+@media (max-width: 720px) {
+  .wifi-login__row {
+    flex-direction: column;
+  }
+
+  .wifi-login__submit {
+    width: 100%;
+  }
+}

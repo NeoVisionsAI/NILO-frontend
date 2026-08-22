@@ -6,6 +6,7 @@ import {
   NiloCardmedWifiClient,
   type CardmedWifiStatus,
 } from '../wifi/NiloCardmedWifiClient'
+import type { CardmedDashboard } from '../wifi/types'
 import { cardmedWifiErrorMessage } from '../wifi/wifi-errors'
 
 export type CardmedWifiPhase =
@@ -124,6 +125,18 @@ export function useCardmedWifiConnection() {
     setPhase('idle')
   }, [])
 
+  const fetchDashboard = useCallback(async (): Promise<CardmedDashboard> => {
+    try {
+      return await clientRef.current.fetchDashboard()
+    } catch (err) {
+      const message = cardmedWifiErrorMessage(err)
+      setLastError(message)
+      throw new Error(message)
+    }
+  }, [])
+
+  const clearError = useCallback(() => setLastError(null), [])
+
   return {
     phase,
     deviceStatus,
@@ -133,8 +146,10 @@ export function useCardmedWifiConnection() {
     checkConnection,
     authenticate,
     runCommand,
+    fetchDashboard,
     disconnect,
     resetUnreachable,
+    clearError,
     isAuthenticated: phase === 'authenticated',
     isReachable: phase === 'connected' || phase === 'authenticating' || phase === 'authenticated',
   }

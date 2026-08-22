@@ -5,6 +5,7 @@ export const CARDMED_BLOCKING_COMMANDS = new Set([
   'camera_capture_test',
   'camera_capture_chunk',
   'cardmed_test',
+  'cardmed_scan_qr',
 ])
 
 export function isGattFailure(error: unknown): boolean {

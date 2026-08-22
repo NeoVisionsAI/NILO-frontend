@@ -1,0 +1,154 @@
+.wifi-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.wifi-stat-card {
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--m3-outline-variant);
+  background: var(--m3-surface);
+}
+
+.wifi-stat-card__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  color: var(--m3-primary);
+}
+
+.wifi-stat-card__head h3 {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--m3-on-surface);
+}
+
+.wifi-stat-card__body p {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--m3-on-surface-variant);
+}
+
+.wifi-stat-card__body p strong {
+  color: var(--m3-on-surface);
+}
+
+.wifi-stat-card__mono {
+  font-family: ui-monospace, monospace;
+  font-size: 11px !important;
+  word-break: break-all;
+}
+
+.wifi-status-tab__toolbar,
+.wifi-config-tab__toolbar,
+.wifi-camera-tab__toolbar,
+.wifi-cardmed-tab__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.wifi-status-tab__meta {
+  font-size: 12px;
+  color: var(--m3-on-surface-variant);
+}
+
+.wifi-config-tab__grid {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) minmax(140px, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.wifi-config-tab__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.wifi-config-tab__field span {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--m3-on-surface-variant);
+}
+
+.wifi-config-tab__field input,
+.wifi-config-tab__field select,
+.wifi-config-tab__field textarea {
+  height: 40px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid var(--m3-outline-variant);
+  background: var(--m3-surface);
+  font-size: 14px;
+}
+
+.wifi-config-tab__field textarea {
+  height: auto;
+  padding: 10px;
+  resize: vertical;
+}
+
+.wifi-config-tab__field--wide {
+  grid-column: 1 / -1;
+}
+
+.wifi-config-tab__connect {
+  height: 40px;
+  padding: 0 16px;
+}
+
+.wifi-camera-tab__saved {
+  margin: 8px 0 12px;
+  font-size: 13px;
+  color: var(--m3-on-surface-variant);
+}
+
+.wifi-camera-tab__preview {
+  margin-top: 12px;
+}
+
+.wifi-cardmed-tab__block {
+  margin-bottom: 14px;
+}
+
+.wifi-cardmed-tab__row {
+  display: flex;
+  gap: 8px;
+}
+
+.wifi-cardmed-tab__row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.wifi-cardmed-tab__steps {
+  margin-top: 16px;
+}
+
+.wifi-cardmed-tab__steps h3 {
+  font-size: 15px;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.wifi-cardmed-tab__steps ol {
+  margin: 0 0 12px 18px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.wifi-cardmed-tab__steps li[data-ok='false'] {
+  color: #dc2626;
+}
+
+@media (max-width: 720px) {
+  .wifi-config-tab__grid {
+    grid-template-columns: 1fr;
+  }
+}

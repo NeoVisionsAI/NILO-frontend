@@ -1,5 +1,6 @@
 import type { CardmedAuthData, CardmedResponse } from '../ble/types'
 import { CARDMED_WIFI_API_BASE, CARDMED_WIFI_TIMEOUTS, timeoutForWifiCommand } from './constants'
+import type { CardmedDashboard } from './types'
 
 export interface CardmedWifiStatus {
   status: 'ok'
@@ -92,5 +93,11 @@ export class NiloCardmedWifiClient {
     if (!authData?.token) throw new Error('Auth sin token en la respuesta.')
     this.token = authData.token
     return authData
+  }
+
+  async fetchDashboard(timeoutMs = CARDMED_WIFI_TIMEOUTS.status): Promise<CardmedDashboard> {
+    const res = await fetchWithTimeout(`${this.baseUrl}/api/dashboard`, { method: 'GET' }, timeoutMs)
+    if (!res.ok) throw new Error(`No se pudo cargar el panel de estado (${res.status}).`)
+    return (await res.json()) as CardmedDashboard
   }
 }
