@@ -128,7 +128,6 @@ export async function requestCardmedBleDeviceWithMode(
   return mode === 'acceptAll' ? requestCardmedBleDeviceAcceptAll() : requestCardmedBleDevice(knownBleNames)
 }
 
-/** Reconexión: filtro por nombre exacto del emparejado (suele funcionar en tablet cuando namePrefix falla). */
 export async function requestCardmedBleDeviceByExactName(bleName: string): Promise<BluetoothDevice> {
   if (!isCardmedDeviceName(bleName)) {
     return requestCardmedBleDevice()
@@ -137,16 +136,65 @@ export async function requestCardmedBleDeviceByExactName(bleName: string): Promi
   const bluetooth = assertBluetoothAvailable()
   await warmUpBluetoothStack()
 
-  const device = await bluetooth.requestDevice({
-    filters: [{ name: bleName }],
-    optionalServices: OPTIONAL_SERVICES,
-  })
+  const device = await withPickerTimeout(
+    bluetooth.requestDevice({
+      // OR: nombre exacto + namePrefix por si el tablet no matchea { name } solo
+      filters: [{ name: bleName }, CARDMED_DEVICE_FILTER],
+      optionalServices: OPTIONAL_SERVICES,
+    }),
+    90_000,
+    'Selección Bluetooth',
+  )
 
   if (device.name && !isCardmedDeviceName(device.name)) {
     throw new Error(`Selecciona «${bleName}» en el selector.`)
   }
 
+  if (!device.gatt) {
+    throw new Error('El dispositivo seleccionado no expone GATT. Prueba otro o reinicia Bluetooth del tablet.')
+  }
+
   return device
+}
+
+/** Android a veces tarda en terminar el emparejamiento del sistema antes de GATT. */
+export async function prepareDeviceForGattConnect(device: BluetoothDevice): Promise<void> {
+  const gatt = device.gatt
+  if (!gatt) {
+    throw new Error('GATT no disponible en el dispositivo seleccionado.')
+  }
+  if (gatt.connected) {
+    gatt.disconnect()
+    await delay(800)
+  }
+  // Breve pausa tras el picker: el SO puede estar cerrando el diálogo de emparejamiento
+  await delay(1200)
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms))
+}
+
+function withPickerTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => {
+      reject(
+        new Error(
+          `${label}: tiempo agotado (${Math.round(ms / 1000)} s). Completa el diálogo del sistema o cancela e inténtalo de nuevo.`,
+        ),
+      )
+    }, ms)
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer)
+        resolve(value)
+      },
+      (error) => {
+        window.clearTimeout(timer)
+        reject(error)
+      },
+    )
+  })
 }
 
 export async function requestDeviceByBleName(bleName: string): Promise<BluetoothDevice> {

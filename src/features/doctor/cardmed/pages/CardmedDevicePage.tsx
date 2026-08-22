@@ -29,6 +29,7 @@ interface PasswordTarget {
   kind: 'scan' | 'saved'
   device?: BluetoothDevice
   saved?: SavedCardmedDevice
+  expectedBleName?: string
 }
 
 function JsonBlock({ data }: { data: unknown }) {
@@ -69,6 +70,7 @@ export function CardmedDevicePage() {
 
   const [activePairedId, setActivePairedId] = useState<string | null>(null)
   const [bleSuffix, setBleSuffix] = useState('')
+  const [pickerPending, setPickerPending] = useState(false)
   const dashboardLoadedRef = useRef(false)
 
   const bleSupported = useMemo(() => isWebBluetoothSupported(), [])
@@ -144,15 +146,20 @@ export function CardmedDevicePage() {
     return conn.pairedDevices.map((item) => item.bleName)
   }
 
-  function openPasswordForDevice(device: BluetoothDevice, label?: string, unnamed = false) {
-    setPasswordTarget({ kind: 'scan', device })
+  function openPasswordForDevice(
+    device: BluetoothDevice,
+    label?: string,
+    unnamed = false,
+    expectedBleName?: string,
+  ) {
+    setPasswordTarget({ kind: 'scan', device, expectedBleName })
     setPassword('')
     if (unnamed || !device.name) {
       toast.info(
-        'Dispositivo sin nombre en el selector. Si es tu NiloCardmed, introduce la contraseña — se validará al conectar.',
+        `Dispositivo seleccionado${expectedBleName ? ` (${expectedBleName})` : ''}. Introduce la contraseña BLE del Pi.`,
       )
     } else {
-      toast.success(`«${label ?? device.name}» seleccionado. Introduce la contraseña.`)
+      toast.success(`«${label ?? device.name}» seleccionado. Introduce la contraseña BLE.`)
     }
   }
 
@@ -166,11 +173,14 @@ export function CardmedDevicePage() {
     const bleName = formatCardmedBleNameFromSuffix(bleSuffix)
 
     void (async () => {
+      setPickerPending(true)
       try {
         const device = await requestCardmedBleDeviceByExactName(bleName)
-        openPasswordForDevice(device, bleName)
+        openPasswordForDevice(device, bleName, !device.name, bleName)
       } catch (err) {
         toast.error(cardmedErrorMessage(err))
+      } finally {
+        setPickerPending(false)
       }
     })()
   }
@@ -898,6 +908,19 @@ export function CardmedDevicePage() {
         </section>
       )}
 
+      {pickerPending && (
+        <div className="nilo-cardmed__picker-wait" role="status" aria-live="polite">
+          <MaterialIcon name="bluetooth_searching" size={28} />
+          <div>
+            <strong>Esperando selector Bluetooth…</strong>
+            <p>
+              Elige <code>{formatCardmedBleNameFromSuffix(bleSuffix)}</code> en el diálogo de Chrome.
+              Si Android muestra «Emparejando», espera a que termine — después pediremos la contraseña BLE.
+            </p>
+          </div>
+        </div>
+      )}
+
       {passwordTarget && (
         <div className="nilo-cardmed__modal-backdrop nilo-cardmed__modal-backdrop--visible">
           <form className="nilo-cardmed__modal nilo-cardmed__modal--visible" onSubmit={(e) => void submitPassword(e)}>
@@ -913,10 +936,17 @@ export function CardmedDevicePage() {
                 </div>
                 <h2>Contraseña del dispositivo</h2>
                 <p>
-                  {passwordTarget.kind === 'saved' && passwordTarget.saved
-                    ? `Conectar con «${deviceDisplayLabel(passwordTarget.saved)}»`
-                    : 'Introduce la contraseña BLE del NiloCardmed seleccionado. Se guardará el emparejamiento.'}
+                  {passwordTarget.expectedBleName
+                    ? `Conectar con «${passwordTarget.expectedBleName}»`
+                    : passwordTarget.kind === 'saved' && passwordTarget.saved
+                      ? `Conectar con «${deviceDisplayLabel(passwordTarget.saved)}»`
+                      : 'Introduce la contraseña BLE del NiloCardmed seleccionado.'}
                 </p>
+                {(conn.phase === 'error' || conn.phase === 'disconnected') && conn.lastError && (
+                  <div className="nilo-cardmed__alert nilo-cardmed__alert--error nilo-cardmed__modal-error">
+                    {conn.lastError}
+                  </div>
+                )}
                 <label className="nilo-cardmed__modal-field">
                   Contraseña
                   <input

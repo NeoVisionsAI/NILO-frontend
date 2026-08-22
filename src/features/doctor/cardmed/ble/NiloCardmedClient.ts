@@ -2,6 +2,7 @@ import { BleGattQueue } from './BleGattQueue'
 import { BleResponseAssembler } from './BleResponseAssembler'
 import { CARDMED_RX_UUID, CARDMED_SERVICE_UUID, CARDMED_TIMEOUTS, CARDMED_TX_UUID, timeoutForCommand } from './constants'
 import type { CardmedAuthData, CardmedResponse } from './types'
+import { prepareDeviceForGattConnect } from './web-bluetooth'
 
 type ResponseHandler = (response: CardmedResponse) => void
 
@@ -176,18 +177,42 @@ export async function connectGatt(device: BluetoothDevice): Promise<{
   tx: BluetoothRemoteGATTCharacteristic
   client: NiloCardmedClient
 }> {
+  await prepareDeviceForGattConnect(device)
+
   const gatt = device.gatt
   if (!gatt) {
     throw new Error('GATT no disponible en el dispositivo seleccionado.')
   }
 
-  const server = await withBleTimeout(gatt.connect(), CARDMED_TIMEOUTS.gattConnect, 'gatt.connect()')
-  const service = await server.getPrimaryService(CARDMED_SERVICE_UUID)
-  const rx = await service.getCharacteristic(CARDMED_RX_UUID)
-  const tx = await service.getCharacteristic(CARDMED_TX_UUID)
+  let lastError: unknown
+  const attempts = 3
 
-  const client = new NiloCardmedClient(rx, tx)
-  await client.startNotifications()
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      const server = await withBleTimeout(
+        gatt.connect(),
+        CARDMED_TIMEOUTS.gattConnect,
+        `gatt.connect() intento ${attempt}/${attempts}`,
+      )
+      const service = await server.getPrimaryService(CARDMED_SERVICE_UUID)
+      const rx = await service.getCharacteristic(CARDMED_RX_UUID)
+      const tx = await service.getCharacteristic(CARDMED_TX_UUID)
 
-  return { server, rx, tx, client }
+      const client = new NiloCardmedClient(rx, tx)
+      await client.startNotifications()
+
+      return { server, rx, tx, client }
+    } catch (err) {
+      lastError = err
+      if (gatt.connected) gatt.disconnect()
+      if (attempt < attempts) {
+        await new Promise((resolve) => window.setTimeout(resolve, 1500 * attempt))
+        await prepareDeviceForGattConnect(device)
+      }
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error('No se pudo conectar por GATT tras varios intentos.')
 }

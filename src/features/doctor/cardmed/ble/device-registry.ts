@@ -44,6 +44,11 @@ export function getPairedDevice(deviceId: string): SavedCardmedDevice | undefine
   return loadPairedDevices().find((item) => item.id === deviceId)
 }
 
+export function getPairedDeviceByBleName(bleName: string): SavedCardmedDevice | undefined {
+  const normalized = bleName.trim().toLowerCase()
+  return loadPairedDevices().find((item) => item.bleName.trim().toLowerCase() === normalized)
+}
+
 export function pairDevice(input: {
   id: string
   bleName: string
@@ -51,7 +56,9 @@ export function pairDevice(input: {
   displayName?: string
   location?: CardmedDeviceLocation
 }) {
-  const existing = getPairedDevice(input.id)
+  const existingById = getPairedDevice(input.id)
+  const existingByName = getPairedDeviceByBleName(input.bleName)
+  const existing = existingById ?? existingByName
   const entry: SavedCardmedDevice = {
     id: input.id,
     bleName: input.bleName,
@@ -62,7 +69,10 @@ export function pairDevice(input: {
     location: input.location ?? existing?.location,
   }
 
-  const list = loadPairedDevices().filter((item) => item.id !== input.id)
+  const normalizedBleName = input.bleName.trim().toLowerCase()
+  const list = loadPairedDevices().filter(
+    (item) => item.id !== input.id && item.bleName.trim().toLowerCase() !== normalizedBleName,
+  )
   list.unshift(entry)
   persistDevices(list)
   return entry

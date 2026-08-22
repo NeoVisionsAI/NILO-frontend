@@ -230,7 +230,9 @@ export function useCardmedConnection() {
         throw new Error('PICKER_REQUIRED')
       }
 
-      if (device.id !== saved.id) {
+      const sameBleName =
+        device.name?.trim().toLowerCase() === saved.bleName.trim().toLowerCase()
+      if (device.id !== saved.id && !sameBleName) {
         throw new Error(
           `Seleccionaste «${device.name ?? device.id}», no «${saved.bleName}».`,
         )

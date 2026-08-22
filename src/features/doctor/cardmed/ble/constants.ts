@@ -7,7 +7,7 @@ export const CARDMED_STORAGE_KEY = 'nilo.cardmed.saved-devices'
 /** Timeouts mínimos recomendados por tipo de operación BLE. */
 export const CARDMED_TIMEOUTS = {
   /** gatt.connect() en tablet Android (primera conexión). */
-  gattConnect: 30_000,
+  gattConnect: 60_000,
   /** auth y comandos normales. */
   default: 30_000,
   auth: 30_000,
