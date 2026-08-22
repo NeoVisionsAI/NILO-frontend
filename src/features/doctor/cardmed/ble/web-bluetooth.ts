@@ -30,6 +30,40 @@ export function isCardmedDeviceName(name: string | undefined | null): boolean {
   return name.startsWith('NiloCardmed')
 }
 
+export const CARDMED_BLE_NAME_PREFIX = 'NiloCardmed-'
+
+/** Quita el prefijo si el usuario pega el nombre completo. */
+export function normalizeCardmedBleSuffix(input: string): string {
+  return input.trim().replace(/^NiloCardmed-?/i, '')
+}
+
+export function formatCardmedBleNameFromSuffix(suffix: string): string {
+  const normalized = normalizeCardmedBleSuffix(suffix)
+  if (!normalized) return ''
+  return `${CARDMED_BLE_NAME_PREFIX}${normalized}`
+}
+
+export function isValidCardmedBleSuffix(suffix: string): boolean {
+  const normalized = normalizeCardmedBleSuffix(suffix)
+  return /^[a-f0-9-]+$/i.test(normalized) && normalized.length >= 4
+}
+
+/** @deprecated Usar formatCardmedBleNameFromSuffix */
+export function normalizeCardmedBleName(input: string): string {
+  return formatCardmedBleNameFromSuffix(input)
+}
+
+/** Intenta abrir Ajustes → Bluetooth en Android (solo precalentar escaneo; no emparejar). */
+export function tryOpenAndroidBluetoothSettings(): void {
+  const intent = 'intent:#Intent;action=android.settings.BLUETOOTH_SETTINGS;end'
+  const anchor = document.createElement('a')
+  anchor.href = intent
+  anchor.style.display = 'none'
+  document.body.appendChild(anchor)
+  anchor.click()
+  anchor.remove()
+}
+
 export function formatBleDeviceLabel(device: BluetoothDevice): string {
   if (device.name?.trim()) return device.name.trim()
   const shortId = device.id.length > 14 ? `${device.id.slice(0, 14)}…` : device.id
@@ -128,8 +162,7 @@ export function cardmedErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     if (error.name === 'NotFoundError') {
       return (
-        'No apareció ningún NiloCardmed. En tablet prueba «Modo tablet (sin filtro)» o conecta desde un dispositivo ya emparejado abajo. ' +
-        'Usa Chrome (no WebView), HTTPS y permiso «Dispositivos cercanos». No emparejes el Pi en Ajustes del tablet.'
+        'No apareció ese NiloCardmed. Comprueba el ID (p. ej. d212bd98), abre Bluetooth del sistema unos segundos y vuelve a intentar. No emparejes el Pi en Ajustes.'
       )
     }
     if (error.name === 'SecurityError') {

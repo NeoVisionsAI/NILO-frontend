@@ -11,10 +11,14 @@ import { blobToObjectUrl, chunksToBlob } from '../ble/camera-utils'
 import type { CameraDevice, SavedCardmedDevice, WifiNetwork } from '../ble/types'
 import {
   cardmedErrorMessage,
+  formatCardmedBleNameFromSuffix,
+  isValidCardmedBleSuffix,
   isWebBluetoothSupported,
+  normalizeCardmedBleSuffix,
   requestCardmedBleDevice,
   requestCardmedBleDeviceAcceptAll,
   requestCardmedBleDeviceByExactName,
+  tryOpenAndroidBluetoothSettings,
 } from '../ble/web-bluetooth'
 import { useCardmedConnection } from '../hooks/useCardmedConnection'
 import './CardmedDevicePage.css'
@@ -64,6 +68,7 @@ export function CardmedDevicePage() {
   const [monitorEnd, setMonitorEnd] = useState('-1')
 
   const [activePairedId, setActivePairedId] = useState<string | null>(null)
+  const [bleSuffix, setBleSuffix] = useState('')
   const dashboardLoadedRef = useRef(false)
 
   const bleSupported = useMemo(() => isWebBluetoothSupported(), [])
@@ -151,6 +156,25 @@ export function CardmedDevicePage() {
     }
   }
 
+  /** Filtro por nombre exacto: en tablet suele mostrar solo ese dispositivo (o vacío). */
+  function handleConnectByExactName() {
+    if (!isValidCardmedBleSuffix(bleSuffix)) {
+      toast.error('Introduce el ID del Pi, p. ej. d212bd98 (lo ves en los logs de la Raspberry).')
+      return
+    }
+
+    const bleName = formatCardmedBleNameFromSuffix(bleSuffix)
+
+    void (async () => {
+      try {
+        const device = await requestCardmedBleDeviceByExactName(bleName)
+        openPasswordForDevice(device, bleName)
+      } catch (err) {
+        toast.error(cardmedErrorMessage(err))
+      }
+    })()
+  }
+
   /** requestDevice() en el mismo gesto del tap (Chrome/Android). */
   function handleConnectDevice(mode: 'filtered' | 'acceptAll' = 'filtered') {
     void (async () => {
@@ -164,6 +188,14 @@ export function CardmedDevicePage() {
         toast.error(cardmedErrorMessage(err))
       }
     })()
+  }
+
+  function handleWakeBluetoothScan() {
+    tryOpenAndroidBluetoothSettings()
+    toast.info(
+      'Abre la lista Bluetooth del sistema unos segundos (no emparejes el Pi), vuelve a Chrome y usa «Conectar por nombre» con el nombre exacto.',
+      8000,
+    )
   }
 
   /** Emparejado conocido: filtro por nombre exacto (mejor en tablet). */
@@ -728,14 +760,16 @@ export function CardmedDevicePage() {
             <div className="nilo-cardmed__connect-hero-copy">
               <h2>Emparejar NiloCardmed</h2>
               <p>
-                Pulsa <strong>Conectar NiloCardmed</strong> y elige tu dispositivo en el diálogo de Chrome.
-                Si ya emparejaste antes, usa <strong>Conectar</strong> en la lista de abajo (filtro por nombre exacto).
+                Chrome <strong>no permite</strong> listar dispositivos BLE como nRF Connect: solo un diálogo del
+                sistema con filtros. Por eso no hay escáner propio en la app.
               </p>
               <p className="nilo-cardmed__connect-note">
-                <strong>Tablet:</strong> si no aparece en el selector, prueba <strong>Modo tablet (sin filtro)</strong>
-                y elige el dispositivo «desconocido» más cercano al Pi; la contraseña BLE confirma que es el correcto.
-                Usa Chrome (pestaña del navegador, no WebView), HTTPS y permiso «Dispositivos cercanos».
-                <strong> No emparejes</strong> el Pi en Ajustes del tablet; si ya lo hiciste, olvídalo allí.
+                <strong>En tablet (recomendado):</strong> escribe solo el ID del Pi
+                (<code>d212bd98</code>, visible en logs como <code>LocalName=&apos;NiloCardmed-d212bd98&apos;</code>)
+                y pulsa <strong>Conectar por nombre</strong>.
+                <br />
+                <strong>No uses Ajustes → Bluetooth para emparejar</strong> el Pi: rompe la conexión GATT de la app.
+                Si abres Ajustes, es solo para «despertar» el escaneo del sistema unos segundos y volver.
               </p>
             </div>
             <div className="nilo-cardmed__connect-actions">
@@ -751,13 +785,58 @@ export function CardmedDevicePage() {
               <button
                 type="button"
                 className="nilo-cardmed__secondary-scan"
+                onClick={handleWakeBluetoothScan}
+                disabled={!bleSupported}
+              >
+                <MaterialIcon name="settings" size={20} />
+                Abrir Bluetooth del sistema
+              </button>
+            </div>
+          </div>
+
+          <div className="nilo-cardmed__connect-by-name">
+            <h3>Conectar por ID del dispositivo</h3>
+            <p>
+              Escribe solo la parte final del nombre BLE (después de <code>NiloCardmed-</code>).
+              Si pegas el nombre completo, se ajusta solo.
+            </p>
+            <div className="nilo-cardmed__connect-by-name-row">
+              <label className="nilo-cardmed__field nilo-cardmed__connect-by-name-field">
+                ID del dispositivo
+                <div className="nilo-cardmed__ble-name-input">
+                  <span className="nilo-cardmed__ble-name-prefix">NiloCardmed-</span>
+                  <input
+                    type="text"
+                    value={bleSuffix}
+                    onChange={(e) => setBleSuffix(normalizeCardmedBleSuffix(e.target.value))}
+                    placeholder="d212bd98"
+                    autoComplete="off"
+                    spellCheck={false}
+                    inputMode="text"
+                  />
+                </div>
+              </label>
+              <button
+                type="button"
+                className="nilo-cardmed__primary"
+                onClick={handleConnectByExactName}
+                disabled={busy || !bleSupported || isBleConnecting || !isValidCardmedBleSuffix(bleSuffix)}
+              >
+                Conectar por nombre
+              </button>
+            </div>
+            <details className="nilo-cardmed__connect-advanced">
+              <summary>Otras opciones (último recurso)</summary>
+              <button
+                type="button"
+                className="nilo-cardmed__secondary-scan"
                 onClick={() => handleConnectDevice('acceptAll')}
                 disabled={busy || !bleSupported || isBleConnecting}
               >
                 <MaterialIcon name="bluetooth_searching" size={20} />
-                Modo tablet (sin filtro)
+                Modo sin filtro (muchos «desconocidos»)
               </button>
-            </div>
+            </details>
           </div>
 
           <div className="nilo-cardmed__saved">
