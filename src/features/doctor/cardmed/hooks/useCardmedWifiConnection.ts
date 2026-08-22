@@ -127,7 +127,7 @@ export function useCardmedWifiConnection() {
 
   const fetchDashboard = useCallback(async (): Promise<CardmedDashboard> => {
     try {
-      return await clientRef.current.fetchDashboard()
+      return await clientRef.current.fetchDashboardWithFallback()
     } catch (err) {
       const message = cardmedWifiErrorMessage(err)
       setLastError(message)

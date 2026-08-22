@@ -5,11 +5,13 @@ export const CARDMED_WIFI_API_BASE =
 export const CARDMED_WIFI_AP_PREFIX = 'Nilocardmed-Config-'
 
 export const CARDMED_WIFI_TIMEOUTS = {
-  status: 8_000,
+  status: 10_000,
+  dashboard: 10_000,
   command: 30_000,
   auth: 30_000,
   wifiScan: 60_000,
   wifiConnect: 90_000,
+  wifiScanMinUiMs: 4_000,
 } as const
 
 export function timeoutForWifiCommand(cmd: string): number {

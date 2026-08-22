@@ -31,8 +31,26 @@
   color: var(--m3-on-surface-variant);
 }
 
+.wifi-stat-card__label {
+  color: var(--m3-on-surface-variant);
+  font-weight: 500;
+}
+
 .wifi-stat-card__body p strong {
   color: var(--m3-on-surface);
+}
+
+.wifi-stat-card--muted {
+  opacity: 0.88;
+}
+
+.wifi-stat-grid--loading {
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.wifi-status-tab__hint {
+  margin-bottom: 12px;
 }
 
 .wifi-stat-card__mono {
@@ -55,6 +73,10 @@
 .wifi-status-tab__meta {
   font-size: 12px;
   color: var(--m3-on-surface-variant);
+}
+
+.wifi-status-tab__error {
+  margin-bottom: 12px;
 }
 
 .wifi-config-tab__grid {

@@ -5,6 +5,8 @@ import './CardmedWifiWifiTab.css'
 interface CardmedWifiWifiTabProps {
   busy: boolean
   scanning: boolean
+  scanPending: boolean
+  scanMode: string | null
   networks: WifiNetwork[]
   selectedSsid: string
   wifiPassword: string
@@ -18,6 +20,8 @@ interface CardmedWifiWifiTabProps {
 export function CardmedWifiWifiTab({
   busy,
   scanning,
+  scanPending,
+  scanMode,
   networks,
   selectedSsid,
   wifiPassword,
@@ -27,14 +31,26 @@ export function CardmedWifiWifiTab({
   onPasswordChange,
   onConnect,
 }: CardmedWifiWifiTabProps) {
+  const scanActive = scanning || scanPending
+  const showEmpty = !scanActive && networks.length === 0
+
   return (
     <div className="wifi-config-tab">
       <div className="wifi-config-tab__toolbar">
-        <button type="button" onClick={onScan} disabled={busy || scanning}>
+        <button type="button" onClick={onScan} disabled={busy || scanActive}>
           <MaterialIcon name="wifi_find" size={18} />
-          {scanning ? 'Escaneando…' : 'Escanear redes'}
+          {scanActive ? 'Escaneando…' : 'Escanear redes'}
         </button>
+        {scanMode && <span className="wifi-status-tab__meta">{scanMode}</span>}
       </div>
+
+      {scanActive && (
+        <p className="nilo-cardmed__hint">El rescan en el Pi puede tardar unos segundos. Espera antes de concluir que no hay redes.</p>
+      )}
+
+      {showEmpty && (
+        <p className="nilo-cardmed__hint">Pulsa «Escanear redes» para listar WiFi disponibles cerca del dispositivo.</p>
+      )}
 
       <div className="wifi-config-tab__grid">
         <label className="wifi-config-tab__field">

@@ -11,6 +11,7 @@ import { CardmedWifiStatusTab } from '../components/wifi/CardmedWifiStatusTab'
 import { CardmedWifiWifiTab } from '../components/wifi/CardmedWifiWifiTab'
 import type { useCardmedWifiConnection } from '../hooks/useCardmedWifiConnection'
 import type { CardmedDashboard, CardmedTestData } from '../wifi/types'
+import { formatWifiScanMode, withWifiScanMinWait } from '../wifi/wifi-errors'
 import '../components/wifi/CardmedWifiShared.css'
 import './CardmedDevicePage.css'
 import './CardmedWifiProvisionPage.css'
@@ -31,7 +32,10 @@ export function CardmedWifiConfigView({ conn, onBackToPair }: CardmedWifiConfigV
   const [configDone, setConfigDone] = useState(false)
 
   const [dashboard, setDashboard] = useState<CardmedDashboard | null>(null)
+  const [dashboardError, setDashboardError] = useState<string | null>(null)
   const [wifiNetworks, setWifiNetworks] = useState<WifiNetwork[]>([])
+  const [wifiScanMode, setWifiScanMode] = useState<string | null>(null)
+  const [wifiScanPending, setWifiScanPending] = useState(false)
   const [wifiStatus, setWifiStatus] = useState<Record<string, unknown> | null>(null)
   const [selectedSsid, setSelectedSsid] = useState('')
   const [wifiPassword, setWifiPassword] = useState('')
@@ -72,9 +76,15 @@ export function CardmedWifiConfigView({ conn, onBackToPair }: CardmedWifiConfigV
   }, [])
 
   const refreshDashboard = useCallback(async () => {
+    setDashboardError(null)
     await run(async () => {
-      const data = await conn.fetchDashboard()
-      setDashboard(data)
+      try {
+        const data = await conn.fetchDashboard()
+        setDashboard(data)
+      } catch (err) {
+        setDashboardError(err instanceof Error ? err.message : 'No se pudo cargar el panel.')
+        throw err
+      }
     })
   }, [conn, run])
 
@@ -86,6 +96,11 @@ export function CardmedWifiConfigView({ conn, onBackToPair }: CardmedWifiConfigV
     if (!conn.isAuthenticated) {
       dashboardLoadedRef.current = false
       setDashboard(null)
+      setDashboardError(null)
+      setWifiNetworks([])
+      setWifiScanMode(null)
+      setSelectedSsid('')
+      setWifiPassword('')
     }
   }, [conn.isAuthenticated, refreshDashboard])
 
@@ -105,12 +120,28 @@ export function CardmedWifiConfigView({ conn, onBackToPair }: CardmedWifiConfigV
   }
 
   async function handleWifiScan() {
-    await run(async () => {
-      toast.info('Escaneando WiFi (~60 s)…')
-      const resp = await conn.runCommand<{ networks: WifiNetwork[] }>('wifi_scan', { rescan: true })
-      setWifiNetworks(resp.data?.networks ?? [])
-      toast.success('Escaneo completado.')
-    })
+    setWifiNetworks([])
+    setWifiScanMode(null)
+    setWifiScanPending(true)
+    try {
+      await run(async () => {
+        toast.info('Escaneando WiFi (rescan en el Pi, ~3–5 s mínimo)…')
+        const resp = await withWifiScanMinWait(
+          conn.runCommand<{ networks: WifiNetwork[]; scan_mode?: string }>('wifi_scan', { rescan: true }),
+        )
+        const networks = resp.data?.networks ?? []
+        setWifiNetworks(networks)
+        const modeHint = formatWifiScanMode(resp.data?.scan_mode)
+        setWifiScanMode(modeHint)
+        if (networks.length === 0) {
+          toast.info('No se encontraron redes. Si el Pi ya está conectado, el escaneo AP+STA puede listar pocas redes.')
+        } else {
+          toast.success(`${networks.length} red(es) encontrada(s).`)
+        }
+      })
+    } finally {
+      setWifiScanPending(false)
+    }
   }
 
   async function handleWifiConnect() {
@@ -298,13 +329,20 @@ export function CardmedWifiConfigView({ conn, onBackToPair }: CardmedWifiConfigV
 
           <div className="nilo-cardmed__panel m3-scroll">
             {tab === 'dashboard' && (
-              <CardmedWifiStatusTab dashboard={dashboard} busy={busy} onRefresh={() => void refreshDashboard()} />
+              <CardmedWifiStatusTab
+                dashboard={dashboard}
+                busy={busy}
+                error={dashboardError}
+                onRefresh={() => void refreshDashboard()}
+              />
             )}
 
             {tab === 'wifi' && (
               <CardmedWifiWifiTab
                 busy={busy}
                 scanning={conn.blockingCommand === 'wifi_scan'}
+                scanPending={wifiScanPending}
+                scanMode={wifiScanMode}
                 networks={wifiNetworks}
                 selectedSsid={selectedSsid}
                 wifiPassword={wifiPassword}

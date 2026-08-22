@@ -1,6 +1,7 @@
 import type { CardmedAuthData, CardmedResponse } from '../ble/types'
 import { CARDMED_WIFI_API_BASE, CARDMED_WIFI_TIMEOUTS, timeoutForWifiCommand } from './constants'
 import type { CardmedDashboard } from './types'
+import { formatDashboardHttpError, isWifiNetworkError } from './wifi-errors'
 
 export interface CardmedWifiStatus {
   status: 'ok'
@@ -95,9 +96,41 @@ export class NiloCardmedWifiClient {
     return authData
   }
 
-  async fetchDashboard(timeoutMs = CARDMED_WIFI_TIMEOUTS.status): Promise<CardmedDashboard> {
-    const res = await fetchWithTimeout(`${this.baseUrl}/api/dashboard`, { method: 'GET' }, timeoutMs)
-    if (!res.ok) throw new Error(`No se pudo cargar el panel de estado (${res.status}).`)
-    return (await res.json()) as CardmedDashboard
+  async fetchDashboard(timeoutMs = CARDMED_WIFI_TIMEOUTS.dashboard): Promise<CardmedDashboard> {
+    try {
+      const res = await fetchWithTimeout(`${this.baseUrl}/api/dashboard`, { method: 'GET' }, timeoutMs)
+
+      if (!res.ok) {
+        let bodyError: string | undefined
+        try {
+          const body = (await res.json()) as { error?: string }
+          bodyError = body.error
+        } catch {
+          // cuerpo no JSON
+        }
+        throw new Error(formatDashboardHttpError(res.status, bodyError))
+      }
+
+      return (await res.json()) as CardmedDashboard
+    } catch (err) {
+      if (isWifiNetworkError(err)) {
+        throw new Error(
+          'No se pudo contactar con el Pi (192.168.4.1). Conecta la tablet al AP Nilocardmed-Config-xxxx.',
+        )
+      }
+      throw err instanceof Error ? err : new Error('No se pudo cargar el panel de estado.')
+    }
+  }
+
+  /** GET /api/dashboard; si falla y hay token, fallback a device_status. */
+  async fetchDashboardWithFallback(timeoutMs = CARDMED_WIFI_TIMEOUTS.dashboard): Promise<CardmedDashboard> {
+    try {
+      return await this.fetchDashboard(timeoutMs)
+    } catch (first) {
+      if (!this.token) throw first
+      const resp = await this.command<CardmedDashboard>('device_status', {}, timeoutMs)
+      if (!resp.data) throw first
+      return resp.data
+    }
   }
 }
