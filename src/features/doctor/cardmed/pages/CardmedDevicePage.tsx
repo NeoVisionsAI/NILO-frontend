@@ -9,7 +9,7 @@ import { CardmedDeviceStatusBar } from '../components/CardmedDeviceStatusBar'
 import { deviceDisplayLabel, formatDeviceLocation } from '../ble/device-registry'
 import { blobToObjectUrl, chunksToBlob } from '../ble/camera-utils'
 import type { CameraDevice, SavedCardmedDevice, WifiNetwork } from '../ble/types'
-import { isWebBluetoothSupported } from '../ble/web-bluetooth'
+import { formatBleDeviceLabel, isWebBluetoothSupported } from '../ble/web-bluetooth'
 import { useCardmedConnection } from '../hooks/useCardmedConnection'
 import './CardmedDevicePage.css'
 
@@ -132,13 +132,20 @@ export function CardmedDevicePage() {
   function openPasswordForDevice(device: BluetoothDevice, label?: string) {
     setPasswordTarget({ kind: 'scan', device })
     setPassword('')
-    toast.success(`«${label ?? device.name ?? 'Dispositivo'}» seleccionado. Introduce la contraseña.`)
+    const display = label ?? formatBleDeviceLabel(device)
+    if (!device.name) {
+      toast.info(
+        'Dispositivo sin nombre en el selector. Si es tu NiloCardmed, introduce la contraseña — se validará al conectar.',
+      )
+    } else {
+      toast.success(`«${display}» seleccionado. Introduce la contraseña.`)
+    }
   }
 
-  async function handleConnectDevice() {
+  async function handleConnectDevice(mode: 'filtered' | 'acceptAll' = 'filtered') {
     await run(async () => {
-      const device = await conn.scanDevice()
-      openPasswordForDevice(device, device.name)
+      const device = await conn.scanDevice(mode)
+      openPasswordForDevice(device, device.name ?? undefined)
     })
   }
 
@@ -690,23 +697,33 @@ export function CardmedDevicePage() {
             <div className="nilo-cardmed__connect-hero-copy">
               <h2>Emparejar NiloCardmed</h2>
               <p>
-                Pulsa el botón para abrir el <strong>selector Bluetooth de Chrome</strong> (igual que en Ajustes del
-                tablet). Verás todos los dispositivos cercanos; elige <strong>NiloCardmed-d212bd98</strong> (o el tuyo).
+                Usa el selector de Chrome. <strong>Recomendado:</strong> «Buscar NiloCardmed» — solo muestra equipos
+                con nombre <strong>NiloCardmed-d212bd98</strong> visible.
               </p>
               <p className="nilo-cardmed__connect-note">
-                La app no puede listar BLE por su cuenta — solo este diálogo del sistema. Si la lista sale vacía,
-                revisa permisos Bluetooth y que la PWA esté en HTTPS.
+                «Ver todos los dispositivos» lista todo el BLE; muchos salen como «desconocido o no compatible» porque
+                Chrome no recibe el nombre en el anuncio. Tu NiloCardmed puede estar ahí: elígelo e introduce la
+                contraseña para confirmar.
               </p>
             </div>
             <div className="nilo-cardmed__connect-actions">
               <button
                 type="button"
                 className="nilo-cardmed__primary"
-                onClick={() => void handleConnectDevice()}
+                onClick={() => void handleConnectDevice('filtered')}
                 disabled={busy || !bleSupported || isBleConnecting}
               >
-                <MaterialIcon name="open_in_new" size={22} />
-                Abrir selector Bluetooth
+                <MaterialIcon name="bluetooth" size={22} />
+                Buscar NiloCardmed
+              </button>
+              <button
+                type="button"
+                className="nilo-cardmed__secondary-scan"
+                onClick={() => void handleConnectDevice('acceptAll')}
+                disabled={busy || !bleSupported || isBleConnecting}
+              >
+                <MaterialIcon name="devices_other" size={20} />
+                Ver todos los dispositivos
               </button>
             </div>
           </div>
@@ -720,7 +737,7 @@ export function CardmedDevicePage() {
               <div className="nilo-cardmed__empty-state">
                 <MaterialIcon name="devices_other" size={40} />
                 <p>Aún no hay dispositivos emparejados.</p>
-                <span>Usa «Abrir selector Bluetooth» para añadir el primero.</span>
+                <span>Usa «Buscar NiloCardmed» para añadir el primero.</span>
               </div>
             ) : (
               <ul className="nilo-cardmed__device-list">
