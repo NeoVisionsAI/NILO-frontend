@@ -257,6 +257,11 @@
   margin-top: 12px;
 }
 
+.ble-picker__section {
+  margin-bottom: 12px;
+}
+
+.ble-picker__section h3,
 .ble-picker__known h3 {
   margin-bottom: 8px;
   font-size: 12px;
@@ -268,6 +273,11 @@
 
 .ble-picker__device--known {
   border-style: dashed;
+}
+
+.ble-picker__device--cardmed {
+  border-color: var(--m3-primary, #14b8a6);
+  background: var(--m3-primary-fixed, rgba(20, 184, 166, 0.1));
 }
 
 .ble-picker__primary {

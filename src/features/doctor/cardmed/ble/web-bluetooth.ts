@@ -8,16 +8,14 @@ export const CARDMED_REQUEST_DEVICE_FILTERS: BluetoothLEScanFilter[] = [
   { services: [CARDMED_SERVICE_UUID] },
 ]
 
-/** Filtros para requestDevice (selector del sistema). requestLEScan usa acceptAll + filtro en JS. */
+/** Filtros para requestDevice (selector del sistema). requestLEScan usa acceptAll sin filtrar. */
 export const CARDMED_LE_SCAN_FILTERS: BluetoothLEScanFilter[] = CARDMED_REQUEST_DEVICE_FILTERS
 
 export const CARDMED_SCAN_DEFAULTS = {
   /** Tiempo máximo de escaneo si no aparece nada. */
-  maxDurationMs: 5_000,
-  /** Mínimo antes de poder parar tras el primer hallazgo. */
-  minDurationMs: 1_200,
-  /** Tras ver el primer dispositivo, esperar un poco por RSSI/nombre y parar. */
-  settleAfterFindMs: 900,
+  maxDurationMs: 3_000,
+  /** Tras ver dispositivos, breve pausa por nombres repetidos y parar. */
+  settleAfterFindMs: 350,
 } as const
 
 export interface ScannedBleDevice {
@@ -25,6 +23,8 @@ export interface ScannedBleDevice {
   name: string
   device: BluetoothDevice
   rssi?: number
+  /** true si el nombre/servicio/emparejado sugiere NiloCardmed */
+  isLikelyCardmed?: boolean
 }
 
 export function isWebBluetoothSupported(): boolean {
@@ -55,7 +55,7 @@ function eventAdvertisesCardmedService(event: BluetoothAdvertisingEvent): boolea
   return uuids.some((uuid) => normalizeBleUuid(String(uuid)) === CARDMED_SERVICE_NORM)
 }
 
-function advertisementMatchesCardmed(
+function isLikelyCardmedAdvertisement(
   event: BluetoothAdvertisingEvent,
   knownNames: Map<string, string>,
 ): boolean {
@@ -74,8 +74,17 @@ function resolveAdvertisementLabel(
   if (direct?.trim()) return direct.trim()
   const saved = knownNames.get(event.device.id)
   if (saved) return saved
-  if (eventAdvertisesCardmedService(event)) return 'NiloCardmed (por servicio BLE)'
-  return 'NiloCardmed'
+  const shortId = event.device.id.length > 12 ? `${event.device.id.slice(0, 12)}…` : event.device.id
+  return `Sin nombre (${shortId})`
+}
+
+function sortScannedDevices(list: ScannedBleDevice[]): ScannedBleDevice[] {
+  return [...list].sort((a, b) => {
+    const aCardmed = a.isLikelyCardmed ? 1 : 0
+    const bCardmed = b.isLikelyCardmed ? 1 : 0
+    if (aCardmed !== bCardmed) return bCardmed - aCardmed
+    return (b.rssi ?? -999) - (a.rssi ?? -999)
+  })
 }
 
 export async function requestCardmedBleDevice(): Promise<BluetoothDevice> {
@@ -97,9 +106,9 @@ export async function requestCardmedBleDevice(): Promise<BluetoothDevice> {
   return device
 }
 
+/** Escaneo BLE en la app: muestra todos los dispositivos detectados (sin filtrar). */
 export async function scanCardmedDevices(options?: {
   timeoutMs?: number
-  minDurationMs?: number
   settleAfterFindMs?: number
   knownNames?: Map<string, string>
   onUpdate?: (devices: ScannedBleDevice[]) => void
@@ -111,44 +120,39 @@ export async function scanCardmedDevices(options?: {
   }
 
   const maxDurationMs = options?.timeoutMs ?? CARDMED_SCAN_DEFAULTS.maxDurationMs
-  const minDurationMs = options?.minDurationMs ?? CARDMED_SCAN_DEFAULTS.minDurationMs
   const settleAfterFindMs = options?.settleAfterFindMs ?? CARDMED_SCAN_DEFAULTS.settleAfterFindMs
   const knownNames = options?.knownNames ?? new Map<string, string>()
 
   const found = new Map<string, ScannedBleDevice>()
-  const scanStartedAt = Date.now()
   let earlyStopTimer: number | undefined
   let maxTimer: number | undefined
   let finishScan: (() => void) | undefined
 
   const publish = () => {
-    const list = Array.from(found.values()).sort((a, b) => (b.rssi ?? -999) - (a.rssi ?? -999))
-    options?.onUpdate?.(list)
+    options?.onUpdate?.(sortScannedDevices(Array.from(found.values())))
   }
 
   const scheduleEarlyStop = () => {
     if (earlyStopTimer || !finishScan) return
-    const elapsed = Date.now() - scanStartedAt
-    const waitMs = Math.max(minDurationMs - elapsed, settleAfterFindMs)
-    earlyStopTimer = window.setTimeout(() => finishScan?.(), Math.max(waitMs, 0))
+    earlyStopTimer = window.setTimeout(() => finishScan?.(), settleAfterFindMs)
   }
 
   const onAdvertisement = (event: BluetoothAdvertisingEvent) => {
-    if (!advertisementMatchesCardmed(event, knownNames)) return
-
+    const likelyCardmed = isLikelyCardmedAdvertisement(event, knownNames)
     const label = resolveAdvertisementLabel(event, knownNames)
+    const existing = found.get(event.device.id)
+
     found.set(event.device.id, {
       id: event.device.id,
       name: label,
       device: event.device,
-      rssi: event.rssi,
+      rssi: event.rssi ?? existing?.rssi,
+      isLikelyCardmed: likelyCardmed || existing?.isLikelyCardmed,
     })
     publish()
     scheduleEarlyStop()
   }
 
-  // acceptAll: los filtros hardware suelen devolver 0 anuncios si el nombre no va en el
-  // paquete ADV (común en NiloCardmed). Filtramos en JS por nombre, servicio o emparejados.
   const scan = await bluetooth.requestLEScan({
     acceptAllAdvertisements: true,
     keepRepeatedDevices: true,
@@ -191,7 +195,7 @@ export async function scanCardmedDevices(options?: {
     if (earlyStopTimer) window.clearTimeout(earlyStopTimer)
   }
 
-  return Array.from(found.values()).sort((a, b) => (b.rssi ?? -999) - (a.rssi ?? -999))
+  return sortScannedDevices(Array.from(found.values()))
 }
 
 export async function requestDeviceByBleName(bleName: string): Promise<BluetoothDevice> {

@@ -59,15 +59,15 @@ export function BleDevicePickerModal({
     return () => window.removeEventListener('keydown', onKey)
   }, [open, onClose])
 
+  const likelyCardmed = useMemo(() => devices.filter((item) => item.isLikelyCardmed), [devices])
+  const otherDevices = useMemo(() => devices.filter((item) => !item.isLikelyCardmed), [devices])
+
   const emptyMessage = useMemo(() => {
-    if (scanning && knownPaired.length === 0 && devices.length === 0) {
-      return 'Buscando dispositivos Nilo / Cardmed cerca…'
-    }
     if (scanning && devices.length === 0) {
-      return 'Escaneando… También puedes elegir un dispositivo emparejado abajo.'
+      return 'Escaneando dispositivos BLE cercanos…'
     }
     if (devices.length === 0 && knownPaired.length === 0) {
-      return 'No se encontró ningún dispositivo. Prueba el selector del sistema.'
+      return 'No se detectó ningún anuncio BLE. En muchas tablets el escaneo en la app es limitado — usa el selector del sistema.'
     }
     return ''
   }, [devices.length, knownPaired.length, scanning])
@@ -77,6 +77,39 @@ export function BleDevicePickerModal({
     () => knownPaired.filter((item) => !liveDeviceIds.has(item.id)),
     [knownPaired, liveDeviceIds],
   )
+
+  function renderDevice(item: ScannedBleDevice, variant: 'cardmed' | 'other') {
+    const bars = rssiBars(item.rssi)
+    return (
+      <li key={item.id}>
+        <button
+          type="button"
+          className={`ble-picker__device${variant === 'cardmed' ? ' ble-picker__device--cardmed' : ''}`}
+          onClick={() => onSelect(item)}
+        >
+          <span className="ble-picker__device-icon">
+            <MaterialIcon name={variant === 'cardmed' ? 'medical_information' : 'devices_other'} size={22} />
+          </span>
+          <span className="ble-picker__device-info">
+            <strong>{item.name}</strong>
+            <span className="ble-picker__device-meta">
+              {item.rssi != null ? `${item.rssi} dBm` : 'Señal desconocida'}
+              {variant === 'cardmed' ? ' · NiloCardmed' : ''}
+            </span>
+          </span>
+          <span className="ble-picker__signal" aria-hidden="true">
+            {([1, 2, 3, 4] as const).map((level) => (
+              <span
+                key={level}
+                className={`ble-picker__signal-bar${bars >= level ? ' ble-picker__signal-bar--on' : ''}`}
+              />
+            ))}
+          </span>
+          <MaterialIcon name="chevron_right" size={22} className="ble-picker__chevron" />
+        </button>
+      </li>
+    )
+  }
 
   if (!open) return null
 
@@ -101,10 +134,10 @@ export function BleDevicePickerModal({
             {scanning && <span className="ble-picker__ripple" aria-hidden="true" />}
           </div>
           <div className="ble-picker__header-text">
-            <h2 id="ble-picker-title">Escaneo en la app</h2>
+            <h2 id="ble-picker-title">Dispositivos BLE cercanos</h2>
             <p>
-              Detecta por nombre «nilo»/«cardmed», UUID del servicio o dispositivos ya emparejados. Si no aparece nada,
-              usa el selector del sistema (más fiable).
+              Se listan <strong>todos</strong> los detectados. Los NiloCardmed aparecen resaltados arriba. Si no ves el
+              tuyo, usa el selector del sistema (como en Ajustes Bluetooth).
             </p>
           </div>
           <button type="button" className="ble-picker__close" onClick={onClose} aria-label="Cerrar">
@@ -116,40 +149,23 @@ export function BleDevicePickerModal({
           {scanning && devices.length > 0 && (
             <p className="ble-picker__scanning-hint">
               <MaterialIcon name="radar" size={16} />
-              {devices.length} detectado{devices.length === 1 ? '' : 's'} — refinando señal…
+              {devices.length} detectado{devices.length === 1 ? '' : 's'}
+              {likelyCardmed.length > 0 ? ` · ${likelyCardmed.length} posible NiloCardmed` : ''}
             </p>
           )}
 
-          {devices.length > 0 && (
-            <ul className="ble-picker__list">
-              {devices.map((item) => {
-                const bars = rssiBars(item.rssi)
-                return (
-                  <li key={item.id}>
-                    <button type="button" className="ble-picker__device" onClick={() => onSelect(item)}>
-                      <span className="ble-picker__device-icon">
-                        <MaterialIcon name="medical_information" size={22} />
-                      </span>
-                      <span className="ble-picker__device-info">
-                        <strong>{item.name}</strong>
-                        <span className="ble-picker__device-meta">
-                          {item.rssi != null ? `${item.rssi} dBm` : 'Señal desconocida'}
-                        </span>
-                      </span>
-                      <span className="ble-picker__signal" aria-hidden="true">
-                        {([1, 2, 3, 4] as const).map((level) => (
-                          <span
-                            key={level}
-                            className={`ble-picker__signal-bar${bars >= level ? ' ble-picker__signal-bar--on' : ''}`}
-                          />
-                        ))}
-                      </span>
-                      <MaterialIcon name="chevron_right" size={22} className="ble-picker__chevron" />
-                    </button>
-                  </li>
-                )
-              })}
-            </ul>
+          {likelyCardmed.length > 0 && (
+            <div className="ble-picker__section">
+              <h3>Posibles NiloCardmed</h3>
+              <ul className="ble-picker__list">{likelyCardmed.map((item) => renderDevice(item, 'cardmed'))}</ul>
+            </div>
+          )}
+
+          {otherDevices.length > 0 && (
+            <div className="ble-picker__section">
+              <h3>Otros dispositivos BLE</h3>
+              <ul className="ble-picker__list">{otherDevices.map((item) => renderDevice(item, 'other'))}</ul>
+            </div>
           )}
 
           {devices.length === 0 && (scanning || knownPaired.length === 0) && (
@@ -184,9 +200,9 @@ export function BleDevicePickerModal({
         </div>
 
         <footer className="ble-picker__footer">
-          <button type="button" className="ble-picker__primary" onClick={onSystemPicker} disabled={scanning}>
+          <button type="button" className="ble-picker__primary" onClick={onSystemPicker}>
             <MaterialIcon name="bluetooth" size={18} />
-            Selector del sistema (recomendado)
+            Selector del sistema (rápido)
           </button>
           {scanning && (
             <button type="button" className="ble-picker__secondary" onClick={onStopScan}>

@@ -217,6 +217,9 @@ export function CardmedDevicePage() {
   }
 
   function handlePickerSelect(entry: ScannedBleDevice) {
+    if (!entry.isLikelyCardmed) {
+      toast.info(`«${entry.name}» no parece un NiloCardmed. Puedes probar igualmente con la contraseña.`)
+    }
     handlePickerClose()
     openPasswordForDevice(entry.device, entry.name)
   }
@@ -764,8 +767,8 @@ export function CardmedDevicePage() {
               Escaneo en la app
             </button>
             <p className="nilo-cardmed__hint">
-              Recomendado: <strong>Buscar NiloCardmed (rápido)</strong> usa el selector del sistema (encuentra
-              «NiloCardmed-d212bd98» al instante). El escaneo en la app puede no ver el nombre BLE en algunos tablets.
+              Recomendado: <strong>Buscar NiloCardmed (rápido)</strong> abre el selector del sistema (como Ajustes
+              Bluetooth). El escaneo en la app lista todos los BLE detectados; en algunas tablets es más lento o vacío.
             </p>
           </div>
 
