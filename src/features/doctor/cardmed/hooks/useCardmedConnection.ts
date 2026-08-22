@@ -14,7 +14,6 @@ import type { CardmedConnectionPhase, CardmedDeviceLocation, CardmedResponse, Sa
 import {
   cardmedErrorMessage,
   requestCardmedBleDevice,
-  requestDeviceByBleName,
 } from '../ble/web-bluetooth'
 
 export function useCardmedConnection() {
@@ -160,23 +159,19 @@ export function useCardmedConnection() {
     [establishSession, handleInvoluntaryDisconnect],
   )
 
-  const reconnect = useCallback(async () => {
+  const reconnect = useCallback(async (pickedDevice?: BluetoothDevice) => {
     const savedId = connectedIdRef.current
     const saved = savedId ? getPairedDevice(savedId) : undefined
 
-    let device = deviceRef.current
+    const device = pickedDevice ?? deviceRef.current
     if (!device) {
-      if (!saved?.password) {
-        throw new Error('No hay dispositivo en caché. Pulsa Conectar dispositivo.')
-      }
-      device = await requestCardmedBleDevice()
-      if (saved && device.id !== saved.id) {
-        throw new Error(
-          `Seleccionaste «${device.name ?? device.id}», no el emparejado «${saved.bleName}». Vuelve a elegir el correcto.`,
-        )
-      }
-      deviceRef.current = device
-      setHasCachedDevice(true)
+      throw new Error('No hay dispositivo en caché. Pulsa Conectar y elige el NiloCardmed en el selector.')
+    }
+
+    if (saved && device.id !== saved.id) {
+      throw new Error(
+        `Seleccionaste «${device.name ?? device.id}», no el emparejado «${saved.bleName}».`,
+      )
     }
 
     if (!saved?.password) {
@@ -200,7 +195,7 @@ export function useCardmedConnection() {
   }, [establishSession, handleInvoluntaryDisconnect])
 
   const connectPaired = useCallback(
-    async (saved: SavedCardmedDevice, passwordOverride?: string) => {
+    async (saved: SavedCardmedDevice, passwordOverride?: string, pickedDevice?: BluetoothDevice) => {
       const password = passwordOverride ?? saved.password
       if (!password) {
         throw new Error('Este dispositivo no tiene contraseña guardada.')
@@ -208,11 +203,11 @@ export function useCardmedConnection() {
 
       setLastError(null)
 
-      let device = deviceRef.current
-      if (device?.id === saved.id) {
+      const cached = deviceRef.current
+      if (cached?.id === saved.id && !pickedDevice) {
         setPhase('connecting')
         try {
-          await establishSession(device, password)
+          await establishSession(cached, password)
           touchPairedDevice(saved.id)
           refreshPaired()
           return
@@ -227,12 +222,17 @@ export function useCardmedConnection() {
         }
       }
 
-      device = await requestDeviceByBleName(saved.bleName)
+      const device = pickedDevice
+      if (!device) {
+        throw new Error('PICKER_REQUIRED')
+      }
+
       if (device.id !== saved.id) {
         throw new Error(
-          `Seleccionaste «${device.name ?? device.id}», no «${saved.bleName}». Elige el dispositivo emparejado en el diálogo.`,
+          `Seleccionaste «${device.name ?? device.id}», no «${saved.bleName}».`,
         )
       }
+
       await connect(device, password)
       touchPairedDevice(saved.id)
       refreshPaired()

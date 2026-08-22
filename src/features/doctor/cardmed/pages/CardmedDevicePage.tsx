@@ -9,7 +9,7 @@ import { CardmedDeviceStatusBar } from '../components/CardmedDeviceStatusBar'
 import { deviceDisplayLabel, formatDeviceLocation } from '../ble/device-registry'
 import { blobToObjectUrl, chunksToBlob } from '../ble/camera-utils'
 import type { CameraDevice, SavedCardmedDevice, WifiNetwork } from '../ble/types'
-import { isWebBluetoothSupported } from '../ble/web-bluetooth'
+import { cardmedErrorMessage, isWebBluetoothSupported, requestCardmedBleDevice } from '../ble/web-bluetooth'
 import { useCardmedConnection } from '../hooks/useCardmedConnection'
 import './CardmedDevicePage.css'
 
@@ -135,11 +135,16 @@ export function CardmedDevicePage() {
     toast.success(`«${label ?? device.name ?? 'NiloCardmed'}» seleccionado. Introduce la contraseña.`)
   }
 
-  async function handleConnectDevice() {
-    await run(async () => {
-      const device = await conn.scanDevice()
-      openPasswordForDevice(device, device.name)
-    })
+  /** requestDevice() debe llamarse en el mismo gesto del tap — no dentro de run() (Chrome lo bloquea). */
+  function handleConnectDevice() {
+    void (async () => {
+      try {
+        const device = await requestCardmedBleDevice()
+        openPasswordForDevice(device, device.name)
+      } catch (err) {
+        toast.error(cardmedErrorMessage(err))
+      }
+    })()
   }
 
   function openSavedConnect(saved: SavedCardmedDevice) {
@@ -151,14 +156,25 @@ export function CardmedDevicePage() {
     setActivePairedId(saved.id)
     setTab('registry')
 
-    if (saved.password) {
-      await run(async () => {
-        await conn.connectPaired(saved)
-        toast.success('Dispositivo conectado.')
-      })
+    if (!saved.password) {
+      openSavedConnect(saved)
       return
     }
-    openSavedConnect(saved)
+
+    void (async () => {
+      try {
+        let picked: BluetoothDevice | undefined
+        if (!(conn.hasCachedDevice && conn.connectedDeviceId === saved.id)) {
+          picked = await requestCardmedBleDevice()
+        }
+        await run(async () => {
+          await conn.connectPaired(saved, undefined, picked)
+          toast.success('Dispositivo conectado.')
+        })
+      } catch (err) {
+        toast.error(cardmedErrorMessage(err))
+      }
+    })()
   }
 
   function openPairedDevice(item: SavedCardmedDevice) {
@@ -166,16 +182,22 @@ export function CardmedDevicePage() {
     setTab('registry')
   }
 
-  async function handleReconnectActive() {
+  function handleReconnectActive() {
     if (!activePaired) return
-    if (conn.hasCachedDevice && activePaired.password) {
-      await run(async () => {
-        await conn.reconnect()
-        toast.success('Dispositivo reconectado.')
-      })
-      return
-    }
-    await handleConnectSaved(activePaired)
+    void (async () => {
+      try {
+        let picked: BluetoothDevice | undefined
+        if (!conn.hasCachedDevice) {
+          picked = await requestCardmedBleDevice()
+        }
+        await run(async () => {
+          await conn.reconnect(picked)
+          toast.success('Dispositivo reconectado.')
+        })
+      } catch (err) {
+        toast.error(cardmedErrorMessage(err))
+      }
+    })()
   }
 
   function closeDeviceView() {

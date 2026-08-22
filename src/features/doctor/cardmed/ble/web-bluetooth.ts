@@ -63,7 +63,7 @@ export async function requestDeviceByName(name: string): Promise<BluetoothDevice
 export function cardmedErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     if (error.name === 'NotFoundError') {
-      return 'No apareció ningún NiloCardmed. Comprueba que el Pi esté encendido y anunciando el nombre «NiloCardmed-…» en Bluetooth (ver docs §3.2).'
+      return 'No apareció ningún NiloCardmed en el selector. El Pi anuncia bien si en logs ves LocalName=NiloCardmed-…. Espera unos segundos con el diálogo abierto o acerca el tablet al Pi.'
     }
     if (error.name === 'SecurityError') {
       return 'Permiso Bluetooth denegado. Usa HTTPS y concede permiso de dispositivos cercanos.'
