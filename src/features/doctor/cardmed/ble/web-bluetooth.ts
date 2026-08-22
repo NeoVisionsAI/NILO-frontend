@@ -6,6 +6,18 @@ export const CARDMED_REQUEST_DEVICE_FILTERS: BluetoothLEScanFilter[] = [
   { services: [CARDMED_SERVICE_UUID] },
 ]
 
+/** Filtros para requestLEScan (solo anuncios Nilo/Cardmed, mucho más rápido que acceptAll). */
+export const CARDMED_LE_SCAN_FILTERS: BluetoothLEScanFilter[] = CARDMED_REQUEST_DEVICE_FILTERS
+
+export const CARDMED_SCAN_DEFAULTS = {
+  /** Tiempo máximo de escaneo si no aparece nada. */
+  maxDurationMs: 7_000,
+  /** Mínimo antes de poder parar tras el primer hallazgo. */
+  minDurationMs: 1_200,
+  /** Tras ver el primer dispositivo, esperar un poco por RSSI/nombre y parar. */
+  settleAfterFindMs: 900,
+} as const
+
 export interface ScannedBleDevice {
   id: string
   name: string
@@ -51,6 +63,9 @@ export async function requestCardmedBleDevice(): Promise<BluetoothDevice> {
 
 export async function scanCardmedDevices(options?: {
   timeoutMs?: number
+  minDurationMs?: number
+  settleAfterFindMs?: number
+  knownNames?: Map<string, string>
   onUpdate?: (devices: ScannedBleDevice[]) => void
   signal?: AbortSignal
 }): Promise<ScannedBleDevice[]> {
@@ -59,48 +74,85 @@ export async function scanCardmedDevices(options?: {
     throw new Error('SCAN_NOT_SUPPORTED')
   }
 
-  const timeoutMs = options?.timeoutMs ?? 12_000
+  const maxDurationMs = options?.timeoutMs ?? CARDMED_SCAN_DEFAULTS.maxDurationMs
+  const minDurationMs = options?.minDurationMs ?? CARDMED_SCAN_DEFAULTS.minDurationMs
+  const settleAfterFindMs = options?.settleAfterFindMs ?? CARDMED_SCAN_DEFAULTS.settleAfterFindMs
+  const knownNames = options?.knownNames ?? new Map<string, string>()
+
   const found = new Map<string, ScannedBleDevice>()
+  const scanStartedAt = Date.now()
+  let earlyStopTimer: number | undefined
+  let maxTimer: number | undefined
+  let finishScan: (() => void) | undefined
 
   const publish = () => {
     const list = Array.from(found.values()).sort((a, b) => (b.rssi ?? -999) - (a.rssi ?? -999))
     options?.onUpdate?.(list)
   }
 
-  const scan = await bluetooth.requestLEScan({
-    acceptAllAdvertisements: true,
-    keepRepeatedDevices: true,
-  })
+  const resolveLabel = (event: BluetoothAdvertisingEvent): string => {
+    const direct = event.device.name ?? event.name
+    if (direct && isCardmedDeviceName(direct)) return direct
+    const saved = knownNames.get(event.device.id)
+    if (saved) return saved
+    if (direct) return direct
+    return 'NiloCardmed'
+  }
+
+  const scheduleEarlyStop = () => {
+    if (earlyStopTimer || !finishScan) return
+    const elapsed = Date.now() - scanStartedAt
+    const waitMs = Math.max(minDurationMs - elapsed, settleAfterFindMs)
+    earlyStopTimer = window.setTimeout(() => finishScan?.(), Math.max(waitMs, 0))
+  }
 
   const onAdvertisement = (event: BluetoothAdvertisingEvent) => {
-    const label = event.device.name ?? event.name
-    if (!isCardmedDeviceName(label)) return
+    const label = resolveLabel(event)
+    if (!isCardmedDeviceName(label) && !knownNames.has(event.device.id)) return
 
     found.set(event.device.id, {
       id: event.device.id,
-      name: label ?? 'Dispositivo sin nombre',
+      name: label,
       device: event.device,
       rssi: event.rssi,
     })
     publish()
+    scheduleEarlyStop()
+  }
+
+  let scan: BluetoothLEScan
+  try {
+    scan = await bluetooth.requestLEScan({
+      filters: CARDMED_LE_SCAN_FILTERS,
+      keepRepeatedDevices: true,
+    })
+  } catch {
+    scan = await bluetooth.requestLEScan({
+      acceptAllAdvertisements: true,
+      keepRepeatedDevices: true,
+    })
   }
 
   bluetooth.addEventListener('advertisementreceived', onAdvertisement)
 
   try {
     await new Promise<void>((resolve, reject) => {
-      const timer = window.setTimeout(resolve, timeoutMs)
+      finishScan = () => {
+        if (maxTimer) window.clearTimeout(maxTimer)
+        if (earlyStopTimer) window.clearTimeout(earlyStopTimer)
+        resolve()
+      }
+
+      maxTimer = window.setTimeout(() => finishScan?.(), maxDurationMs)
 
       if (options?.signal) {
         if (options.signal.aborted) {
-          window.clearTimeout(timer)
           reject(new DOMException('Escaneo cancelado.', 'AbortError'))
           return
         }
         options.signal.addEventListener(
           'abort',
           () => {
-            window.clearTimeout(timer)
             reject(new DOMException('Escaneo cancelado.', 'AbortError'))
           },
           { once: true },
@@ -110,6 +162,8 @@ export async function scanCardmedDevices(options?: {
   } finally {
     scan.stop()
     bluetooth.removeEventListener('advertisementreceived', onAdvertisement)
+    if (maxTimer) window.clearTimeout(maxTimer)
+    if (earlyStopTimer) window.clearTimeout(earlyStopTimer)
   }
 
   return Array.from(found.values()).sort((a, b) => (b.rssi ?? -999) - (a.rssi ?? -999))

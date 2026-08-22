@@ -149,13 +149,17 @@ export function CardmedDevicePage() {
     const controller = new AbortController()
     scanAbortRef.current = controller
 
+    const knownNames = new Map(
+      conn.pairedDevices.map((item) => [item.id, item.displayName?.trim() || item.bleName]),
+    )
+
     setPickerOpen(true)
     setScanning(true)
     setFoundDevices([])
 
     try {
       await scanCardmedDevices({
-        timeoutMs: 12_000,
+        knownNames,
         onUpdate: setFoundDevices,
         signal: controller.signal,
       })
@@ -165,6 +169,16 @@ export function CardmedDevicePage() {
     } finally {
       setScanning(false)
     }
+  }
+
+  function stopBleScan() {
+    scanAbortRef.current?.abort()
+    setScanning(false)
+  }
+
+  function handleSelectKnownPaired(saved: SavedCardmedDevice) {
+    handlePickerClose()
+    openPairedDevice(saved)
   }
 
   async function handleScan() {
@@ -794,8 +808,11 @@ export function CardmedDevicePage() {
         open={pickerOpen}
         scanning={scanning}
         devices={foundDevices}
+        knownPaired={conn.pairedDevices}
         onSelect={handlePickerSelect}
+        onSelectKnown={handleSelectKnownPaired}
         onRescan={() => void startBleScan()}
+        onStopScan={stopBleScan}
         onSystemPicker={() => void handleSystemPicker()}
         onClose={handlePickerClose}
       />
