@@ -45,6 +45,7 @@ interface BluetoothAdvertisingEvent extends Event {
   readonly device: BluetoothDevice
   readonly name?: string
   readonly rssi?: number
+  readonly uuids?: BluetoothServiceUUID[]
 }
 
 type BluetoothServiceUUID = number | string

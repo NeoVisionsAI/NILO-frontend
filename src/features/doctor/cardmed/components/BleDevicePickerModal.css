@@ -270,6 +270,27 @@
   border-style: dashed;
 }
 
+.ble-picker__primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 1 1 100%;
+  min-width: 140px;
+  height: 44px;
+  padding: 0 16px;
+  border-radius: 9999px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--m3-on-primary, #fff);
+  background: var(--m3-primary, #14b8a6);
+}
+
+.ble-picker__primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .ble-picker__secondary--accent {
   color: var(--m3-primary);
   background: var(--m3-primary-fixed, rgba(20, 184, 166, 0.15));

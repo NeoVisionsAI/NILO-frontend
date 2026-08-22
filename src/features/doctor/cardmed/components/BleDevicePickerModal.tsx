@@ -101,8 +101,11 @@ export function BleDevicePickerModal({
             {scanning && <span className="ble-picker__ripple" aria-hidden="true" />}
           </div>
           <div className="ble-picker__header-text">
-            <h2 id="ble-picker-title">Dispositivos Bluetooth</h2>
-            <p>Solo se muestran equipos cuyo nombre contiene «nilo» o «cardmed».</p>
+            <h2 id="ble-picker-title">Escaneo en la app</h2>
+            <p>
+              Detecta por nombre «nilo»/«cardmed», UUID del servicio o dispositivos ya emparejados. Si no aparece nada,
+              usa el selector del sistema (más fiable).
+            </p>
           </div>
           <button type="button" className="ble-picker__close" onClick={onClose} aria-label="Cerrar">
             <MaterialIcon name="close" size={22} />
@@ -181,6 +184,10 @@ export function BleDevicePickerModal({
         </div>
 
         <footer className="ble-picker__footer">
+          <button type="button" className="ble-picker__primary" onClick={onSystemPicker} disabled={scanning}>
+            <MaterialIcon name="bluetooth" size={18} />
+            Selector del sistema (recomendado)
+          </button>
           {scanning && (
             <button type="button" className="ble-picker__secondary" onClick={onStopScan}>
               <MaterialIcon name="stop_circle" size={18} />
@@ -190,10 +197,6 @@ export function BleDevicePickerModal({
           <button type="button" className="ble-picker__secondary" onClick={onRescan} disabled={scanning}>
             <MaterialIcon name="refresh" size={18} />
             {scanning ? 'Escaneando…' : 'Buscar de nuevo'}
-          </button>
-          <button type="button" className="ble-picker__secondary ble-picker__secondary--accent" onClick={onSystemPicker} disabled={scanning}>
-            <MaterialIcon name="open_in_new" size={18} />
-            Selector del sistema
           </button>
         </footer>
       </div>

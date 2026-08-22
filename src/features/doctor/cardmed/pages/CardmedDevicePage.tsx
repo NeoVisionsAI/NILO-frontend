@@ -190,7 +190,16 @@ export function CardmedDevicePage() {
       return
     }
 
-    await startBleScan()
+    setPickerOpen(true)
+    void startBleScan()
+  }
+
+  async function handleQuickSystemPicker() {
+    handlePickerClose()
+    await run(async () => {
+      const device = await conn.scanDevice()
+      openPasswordForDevice(device, device.name)
+    })
   }
 
   function handlePickerClose() {
@@ -202,14 +211,6 @@ export function CardmedDevicePage() {
   function handlePickerSelect(entry: ScannedBleDevice) {
     handlePickerClose()
     openPasswordForDevice(entry.device, entry.name)
-  }
-
-  async function handleSystemPicker() {
-    handlePickerClose()
-    await run(async () => {
-      const device = await conn.scanDevice()
-      openPasswordForDevice(device)
-    })
   }
 
   function openSavedConnect(saved: SavedCardmedDevice) {
@@ -752,14 +753,17 @@ export function CardmedDevicePage() {
       ) : (
         <section className="nilo-cardmed__connect">
           <div className="nilo-cardmed__connect-actions">
-            <button type="button" className="nilo-cardmed__primary" onClick={() => void handleScan()} disabled={busy || !bleSupported}>
-              <MaterialIcon name="bluetooth_searching" size={22} />
-              Buscar dispositivos BLE
+            <button type="button" className="nilo-cardmed__primary" onClick={() => void handleQuickSystemPicker()} disabled={busy || !bleSupported}>
+              <MaterialIcon name="bluetooth" size={22} />
+              Buscar NiloCardmed (rápido)
+            </button>
+            <button type="button" className="nilo-cardmed__secondary-scan" onClick={() => void handleScan()} disabled={busy || !bleSupported}>
+              <MaterialIcon name="bluetooth_searching" size={20} />
+              Escaneo en la app
             </button>
             <p className="nilo-cardmed__hint">
-              {leScanSupported
-                ? 'Se abrirá un buscador propio filtrando por «nilo» o «cardmed» en el nombre.'
-                : 'Se abrirá el selector del sistema, filtrado por dispositivos Nilo / Cardmed.'}
+              Recomendado: <strong>Buscar NiloCardmed (rápido)</strong> usa el selector del sistema (encuentra
+              «NiloCardmed-d212bd98» al instante). El escaneo en la app puede no ver el nombre BLE en algunos tablets.
             </p>
           </div>
 
@@ -813,7 +817,7 @@ export function CardmedDevicePage() {
         onSelectKnown={handleSelectKnownPaired}
         onRescan={() => void startBleScan()}
         onStopScan={stopBleScan}
-        onSystemPicker={() => void handleSystemPicker()}
+        onSystemPicker={() => void handleQuickSystemPicker()}
         onClose={handlePickerClose}
       />
 
