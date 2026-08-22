@@ -1,18 +1,13 @@
 import { CARDMED_SERVICE_UUID } from './constants'
 
-export type CardmedBleDiscoveryMode = 'filtered' | 'acceptAll'
-
-/** Filtro recomendado: solo NiloCardmed y Chrome suele mostrar el nombre completo. */
+/**
+ * Único filtro de descubrimimiento Web Bluetooth (como en la primera implementación).
+ * El Pi debe anunciar Complete Local Name «NiloCardmed-<uuid>» en el paquete ADV.
+ */
 export const CARDMED_DEVICE_FILTER: BluetoothLEScanFilter = { namePrefix: 'NiloCardmed' }
 
-export const CARDMED_FILTERED_REQUEST_OPTIONS: RequestDeviceOptions = {
+export const CARDMED_REQUEST_DEVICE_OPTIONS: RequestDeviceOptions = {
   filters: [CARDMED_DEVICE_FILTER],
-  optionalServices: [CARDMED_SERVICE_UUID],
-}
-
-/** Sin filtro: lista larga; muchos aparecen como «desconocido» aunque sean conectables. */
-export const CARDMED_SYSTEM_PICKER_OPTIONS: RequestDeviceOptions = {
-  acceptAllDevices: true,
   optionalServices: [CARDMED_SERVICE_UUID],
 }
 
@@ -38,40 +33,26 @@ function assertBluetoothAvailable(): Bluetooth {
   return navigator.bluetooth
 }
 
-function validateNamedCardmed(device: BluetoothDevice): BluetoothDevice {
+/**
+ * Abre el selector nativo de Chrome filtrado por NiloCardmed.
+ * Si el Pi anuncia el nombre en ADV, verás «NiloCardmed-d212bd98» (como la primera vez).
+ */
+export async function requestCardmedBleDevice(): Promise<BluetoothDevice> {
+  const bluetooth = assertBluetoothAvailable()
+  const device = await bluetooth.requestDevice(CARDMED_REQUEST_DEVICE_OPTIONS)
+
   if (!isCardmedDeviceName(device.name)) {
     throw new Error(
       `«${formatBleDeviceLabel(device)}» no es un NiloCardmed. Elige uno cuyo nombre empiece por «NiloCardmed».`,
     )
   }
+
   return device
 }
 
-/** Selector filtrado: solo NiloCardmed-* con nombre visible (recomendado). */
-export async function requestCardmedBleDeviceFiltered(): Promise<BluetoothDevice> {
-  const bluetooth = assertBluetoothAvailable()
-  const device = await bluetooth.requestDevice(CARDMED_FILTERED_REQUEST_OPTIONS)
-  return validateNamedCardmed(device)
-}
-
-/**
- * Selector sin filtro: todos los BLE. Chrome muestra «desconocido» si el nombre no va en el anuncio;
- * aun así puedes elegirlo y validar con la contraseña tras conectar.
- */
-export async function requestCardmedBleDeviceAcceptAll(): Promise<BluetoothDevice> {
-  const bluetooth = assertBluetoothAvailable()
-  return bluetooth.requestDevice(CARDMED_SYSTEM_PICKER_OPTIONS)
-}
-
-export async function requestCardmedBleDevice(
-  mode: CardmedBleDiscoveryMode = 'filtered',
-): Promise<BluetoothDevice> {
-  return mode === 'acceptAll' ? requestCardmedBleDeviceAcceptAll() : requestCardmedBleDeviceFiltered()
-}
-
-/** Repite requestDevice (sin caché). Usa filtro con nombre visible. */
+/** Repite requestDevice cuando no hay BluetoothDevice en caché. */
 export async function requestDeviceByBleName(_bleName: string): Promise<BluetoothDevice> {
-  return requestCardmedBleDeviceFiltered()
+  return requestCardmedBleDevice()
 }
 
 /** @deprecated Usar requestDeviceByBleName o requestCardmedBleDevice */
@@ -82,7 +63,7 @@ export async function requestDeviceByName(name: string): Promise<BluetoothDevice
 export function cardmedErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     if (error.name === 'NotFoundError') {
-      return 'No se seleccionó ningún dispositivo. Si la lista filtrada estaba vacía, prueba «Ver todos los dispositivos».'
+      return 'No apareció ningún NiloCardmed. Comprueba que el Pi esté encendido y anunciando el nombre «NiloCardmed-…» en Bluetooth (ver docs §3.2).'
     }
     if (error.name === 'SecurityError') {
       return 'Permiso Bluetooth denegado. Usa HTTPS y concede permiso de dispositivos cercanos.'

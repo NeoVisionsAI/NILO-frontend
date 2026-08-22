@@ -9,7 +9,7 @@ import { CardmedDeviceStatusBar } from '../components/CardmedDeviceStatusBar'
 import { deviceDisplayLabel, formatDeviceLocation } from '../ble/device-registry'
 import { blobToObjectUrl, chunksToBlob } from '../ble/camera-utils'
 import type { CameraDevice, SavedCardmedDevice, WifiNetwork } from '../ble/types'
-import { formatBleDeviceLabel, isWebBluetoothSupported } from '../ble/web-bluetooth'
+import { isWebBluetoothSupported } from '../ble/web-bluetooth'
 import { useCardmedConnection } from '../hooks/useCardmedConnection'
 import './CardmedDevicePage.css'
 
@@ -132,20 +132,13 @@ export function CardmedDevicePage() {
   function openPasswordForDevice(device: BluetoothDevice, label?: string) {
     setPasswordTarget({ kind: 'scan', device })
     setPassword('')
-    const display = label ?? formatBleDeviceLabel(device)
-    if (!device.name) {
-      toast.info(
-        'Dispositivo sin nombre en el selector. Si es tu NiloCardmed, introduce la contraseña — se validará al conectar.',
-      )
-    } else {
-      toast.success(`«${display}» seleccionado. Introduce la contraseña.`)
-    }
+    toast.success(`«${label ?? device.name ?? 'NiloCardmed'}» seleccionado. Introduce la contraseña.`)
   }
 
-  async function handleConnectDevice(mode: 'filtered' | 'acceptAll' = 'filtered') {
+  async function handleConnectDevice() {
     await run(async () => {
-      const device = await conn.scanDevice(mode)
-      openPasswordForDevice(device, device.name ?? undefined)
+      const device = await conn.scanDevice()
+      openPasswordForDevice(device, device.name)
     })
   }
 
@@ -697,33 +690,23 @@ export function CardmedDevicePage() {
             <div className="nilo-cardmed__connect-hero-copy">
               <h2>Emparejar NiloCardmed</h2>
               <p>
-                Usa el selector de Chrome. <strong>Recomendado:</strong> «Buscar NiloCardmed» — solo muestra equipos
-                con nombre <strong>NiloCardmed-d212bd98</strong> visible.
+                Pulsa el botón y elige <strong>NiloCardmed-d212bd98</strong> en el diálogo de Chrome. Solo aparecerán
+                dispositivos cuyo nombre anunciado empiece por «NiloCardmed».
               </p>
               <p className="nilo-cardmed__connect-note">
-                «Ver todos los dispositivos» lista todo el BLE; muchos salen como «desconocido o no compatible» porque
-                Chrome no recibe el nombre en el anuncio. Tu NiloCardmed puede estar ahí: elígelo e introduce la
-                contraseña para confirmar.
+                Si la lista sale vacía pero el escáner nativo del tablet sí lo ve, el Pi debe incluir el nombre en el
+                paquete de anuncio BLE (Complete Local Name), no solo tras conectar. Ver <code>docs/Integracion_Frontend.md</code> §3.2.
               </p>
             </div>
             <div className="nilo-cardmed__connect-actions">
               <button
                 type="button"
                 className="nilo-cardmed__primary"
-                onClick={() => void handleConnectDevice('filtered')}
+                onClick={() => void handleConnectDevice()}
                 disabled={busy || !bleSupported || isBleConnecting}
               >
                 <MaterialIcon name="bluetooth" size={22} />
-                Buscar NiloCardmed
-              </button>
-              <button
-                type="button"
-                className="nilo-cardmed__secondary-scan"
-                onClick={() => void handleConnectDevice('acceptAll')}
-                disabled={busy || !bleSupported || isBleConnecting}
-              >
-                <MaterialIcon name="devices_other" size={20} />
-                Ver todos los dispositivos
+                Conectar NiloCardmed
               </button>
             </div>
           </div>
@@ -737,7 +720,7 @@ export function CardmedDevicePage() {
               <div className="nilo-cardmed__empty-state">
                 <MaterialIcon name="devices_other" size={40} />
                 <p>Aún no hay dispositivos emparejados.</p>
-                <span>Usa «Buscar NiloCardmed» para añadir el primero.</span>
+                <span>Usa «Conectar NiloCardmed» para añadir el primero.</span>
               </div>
             ) : (
               <ul className="nilo-cardmed__device-list">

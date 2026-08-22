@@ -14,9 +14,7 @@ import type { CardmedConnectionPhase, CardmedDeviceLocation, CardmedResponse, Sa
 import {
   cardmedErrorMessage,
   requestCardmedBleDevice,
-  requestCardmedBleDeviceFiltered,
   requestDeviceByBleName,
-  type CardmedBleDiscoveryMode,
 } from '../ble/web-bluetooth'
 
 export function useCardmedConnection() {
@@ -92,10 +90,10 @@ export function useCardmedConnection() {
     }
   }, [detachDisconnectHandler])
 
-  const scanDevice = useCallback(async (mode: CardmedBleDiscoveryMode = 'filtered') => {
+  const scanDevice = useCallback(async () => {
     setLastError(null)
     try {
-      return await requestCardmedBleDevice(mode)
+      return await requestCardmedBleDevice()
     } catch (err) {
       const message = cardmedErrorMessage(err)
       setLastError(message)
@@ -171,7 +169,7 @@ export function useCardmedConnection() {
       if (!saved?.password) {
         throw new Error('No hay dispositivo en caché. Pulsa Conectar dispositivo.')
       }
-      device = await requestCardmedBleDeviceFiltered()
+      device = await requestCardmedBleDevice()
       if (saved && device.id !== saved.id) {
         throw new Error(
           `Seleccionaste «${device.name ?? device.id}», no el emparejado «${saved.bleName}». Vuelve a elegir el correcto.`,
