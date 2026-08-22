@@ -161,12 +161,24 @@ export function useCardmedConnection() {
   )
 
   const reconnect = useCallback(async () => {
-    const device = deviceRef.current
+    const savedId = connectedIdRef.current
+    const saved = savedId ? getPairedDevice(savedId) : undefined
+
+    let device = deviceRef.current
     if (!device) {
-      throw new Error('No hay dispositivo en caché. Usa Conectar.')
+      if (!saved?.password) {
+        throw new Error('No hay dispositivo en caché. Pulsa Conectar dispositivo.')
+      }
+      device = await requestCardmedBleDevice()
+      if (saved && device.id !== saved.id) {
+        throw new Error(
+          `Seleccionaste «${device.name ?? device.id}», no el emparejado «${saved.bleName}». Vuelve a elegir el correcto.`,
+        )
+      }
+      deviceRef.current = device
+      setHasCachedDevice(true)
     }
 
-    const saved = getPairedDevice(device.id)
     if (!saved?.password) {
       throw new Error('Falta la contraseña guardada para reconectar.')
     }
@@ -216,6 +228,11 @@ export function useCardmedConnection() {
       }
 
       device = await requestDeviceByBleName(saved.bleName)
+      if (device.id !== saved.id) {
+        throw new Error(
+          `Seleccionaste «${device.name ?? device.id}», no «${saved.bleName}». Elige el dispositivo emparejado en el diálogo.`,
+        )
+      }
       await connect(device, password)
       touchPairedDevice(saved.id)
       refreshPaired()

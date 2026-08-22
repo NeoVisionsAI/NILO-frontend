@@ -3,20 +3,13 @@ import { Link } from 'react-router-dom'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import { toast } from '@/lib/toast'
 import { ROOT_PATHS } from '@/router/paths'
-import { BleDevicePickerModal } from '../components/BleDevicePickerModal'
 import { CardmedBleProgress } from '../components/CardmedBleProgress'
 import { CardmedDeviceRegistryPanel } from '../components/CardmedDeviceRegistryPanel'
 import { CardmedDeviceStatusBar } from '../components/CardmedDeviceStatusBar'
 import { deviceDisplayLabel, formatDeviceLocation } from '../ble/device-registry'
 import { blobToObjectUrl, chunksToBlob } from '../ble/camera-utils'
 import type { CameraDevice, SavedCardmedDevice, WifiNetwork } from '../ble/types'
-import {
-  cardmedErrorMessage,
-  isLeScanSupported,
-  isWebBluetoothSupported,
-  scanCardmedDevices,
-  type ScannedBleDevice,
-} from '../ble/web-bluetooth'
+import { isWebBluetoothSupported } from '../ble/web-bluetooth'
 import { useCardmedConnection } from '../hooks/useCardmedConnection'
 import './CardmedDevicePage.css'
 
@@ -64,15 +57,10 @@ export function CardmedDevicePage() {
   const [monitorStart, setMonitorStart] = useState('')
   const [monitorEnd, setMonitorEnd] = useState('-1')
 
-  const [pickerOpen, setPickerOpen] = useState(false)
-  const [scanning, setScanning] = useState(false)
-  const [foundDevices, setFoundDevices] = useState<ScannedBleDevice[]>([])
   const [activePairedId, setActivePairedId] = useState<string | null>(null)
-  const scanAbortRef = useRef<AbortController | null>(null)
   const dashboardLoadedRef = useRef(false)
 
   const bleSupported = useMemo(() => isWebBluetoothSupported(), [])
-  const leScanSupported = useMemo(() => isLeScanSupported(), [])
 
   useEffect(() => {
     return () => {
@@ -141,88 +129,17 @@ export function CardmedDevicePage() {
     }
   }, [conn.phase, conn.blockingCommand, refreshDashboard])
 
-  useEffect(() => {
-    return () => {
-      scanAbortRef.current?.abort()
-    }
-  }, [])
-
   function openPasswordForDevice(device: BluetoothDevice, label?: string) {
     setPasswordTarget({ kind: 'scan', device })
     setPassword('')
     toast.success(`«${label ?? device.name ?? 'Dispositivo'}» seleccionado. Introduce la contraseña.`)
   }
 
-  async function startBleScan() {
-    scanAbortRef.current?.abort()
-    const controller = new AbortController()
-    scanAbortRef.current = controller
-
-    const knownNames = new Map(
-      conn.pairedDevices.map((item) => [item.id, item.displayName?.trim() || item.bleName]),
-    )
-
-    setPickerOpen(true)
-    setScanning(true)
-    setFoundDevices([])
-
-    try {
-      await scanCardmedDevices({
-        knownNames,
-        onUpdate: setFoundDevices,
-        signal: controller.signal,
-      })
-    } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') return
-      toast.error(cardmedErrorMessage(err))
-    } finally {
-      setScanning(false)
-    }
-  }
-
-  function stopBleScan() {
-    scanAbortRef.current?.abort()
-    setScanning(false)
-  }
-
-  function handleSelectKnownPaired(saved: SavedCardmedDevice) {
-    handlePickerClose()
-    openPairedDevice(saved)
-  }
-
-  async function handleScan() {
-    if (!leScanSupported) {
-      await run(async () => {
-        const device = await conn.scanDevice()
-        openPasswordForDevice(device)
-      })
-      return
-    }
-
-    setPickerOpen(true)
-    void startBleScan()
-  }
-
-  async function handleQuickSystemPicker() {
-    handlePickerClose()
+  async function handleConnectDevice() {
     await run(async () => {
       const device = await conn.scanDevice()
       openPasswordForDevice(device, device.name)
     })
-  }
-
-  function handlePickerClose() {
-    scanAbortRef.current?.abort()
-    setPickerOpen(false)
-    setScanning(false)
-  }
-
-  function handlePickerSelect(entry: ScannedBleDevice) {
-    if (!entry.isLikelyCardmed) {
-      toast.info(`«${entry.name}» no parece un NiloCardmed. Puedes probar igualmente con la contraseña.`)
-    }
-    handlePickerClose()
-    openPasswordForDevice(entry.device, entry.name)
   }
 
   function openSavedConnect(saved: SavedCardmedDevice) {
@@ -772,16 +689,20 @@ export function CardmedDevicePage() {
             </div>
             <div className="nilo-cardmed__connect-hero-copy">
               <h2>Emparejar NiloCardmed</h2>
-              <p>Conecta un dispositivo CardMed por Bluetooth para configurarlo y monitorizarlo.</p>
+              <p>
+                Pulsa el botón y elige tu dispositivo (p. ej. <strong>NiloCardmed-d212bd98</strong>) en el diálogo
+                de Chrome. Web Bluetooth no permite listar BLE en la app; solo el selector del sistema.
+              </p>
             </div>
             <div className="nilo-cardmed__connect-actions">
-              <button type="button" className="nilo-cardmed__primary" onClick={() => void handleQuickSystemPicker()} disabled={busy || !bleSupported || isBleConnecting}>
+              <button
+                type="button"
+                className="nilo-cardmed__primary"
+                onClick={() => void handleConnectDevice()}
+                disabled={busy || !bleSupported || isBleConnecting}
+              >
                 <MaterialIcon name="bluetooth" size={22} />
-                Buscar NiloCardmed (rápido)
-              </button>
-              <button type="button" className="nilo-cardmed__secondary-scan" onClick={() => void handleScan()} disabled={busy || !bleSupported || isBleConnecting}>
-                <MaterialIcon name="bluetooth_searching" size={20} />
-                Escaneo en la app
+                Conectar dispositivo
               </button>
             </div>
           </div>
@@ -795,7 +716,7 @@ export function CardmedDevicePage() {
               <div className="nilo-cardmed__empty-state">
                 <MaterialIcon name="devices_other" size={40} />
                 <p>Aún no hay dispositivos emparejados.</p>
-                <span>Usa «Buscar NiloCardmed» para añadir el primero.</span>
+                <span>Usa «Conectar dispositivo» para añadir el primero.</span>
               </div>
             ) : (
               <ul className="nilo-cardmed__device-list">
@@ -833,19 +754,6 @@ export function CardmedDevicePage() {
           </div>
         </section>
       )}
-
-      <BleDevicePickerModal
-        open={pickerOpen}
-        scanning={scanning}
-        devices={foundDevices}
-        knownPaired={conn.pairedDevices}
-        onSelect={handlePickerSelect}
-        onSelectKnown={handleSelectKnownPaired}
-        onRescan={() => void startBleScan()}
-        onStopScan={stopBleScan}
-        onSystemPicker={() => void handleQuickSystemPicker()}
-        onClose={handlePickerClose}
-      />
 
       {passwordTarget && (
         <div className="nilo-cardmed__modal-backdrop nilo-cardmed__modal-backdrop--visible">
