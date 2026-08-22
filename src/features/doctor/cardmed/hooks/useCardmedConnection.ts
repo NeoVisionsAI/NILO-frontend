@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { CARDMED_BLOCKING_COMMANDS, isBleTimeout, isConnectionLostError } from '../ble/ble-errors'
-import { connectGatt, NiloCardmedClient } from '../ble/NiloCardmedClient'
+import { connectGatt, type NiloCardmedClient } from '../ble/NiloCardmedClient'
 import {
   deviceDisplayLabel,
   getPairedDevice,
@@ -34,23 +34,28 @@ export function useCardmedConnection() {
     setPairedDevices(loadPairedDevices())
   }, [])
 
-  const handleInvoluntaryDisconnect = useCallback((message = 'Conexión Bluetooth perdida.') => {
-    clientRef.current?.dispose()
-    clientRef.current = null
-    setBlockingCommand(null)
-    setConnectedDeviceId(null)
-    connectedIdRef.current = null
-    setPhase('disconnected')
-    setLastError(message)
-    setHasCachedDevice(Boolean(deviceRef.current))
-  }, [])
-
   const detachDisconnectHandler = useCallback((device: BluetoothDevice | null) => {
     if (device && disconnectHandlerRef.current) {
       device.removeEventListener('gattserverdisconnected', disconnectHandlerRef.current)
     }
     disconnectHandlerRef.current = null
   }, [])
+
+  const handleInvoluntaryDisconnect = useCallback((message = 'Conexión Bluetooth perdida.') => {
+    const device = deviceRef.current
+    clientRef.current?.dispose()
+    clientRef.current = null
+    detachDisconnectHandler(device)
+    deviceRef.current = null
+    connectedIdRef.current = null
+    setBlockingCommand(null)
+    setConnectedDeviceId(null)
+    setHasCachedDevice(false)
+    setPhase('disconnected')
+    setLastError(
+      `${message} Pulsa Conectar y elige el NiloCardmed de nuevo (no se reutiliza la sesión rota). Si emparejaste en Ajustes del tablet, olvida el dispositivo allí.`,
+    )
+  }, [detachDisconnectHandler])
 
   const attachDisconnectHandler = useCallback(
     (device: BluetoothDevice) => {
@@ -107,8 +112,8 @@ export function useCardmedConnection() {
         clientRef.current = null
       }
 
-      const { rx, tx } = await connectGatt(device)
-      const client = new NiloCardmedClient(rx, tx)
+      setPhase('connecting')
+      const { client } = await connectGatt(device)
       client.onUnauthorized = () => handleInvoluntaryDisconnect('Sesión BLE expirada.')
 
       deviceRef.current = device
@@ -140,7 +145,6 @@ export function useCardmedConnection() {
   const connect = useCallback(
     async (device: BluetoothDevice, password: string) => {
       setLastError(null)
-      setPhase('connecting')
 
       try {
         return await establishSession(device, password)
@@ -179,7 +183,6 @@ export function useCardmedConnection() {
     }
 
     setLastError(null)
-    setPhase('connecting')
 
     try {
       return await establishSession(device, saved.password)

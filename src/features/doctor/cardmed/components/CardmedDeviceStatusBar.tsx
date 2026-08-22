@@ -49,7 +49,7 @@ export function CardmedDeviceStatusBar({
   } else if (phase === 'disconnected') {
     statusClass = 'cardmed-status--disconnected'
     statusLabel = 'Desconectado'
-    statusDetail = lastError ?? 'La conexión se perdió. Pulsa Reconectar (no se reintenta solo).'
+    statusDetail = lastError ?? 'Conexión perdida. Pulsa Conectar y elige el NiloCardmed de nuevo en el selector.'
   } else if (phase === 'error') {
     statusClass = 'cardmed-status--disconnected'
     statusLabel = 'Error de conexión'

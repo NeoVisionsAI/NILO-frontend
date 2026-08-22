@@ -1,13 +1,18 @@
 import { CARDMED_SERVICE_UUID } from './constants'
 
 /**
- * Único filtro de descubrimimiento Web Bluetooth (como en la primera implementación).
- * El Pi debe anunciar Complete Local Name «NiloCardmed-<uuid>» en el paquete ADV.
+ * Descubrimiento Web Bluetooth (Android): solo namePrefix.
+ * NO usar { services: [UUID] } en filters — el UUID no va en advertising.
  */
 export const CARDMED_DEVICE_FILTER: BluetoothLEScanFilter = { namePrefix: 'NiloCardmed' }
 
 export const CARDMED_REQUEST_DEVICE_OPTIONS: RequestDeviceOptions = {
   filters: [CARDMED_DEVICE_FILTER],
+  optionalServices: [CARDMED_SERVICE_UUID],
+}
+
+export const CARDMED_DIAGNOSTIC_REQUEST_OPTIONS: RequestDeviceOptions = {
+  acceptAllDevices: true,
   optionalServices: [CARDMED_SERVICE_UUID],
 }
 
@@ -33,10 +38,7 @@ function assertBluetoothAvailable(): Bluetooth {
   return navigator.bluetooth
 }
 
-/**
- * Abre el selector nativo de Chrome filtrado por NiloCardmed.
- * Si el Pi anuncia el nombre en ADV, verás «NiloCardmed-d212bd98» (como la primera vez).
- */
+/** Selector nativo filtrado (recomendado). Requiere gesto de usuario (tap). */
 export async function requestCardmedBleDevice(): Promise<BluetoothDevice> {
   const bluetooth = assertBluetoothAvailable()
   const device = await bluetooth.requestDevice(CARDMED_REQUEST_DEVICE_OPTIONS)
@@ -50,7 +52,18 @@ export async function requestCardmedBleDevice(): Promise<BluetoothDevice> {
   return device
 }
 
-/** Repite requestDevice cuando no hay BluetoothDevice en caché. */
+/**
+ * Diagnóstico: si aquí aparece NiloCardmed pero no con filtros, el bug eran los filters de la app.
+ * Solo builds de desarrollo.
+ */
+export async function requestCardmedBleDeviceDiagnostic(): Promise<BluetoothDevice> {
+  if (!import.meta.env.DEV) {
+    throw new Error('Diagnóstico BLE solo en desarrollo.')
+  }
+  const bluetooth = assertBluetoothAvailable()
+  return bluetooth.requestDevice(CARDMED_DIAGNOSTIC_REQUEST_OPTIONS)
+}
+
 export async function requestDeviceByBleName(_bleName: string): Promise<BluetoothDevice> {
   return requestCardmedBleDevice()
 }
@@ -63,14 +76,20 @@ export async function requestDeviceByName(name: string): Promise<BluetoothDevice
 export function cardmedErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     if (error.name === 'NotFoundError') {
-      return 'No apareció ningún NiloCardmed en el selector. El Pi anuncia bien si en logs ves LocalName=NiloCardmed-…. Espera unos segundos con el diálogo abierto o acerca el tablet al Pi.'
+      return (
+        'No apareció ningún NiloCardmed en el selector. Revisa filtros (namePrefix). ' +
+        'En Android a veces el stack solo escanea tras abrir Ajustes → Bluetooth; eso es un workaround del SO, no la solución. ' +
+        'No emparejes el Pi en Ajustes: conecta solo desde esta app.'
+      )
     }
     if (error.name === 'SecurityError') {
       return 'Permiso Bluetooth denegado. Usa HTTPS y concede permiso de dispositivos cercanos.'
     }
     if (error.name === 'AbortError') return 'Selección cancelada.'
     if (error.message === 'timeout' || error.message.startsWith('timeout BLE')) {
-      return 'Tiempo de espera agotado en el dispositivo.'
+      return error.message.includes('gatt.connect')
+        ? `${error.message}. Acerca el tablet al Pi e inténtalo de nuevo (timeout 30 s).`
+        : 'Tiempo de espera agotado en el dispositivo.'
     }
     if (error.message === 'GATT operation already in progress.') {
       return 'Operación BLE en curso. Espera un momento e inténtalo de nuevo.'

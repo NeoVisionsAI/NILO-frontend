@@ -12,6 +12,24 @@ interface Waiter {
   cmd: string
 }
 
+function withBleTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => {
+      reject(new Error(`timeout BLE ${label}`))
+    }, ms)
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer)
+        resolve(value)
+      },
+      (error) => {
+        window.clearTimeout(timer)
+        reject(error)
+      },
+    )
+  })
+}
+
 export class NiloCardmedClient {
   private assembler = new BleResponseAssembler()
   private waiters = new Map<string, Waiter>()
@@ -19,6 +37,7 @@ export class NiloCardmedClient {
   /** Serializa petición completa (write + espera respuesta): un comando in-flight. */
   private sendChain: Promise<unknown> = Promise.resolve()
   private onNotify: (event: Event) => void
+  private notificationsStarted = false
   token: string | null = null
   deviceName: string | null = null
   onUnhandledResponse?: ResponseHandler
@@ -63,10 +82,17 @@ export class NiloCardmedClient {
     this.tx.addEventListener('characteristicvaluechanged', this.onNotify)
   }
 
+  async startNotifications(): Promise<void> {
+    if (this.notificationsStarted) return
+    await this.tx.startNotifications()
+    this.notificationsStarted = true
+  }
+
   dispose() {
     this.tx.removeEventListener('characteristicvaluechanged', this.onNotify)
     this.queue.clear()
     this.sendChain = Promise.resolve()
+    this.notificationsStarted = false
     for (const waiter of this.waiters.values()) {
       clearTimeout(waiter.timer)
       waiter.reject(new Error('disconnected'))
@@ -74,6 +100,7 @@ export class NiloCardmedClient {
     this.waiters.clear()
     this.assembler.clear()
     this.token = null
+    this.deviceName = null
   }
 
   send(payload: Record<string, unknown>, timeoutMs: number = CARDMED_TIMEOUTS.default): Promise<CardmedResponse> {
@@ -122,7 +149,7 @@ export class NiloCardmedClient {
   }
 
   async auth(password: string): Promise<CardmedAuthData> {
-    const resp = await this.send({ cmd: 'auth', password }, CARDMED_TIMEOUTS.default)
+    const resp = await this.send({ cmd: 'auth', password }, CARDMED_TIMEOUTS.auth)
     const data = resp.data as unknown as CardmedAuthData
     this.token = data.token
     this.deviceName = data.device_name
@@ -140,11 +167,27 @@ export class NiloCardmedClient {
   }
 }
 
-export async function connectGatt(device: BluetoothDevice) {
-  const server = await device.gatt!.connect()
+/**
+ * Orden obligatorio: connect → service → RX/TX → listener → startNotifications → auth.
+ */
+export async function connectGatt(device: BluetoothDevice): Promise<{
+  server: BluetoothRemoteGATTServer
+  rx: BluetoothRemoteGATTCharacteristic
+  tx: BluetoothRemoteGATTCharacteristic
+  client: NiloCardmedClient
+}> {
+  const gatt = device.gatt
+  if (!gatt) {
+    throw new Error('GATT no disponible en el dispositivo seleccionado.')
+  }
+
+  const server = await withBleTimeout(gatt.connect(), CARDMED_TIMEOUTS.gattConnect, 'gatt.connect()')
   const service = await server.getPrimaryService(CARDMED_SERVICE_UUID)
   const rx = await service.getCharacteristic(CARDMED_RX_UUID)
   const tx = await service.getCharacteristic(CARDMED_TX_UUID)
-  await tx.startNotifications()
-  return { server, rx, tx }
+
+  const client = new NiloCardmedClient(rx, tx)
+  await client.startNotifications()
+
+  return { server, rx, tx, client }
 }

@@ -712,12 +712,14 @@ export function CardmedDevicePage() {
             <div className="nilo-cardmed__connect-hero-copy">
               <h2>Emparejar NiloCardmed</h2>
               <p>
-                Pulsa el botón y elige <strong>NiloCardmed-d212bd98</strong> en el diálogo de Chrome. Solo aparecerán
-                dispositivos cuyo nombre anunciado empiece por «NiloCardmed».
+                Pulsa <strong>Conectar NiloCardmed</strong> y elige tu dispositivo en el diálogo de Chrome
+                (<code>namePrefix: NiloCardmed</code>).
               </p>
               <p className="nilo-cardmed__connect-note">
-                Si la lista sale vacía pero el escáner nativo del tablet sí lo ve, el Pi debe incluir el nombre en el
-                paquete de anuncio BLE (Complete Local Name), no solo tras conectar. Ver <code>docs/Integracion_Frontend.md</code> §3.2.
+                <strong>Android:</strong> si el selector sale vacío, espera unos segundos con el diálogo abierto.
+                Abrir Ajustes → Bluetooth a veces «despierta» el escaneo del sistema (workaround, no solución).
+                <strong> No emparejes</strong> el Pi en Ajustes del tablet; si ya lo hiciste, olvídalo allí y conecta
+                solo desde esta app.
               </p>
             </div>
             <div className="nilo-cardmed__connect-actions">

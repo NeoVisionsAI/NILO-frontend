@@ -88,7 +88,7 @@ En casi todos los casos el Pi está anunciando correctamente (`GATT + advertisem
 | No aplica filtros de la app | Requiere **gesto del usuario** (tap en botón) |
 | Ve el nombre aunque no lleve UUID en el AD | Si filtras mal, **no aparece en el picker** |
 
-El NiloCardmed anuncia **solo el nombre local** (`NiloCardmed-<uuid>`) en el paquete de advertising (límite 31 bytes de BLE). **No incluye el UUID de servicio en el AD.** Por tanto:
+El NiloCardmed publica en el paquete de advertising (AD) **solo el Complete Local Name** (`NiloCardmed-<uuid>`, tipo AD 0x09). **No incluye el UUID de servicio en el AD** (límite 31 bytes). El firmware fuerza `LocalName` en cada registro de anuncio LE y sincroniza el alias BlueZ con el mismo valor.
 
 | Filtro en la app | ¿Aparece en el picker? |
 |------------------|------------------------|
@@ -123,6 +123,48 @@ await navigator.bluetooth.requestDevice({
 
 Si con `acceptAllDevices: true` **sí** sale `NiloCardmed-…`, el bug son los **`filters`** actuales de la app (casi siempre `services` o `name` exacto sin sufijo).
 
+#### Android: hay que abrir Ajustes → Bluetooth antes de que la app vea el dispositivo
+
+**Síntoma reportado en campo:** la PWA no muestra nada al pulsar «Buscar»; el usuario abre **Ajustes → Bluetooth** del tablet, ve `NiloCardmed-…` en la lista del sistema, vuelve a la app y **entonces** `requestDevice` sí funciona.
+
+**Causa:** no es que el Pi deje de anunciar. En Android, Web Bluetooth depende del stack BLE del SO; a veces el picker solo se puebla tras un escaneo iniciado por la app de Ajustes o tras cachear el dispositivo en el stack clásico/BLE.
+
+**Qué debe hacer el frontend (mitigaciones):**
+
+1. **Filtro obligatorio:** `{ namePrefix: 'NiloCardmed' }` — nunca `services` en `filters`.
+2. **No emparejar por el sistema:** el flujo es `requestDevice` → `gatt.connect()` → `startNotifications()` → `auth`. No pedir al usuario que empareje en Ajustes; si ya emparejó, que **olvide** el dispositivo en Ajustes y reconecte solo desde la app.
+3. **Orden estricto tras conectar** (en &lt; 5 s, antes de timeout):
+   - `device.gatt.connect()`
+   - `getPrimaryService(SERVICE_UUID)`
+   - `getCharacteristic(TX_UUID)` → **`startNotifications()`**
+   - listener `characteristicvaluechanged`
+   - recién entonces `auth`
+4. **Timeout primera conexión:** mínimo **20–30 s** en tablet (no 5–10 s).
+5. **Tras desconexión:** `gattserverdisconnected` → limpiar token/UI → nuevo `requestDevice` con gesto de usuario (no reutilizar bond roto).
+6. **Mensaje UX si el picker sale vacío:** «Abre Ajustes → Bluetooth un momento y vuelve» es workaround temporal; la corrección es revisar `filters` y permisos (Bluetooth + ubicación en Android antiguo).
+
+#### Android: conexión cae a los pocos segundos (timeout en app, icono Pi parpadea)
+
+**Síntoma:** empareja/conecta, icono verde en la Pi, a los ~5–30 s timeout en la app y el icono vuelve a parpadear.
+
+**Causas mixtas:**
+
+| Origen | Detalle |
+|--------|---------|
+| **Frontend** | No llamó a `startNotifications()` antes de `auth`; timeout demasiado corto. |
+| **Frontend** | Emparejamiento clásico en Ajustes + GATT Web Bluetooth → estados inconsistentes. |
+| **Backend (Pi)** | El supervisor restauraba discoverable/anuncio LE **mientras** había GATT conectado pero aún sin notify → cortaba la sesión. Corregido: no tocar discoverable con cliente activo; `has_active_client` incluye enlace GATT. |
+
+**Prueba en Pi durante un intento fallido:**
+
+```bash
+sudo ./scripts/pi-start.sh trace
+# en otra sesión, conectar desde el tablet y observar:
+# - "Cliente BLE conectado (GATT)"
+# - "suscrito a notificaciones TX"
+# - si aparece "Restaurando anuncio LE" o "bluetooth_reinicio" mientras conectado → bug backend
+```
+
 #### Requisitos de entorno a verificar
 
 - App servida por **HTTPS** (excepto `http://localhost` en desarrollo).
@@ -147,6 +189,17 @@ bluetoothctl show | grep -iE 'Powered|Discoverable|Advertising|ActiveInstances|A
 ```
 
 El `Alias` debe ser `NiloCardmed-<uuid>` (ej. `NiloCardmed-d212bd98`).
+
+#### Criterio de aceptación (backend + PWA)
+
+| Comprobación | Esperado |
+|--------------|----------|
+| nRF Connect → Advertising data | Campo **Complete Local Name** = `NiloCardmed-<uuid>` |
+| Chrome Android → `requestDevice({ filters: [{ namePrefix: 'NiloCardmed' }] })` | Diálogo muestra **nombre legible**, no «dispositivo desconocido» |
+| Tras conectar y desconectar | El nombre sigue en ADV (anuncio restaurado con el mismo `LocalName`) |
+| `device.name` en JS (antes de GATT) | `NiloCardmed-<uuid>` |
+
+Logs del Pi (`Anuncio LE: LocalName='NiloCardmed-…'` + `bluetooth_activo`) confirman la configuración; no sustituyen la prueba con Chrome.
 
 ---
 
