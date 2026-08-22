@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Avatar } from '@/components/ui/Avatar'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
+import { isWifiProvisioning } from '@/features/doctor/cardmed/config/provisioning'
 import { useAuth } from '@/hooks/useAuth'
 import { useFullscreen } from '@/hooks/useFullscreen'
 import { toast } from '@/lib/toast'
@@ -265,8 +266,8 @@ export function ClinicianTopBar({
                     onOpenCardmed()
                   }}
                 >
-                  <MaterialIcon name="bluetooth" size={20} />
-                  <span>Cardmed Device</span>
+                  <MaterialIcon name={isWifiProvisioning() ? 'wifi_tethering' : 'bluetooth'} size={20} />
+                  <span>{isWifiProvisioning() ? 'Emparejar Nilocardmed' : 'Cardmed Device'}</span>
                 </button>
               </div>
             )}
