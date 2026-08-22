@@ -1,19 +1,24 @@
 import { CARDMED_SERVICE_UUID } from './constants'
 
-/**
- * Descubrimiento Web Bluetooth (Android): solo namePrefix.
- * NO usar { services: [UUID] } en filters — el UUID no va en advertising.
- */
+export type CardmedDiscoveryMode = 'filtered' | 'acceptAll'
+
+/** Filtro principal. NO usar { services: [UUID] } — el UUID no va en advertising. */
 export const CARDMED_DEVICE_FILTER: BluetoothLEScanFilter = { namePrefix: 'NiloCardmed' }
 
-export const CARDMED_REQUEST_DEVICE_OPTIONS: RequestDeviceOptions = {
-  filters: [CARDMED_DEVICE_FILTER],
-  optionalServices: [CARDMED_SERVICE_UUID],
-}
+const OPTIONAL_SERVICES: RequestDeviceOptions['optionalServices'] = [CARDMED_SERVICE_UUID]
 
-export const CARDMED_DIAGNOSTIC_REQUEST_OPTIONS: RequestDeviceOptions = {
-  acceptAllDevices: true,
-  optionalServices: [CARDMED_SERVICE_UUID],
+export function buildCardmedDiscoveryFilters(knownBleNames: string[] = []): BluetoothLEScanFilter[] {
+  const filters: BluetoothLEScanFilter[] = [CARDMED_DEVICE_FILTER]
+  const seen = new Set<string>()
+
+  for (const name of knownBleNames) {
+    const trimmed = name?.trim()
+    if (!trimmed || !isCardmedDeviceName(trimmed) || seen.has(trimmed)) continue
+    seen.add(trimmed)
+    filters.push({ name: trimmed })
+  }
+
+  return filters
 }
 
 export function isWebBluetoothSupported(): boolean {
@@ -38,10 +43,27 @@ function assertBluetoothAvailable(): Bluetooth {
   return navigator.bluetooth
 }
 
-/** Selector nativo filtrado (recomendado). Requiere gesto de usuario (tap). */
-export async function requestCardmedBleDevice(): Promise<BluetoothDevice> {
+/** En algunas tablets Android el stack escanea mejor tras comprobar disponibilidad. */
+export async function warmUpBluetoothStack(): Promise<void> {
+  const bluetooth = navigator.bluetooth
+  if (bluetooth?.getAvailability) {
+    try {
+      await bluetooth.getAvailability()
+    } catch {
+      // ignorar
+    }
+  }
+}
+
+/** Selector filtrado: namePrefix + nombres exactos de emparejados (OR). Requiere gesto de usuario. */
+export async function requestCardmedBleDevice(knownBleNames: string[] = []): Promise<BluetoothDevice> {
   const bluetooth = assertBluetoothAvailable()
-  const device = await bluetooth.requestDevice(CARDMED_REQUEST_DEVICE_OPTIONS)
+  await warmUpBluetoothStack()
+
+  const device = await bluetooth.requestDevice({
+    filters: buildCardmedDiscoveryFilters(knownBleNames),
+    optionalServices: OPTIONAL_SERVICES,
+  })
 
   if (!isCardmedDeviceName(device.name)) {
     throw new Error(
@@ -53,22 +75,51 @@ export async function requestCardmedBleDevice(): Promise<BluetoothDevice> {
 }
 
 /**
- * Diagnóstico: si aquí aparece NiloCardmed pero no con filtros, el bug eran los filters de la app.
- * Solo builds de desarrollo.
+ * Modo tablet: sin filtro de nombre. El NiloCardmed puede aparecer como «desconocido»;
+ * se valida con la contraseña BLE tras conectar.
  */
-export async function requestCardmedBleDeviceDiagnostic(): Promise<BluetoothDevice> {
-  if (!import.meta.env.DEV) {
-    throw new Error('Diagnóstico BLE solo en desarrollo.')
-  }
+export async function requestCardmedBleDeviceAcceptAll(): Promise<BluetoothDevice> {
   const bluetooth = assertBluetoothAvailable()
-  return bluetooth.requestDevice(CARDMED_DIAGNOSTIC_REQUEST_OPTIONS)
+  await warmUpBluetoothStack()
+  return bluetooth.requestDevice({
+    acceptAllDevices: true,
+    optionalServices: OPTIONAL_SERVICES,
+  })
 }
 
-export async function requestDeviceByBleName(_bleName: string): Promise<BluetoothDevice> {
-  return requestCardmedBleDevice()
+export async function requestCardmedBleDeviceWithMode(
+  mode: CardmedDiscoveryMode,
+  knownBleNames: string[] = [],
+): Promise<BluetoothDevice> {
+  return mode === 'acceptAll' ? requestCardmedBleDeviceAcceptAll() : requestCardmedBleDevice(knownBleNames)
 }
 
-/** @deprecated Usar requestDeviceByBleName o requestCardmedBleDevice */
+/** Reconexión: filtro por nombre exacto del emparejado (suele funcionar en tablet cuando namePrefix falla). */
+export async function requestCardmedBleDeviceByExactName(bleName: string): Promise<BluetoothDevice> {
+  if (!isCardmedDeviceName(bleName)) {
+    return requestCardmedBleDevice()
+  }
+
+  const bluetooth = assertBluetoothAvailable()
+  await warmUpBluetoothStack()
+
+  const device = await bluetooth.requestDevice({
+    filters: [{ name: bleName }],
+    optionalServices: OPTIONAL_SERVICES,
+  })
+
+  if (device.name && !isCardmedDeviceName(device.name)) {
+    throw new Error(`Selecciona «${bleName}» en el selector.`)
+  }
+
+  return device
+}
+
+export async function requestDeviceByBleName(bleName: string): Promise<BluetoothDevice> {
+  return requestCardmedBleDeviceByExactName(bleName)
+}
+
+/** @deprecated Usar requestDeviceByBleName */
 export async function requestDeviceByName(name: string): Promise<BluetoothDevice> {
   return requestDeviceByBleName(name)
 }
@@ -77,13 +128,12 @@ export function cardmedErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     if (error.name === 'NotFoundError') {
       return (
-        'No apareció ningún NiloCardmed en el selector. Revisa filtros (namePrefix). ' +
-        'En Android a veces el stack solo escanea tras abrir Ajustes → Bluetooth; eso es un workaround del SO, no la solución. ' +
-        'No emparejes el Pi en Ajustes: conecta solo desde esta app.'
+        'No apareció ningún NiloCardmed. En tablet prueba «Modo tablet (sin filtro)» o conecta desde un dispositivo ya emparejado abajo. ' +
+        'Usa Chrome (no WebView), HTTPS y permiso «Dispositivos cercanos». No emparejes el Pi en Ajustes del tablet.'
       )
     }
     if (error.name === 'SecurityError') {
-      return 'Permiso Bluetooth denegado. Usa HTTPS y concede permiso de dispositivos cercanos.'
+      return 'Permiso Bluetooth denegado. Usa HTTPS y concede permiso de dispositivos cercanos y ubicación (Android).'
     }
     if (error.name === 'AbortError') return 'Selección cancelada.'
     if (error.message === 'timeout' || error.message.startsWith('timeout BLE')) {

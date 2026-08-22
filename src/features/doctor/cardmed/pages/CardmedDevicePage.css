@@ -301,6 +301,17 @@
   list-style: none;
 }
 
+.nilo-cardmed__device-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.nilo-cardmed__device-row .nilo-cardmed__device-main {
+  flex: 1;
+  min-width: 0;
+}
+
 .nilo-cardmed__device-main {
   display: grid;
   grid-template-columns: auto 1fr auto;

@@ -9,7 +9,13 @@ import { CardmedDeviceStatusBar } from '../components/CardmedDeviceStatusBar'
 import { deviceDisplayLabel, formatDeviceLocation } from '../ble/device-registry'
 import { blobToObjectUrl, chunksToBlob } from '../ble/camera-utils'
 import type { CameraDevice, SavedCardmedDevice, WifiNetwork } from '../ble/types'
-import { cardmedErrorMessage, isWebBluetoothSupported, requestCardmedBleDevice } from '../ble/web-bluetooth'
+import {
+  cardmedErrorMessage,
+  isWebBluetoothSupported,
+  requestCardmedBleDevice,
+  requestCardmedBleDeviceAcceptAll,
+  requestCardmedBleDeviceByExactName,
+} from '../ble/web-bluetooth'
 import { useCardmedConnection } from '../hooks/useCardmedConnection'
 import './CardmedDevicePage.css'
 
@@ -129,52 +135,62 @@ export function CardmedDevicePage() {
     }
   }, [conn.phase, conn.blockingCommand, refreshDashboard])
 
-  function openPasswordForDevice(device: BluetoothDevice, label?: string) {
+  function knownBleNames(): string[] {
+    return conn.pairedDevices.map((item) => item.bleName)
+  }
+
+  function openPasswordForDevice(device: BluetoothDevice, label?: string, unnamed = false) {
     setPasswordTarget({ kind: 'scan', device })
     setPassword('')
-    toast.success(`«${label ?? device.name ?? 'NiloCardmed'}» seleccionado. Introduce la contraseña.`)
-  }
-
-  /** requestDevice() debe llamarse en el mismo gesto del tap — no dentro de run() (Chrome lo bloquea). */
-  function handleConnectDevice() {
-    void (async () => {
-      try {
-        const device = await requestCardmedBleDevice()
-        openPasswordForDevice(device, device.name)
-      } catch (err) {
-        toast.error(cardmedErrorMessage(err))
-      }
-    })()
-  }
-
-  function openSavedConnect(saved: SavedCardmedDevice) {
-    setPasswordTarget({ kind: 'saved', saved })
-    setPassword('')
-  }
-
-  async function handleConnectSaved(saved: SavedCardmedDevice) {
-    setActivePairedId(saved.id)
-    setTab('registry')
-
-    if (!saved.password) {
-      openSavedConnect(saved)
-      return
+    if (unnamed || !device.name) {
+      toast.info(
+        'Dispositivo sin nombre en el selector. Si es tu NiloCardmed, introduce la contraseña — se validará al conectar.',
+      )
+    } else {
+      toast.success(`«${label ?? device.name}» seleccionado. Introduce la contraseña.`)
     }
+  }
 
+  /** requestDevice() en el mismo gesto del tap (Chrome/Android). */
+  function handleConnectDevice(mode: 'filtered' | 'acceptAll' = 'filtered') {
     void (async () => {
       try {
-        let picked: BluetoothDevice | undefined
-        if (!(conn.hasCachedDevice && conn.connectedDeviceId === saved.id)) {
-          picked = await requestCardmedBleDevice()
-        }
-        await run(async () => {
-          await conn.connectPaired(saved, undefined, picked)
-          toast.success('Dispositivo conectado.')
-        })
+        const device =
+          mode === 'acceptAll'
+            ? await requestCardmedBleDeviceAcceptAll()
+            : await requestCardmedBleDevice(knownBleNames())
+        openPasswordForDevice(device, device.name, mode === 'acceptAll' && !device.name)
       } catch (err) {
         toast.error(cardmedErrorMessage(err))
       }
     })()
+  }
+
+  /** Emparejado conocido: filtro por nombre exacto (mejor en tablet). */
+  function handleConnectKnownPaired(saved: SavedCardmedDevice) {
+    void (async () => {
+      try {
+        const device = await requestCardmedBleDeviceByExactName(saved.bleName)
+        setActivePairedId(saved.id)
+        setTab('registry')
+        if (saved.password) {
+          await run(async () => {
+            await conn.connectPaired(saved, undefined, device)
+            toast.success('Dispositivo conectado.')
+          })
+          return
+        }
+        setPasswordTarget({ kind: 'saved', saved, device })
+        setPassword('')
+        toast.success(`«${saved.bleName}» seleccionado. Introduce la contraseña.`)
+      } catch (err) {
+        toast.error(cardmedErrorMessage(err))
+      }
+    })()
+  }
+
+  function handleConnectSaved(saved: SavedCardmedDevice) {
+    handleConnectKnownPaired(saved)
   }
 
   function openPairedDevice(item: SavedCardmedDevice) {
@@ -188,7 +204,7 @@ export function CardmedDevicePage() {
       try {
         let picked: BluetoothDevice | undefined
         if (!conn.hasCachedDevice) {
-          picked = await requestCardmedBleDevice()
+          picked = await requestCardmedBleDeviceByExactName(activePaired.bleName)
         }
         await run(async () => {
           await conn.reconnect(picked)
@@ -222,7 +238,7 @@ export function CardmedDevicePage() {
       if (passwordTarget.kind === 'scan' && passwordTarget.device) {
         await conn.connect(passwordTarget.device, password.trim())
       } else if (passwordTarget.kind === 'saved' && passwordTarget.saved) {
-        await conn.connectPaired(passwordTarget.saved, password.trim())
+        await conn.connectPaired(passwordTarget.saved, password.trim(), passwordTarget.device)
       }
       setPasswordTarget(null)
       setPassword('')
@@ -712,25 +728,34 @@ export function CardmedDevicePage() {
             <div className="nilo-cardmed__connect-hero-copy">
               <h2>Emparejar NiloCardmed</h2>
               <p>
-                Pulsa <strong>Conectar NiloCardmed</strong> y elige tu dispositivo en el diálogo de Chrome
-                (<code>namePrefix: NiloCardmed</code>).
+                Pulsa <strong>Conectar NiloCardmed</strong> y elige tu dispositivo en el diálogo de Chrome.
+                Si ya emparejaste antes, usa <strong>Conectar</strong> en la lista de abajo (filtro por nombre exacto).
               </p>
               <p className="nilo-cardmed__connect-note">
-                <strong>Android:</strong> si el selector sale vacío, espera unos segundos con el diálogo abierto.
-                Abrir Ajustes → Bluetooth a veces «despierta» el escaneo del sistema (workaround, no solución).
-                <strong> No emparejes</strong> el Pi en Ajustes del tablet; si ya lo hiciste, olvídalo allí y conecta
-                solo desde esta app.
+                <strong>Tablet:</strong> si no aparece en el selector, prueba <strong>Modo tablet (sin filtro)</strong>
+                y elige el dispositivo «desconocido» más cercano al Pi; la contraseña BLE confirma que es el correcto.
+                Usa Chrome (pestaña del navegador, no WebView), HTTPS y permiso «Dispositivos cercanos».
+                <strong> No emparejes</strong> el Pi en Ajustes del tablet; si ya lo hiciste, olvídalo allí.
               </p>
             </div>
             <div className="nilo-cardmed__connect-actions">
               <button
                 type="button"
                 className="nilo-cardmed__primary"
-                onClick={() => void handleConnectDevice()}
+                onClick={() => handleConnectDevice('filtered')}
                 disabled={busy || !bleSupported || isBleConnecting}
               >
                 <MaterialIcon name="bluetooth" size={22} />
                 Conectar NiloCardmed
+              </button>
+              <button
+                type="button"
+                className="nilo-cardmed__secondary-scan"
+                onClick={() => handleConnectDevice('acceptAll')}
+                disabled={busy || !bleSupported || isBleConnecting}
+              >
+                <MaterialIcon name="bluetooth_searching" size={20} />
+                Modo tablet (sin filtro)
               </button>
             </div>
           </div>
@@ -753,27 +778,38 @@ export function CardmedDevicePage() {
                   const isLive = isBleConnected && conn.connectedDeviceId === item.id
                   return (
                     <li key={item.id} className="nilo-cardmed__device-item">
-                      <button
-                        type="button"
-                        className="nilo-cardmed__device-main"
-                        onClick={() => openPairedDevice(item)}
-                        disabled={busy}
-                      >
-                        <span className={`nilo-cardmed__device-icon-wrap${isLive ? ' nilo-cardmed__device-icon-wrap--live' : ''}`}>
-                          <span
-                            className={`nilo-cardmed__device-dot${isLive ? ' nilo-cardmed__device-dot--live' : ''}`}
-                            aria-hidden="true"
-                          />
-                          <MaterialIcon name="medical_information" size={22} />
-                        </span>
-                        <span className="nilo-cardmed__device-copy">
-                          <strong>{deviceDisplayLabel(item)}</strong>
-                          <span>{item.bleName}</span>
-                          <span>Emparejado: {new Date(item.pairedAt).toLocaleString('es-ES')}</span>
-                          {locationLabel && <span>{locationLabel}</span>}
-                        </span>
-                        <MaterialIcon name="chevron_right" size={24} className="nilo-cardmed__device-chevron" />
-                      </button>
+                      <div className="nilo-cardmed__device-row">
+                        <button
+                          type="button"
+                          className="nilo-cardmed__device-main"
+                          onClick={() => openPairedDevice(item)}
+                          disabled={busy}
+                        >
+                          <span className={`nilo-cardmed__device-icon-wrap${isLive ? ' nilo-cardmed__device-icon-wrap--live' : ''}`}>
+                            <span
+                              className={`nilo-cardmed__device-dot${isLive ? ' nilo-cardmed__device-dot--live' : ''}`}
+                              aria-hidden="true"
+                            />
+                            <MaterialIcon name="medical_information" size={22} />
+                          </span>
+                          <span className="nilo-cardmed__device-copy">
+                            <strong>{deviceDisplayLabel(item)}</strong>
+                            <span>{item.bleName}</span>
+                            <span>Emparejado: {new Date(item.pairedAt).toLocaleString('es-ES')}</span>
+                            {locationLabel && <span>{locationLabel}</span>}
+                          </span>
+                          <MaterialIcon name="chevron_right" size={24} className="nilo-cardmed__device-chevron" />
+                        </button>
+                        <div className="nilo-cardmed__device-actions">
+                          <button
+                            type="button"
+                            onClick={() => handleConnectKnownPaired(item)}
+                            disabled={busy || !bleSupported || isBleConnecting}
+                          >
+                            Conectar
+                          </button>
+                        </div>
+                      </div>
                     </li>
                   )
                 })}

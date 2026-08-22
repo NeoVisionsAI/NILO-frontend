@@ -94,10 +94,10 @@ export function useCardmedConnection() {
     }
   }, [detachDisconnectHandler])
 
-  const scanDevice = useCallback(async () => {
+  const scanDevice = useCallback(async (knownBleNames: string[] = []) => {
     setLastError(null)
     try {
-      return await requestCardmedBleDevice()
+      return await requestCardmedBleDevice(knownBleNames)
     } catch (err) {
       const message = cardmedErrorMessage(err)
       setLastError(message)
