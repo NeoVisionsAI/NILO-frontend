@@ -69,6 +69,7 @@ export function CardmedDevicePage() {
   const [foundDevices, setFoundDevices] = useState<ScannedBleDevice[]>([])
   const [activePairedId, setActivePairedId] = useState<string | null>(null)
   const scanAbortRef = useRef<AbortController | null>(null)
+  const dashboardLoadedRef = useRef(false)
 
   const bleSupported = useMemo(() => isWebBluetoothSupported(), [])
   const leScanSupported = useMemo(() => isLeScanSupported(), [])
@@ -87,8 +88,11 @@ export function CardmedDevicePage() {
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Error en el dispositivo'
         if (msg === 'unauthorized' || msg === 'privileged_auth_required') {
-          toast.error('Sesión expirada. Vuelve a conectar con contraseña.')
-          conn.disconnect()
+          toast.error('Sesión expirada. Pulsa Reconectar.')
+        } else if (conn.phase === 'disconnected') {
+          toast.error(msg || 'Conexión perdida. Pulsa Reconectar.')
+        } else if (msg.startsWith('Espera a que termine')) {
+          toast.info(msg)
         } else {
           toast.error(msg)
         }
@@ -96,10 +100,11 @@ export function CardmedDevicePage() {
         setBusy(false)
       }
     },
-    [conn],
+    [conn.phase],
   )
 
   const refreshDashboard = useCallback(async () => {
+    if (conn.blockingCommand) return
     await run(async () => {
       const health = await conn.runCommand('health_status')
       const battery = await conn.runCommand('battery_status')
@@ -115,10 +120,17 @@ export function CardmedDevicePage() {
   }, [conn, run])
 
   useEffect(() => {
-    if (conn.phase === 'connected') {
+    if (conn.phase === 'connected' && !dashboardLoadedRef.current && !conn.blockingCommand) {
+      dashboardLoadedRef.current = true
       void refreshDashboard()
     }
-  }, [conn.phase, refreshDashboard])
+    if (conn.phase !== 'connected') {
+      dashboardLoadedRef.current = false
+      if (conn.phase === 'disconnected' || conn.phase === 'idle') {
+        setDashboard(null)
+      }
+    }
+  }, [conn.phase, conn.blockingCommand, refreshDashboard])
 
   useEffect(() => {
     return () => {
@@ -208,9 +220,18 @@ export function CardmedDevicePage() {
   function openPairedDevice(item: SavedCardmedDevice) {
     setActivePairedId(item.id)
     setTab('registry')
-    if (item.password) {
-      void handleConnectSaved(item)
+  }
+
+  async function handleReconnectActive() {
+    if (!activePaired) return
+    if (conn.hasCachedDevice && activePaired.password) {
+      await run(async () => {
+        await conn.reconnect()
+        toast.success('Dispositivo reconectado.')
+      })
+      return
     }
+    await handleConnectSaved(activePaired)
   }
 
   function closeDeviceView() {
@@ -251,12 +272,14 @@ export function CardmedDevicePage() {
 
   async function handleWifiScan() {
     await run(async () => {
+      toast.info('Escaneando WiFi (~30 s). No se enviarán otros comandos BLE.')
       const resp = await conn.runCommand<{ networks: WifiNetwork[] }>(
         'wifi_scan',
         {},
         CARDMED_TIMEOUTS.wifiScan,
       )
       setWifiNetworks(resp.data?.networks ?? [])
+      toast.success('Escaneo WiFi completado.')
     })
   }
 
@@ -419,11 +442,17 @@ export function CardmedDevicePage() {
   }
 
   async function handlePing() {
+    if (conn.blockingCommand) {
+      toast.info(`Espera a que termine «${conn.blockingCommand}».`)
+      return
+    }
     await run(async () => {
       const resp = await conn.runCommand('ping')
       toast.success(`Ping OK · v${(resp.data as { version?: string })?.version ?? '?'}`)
     })
   }
+
+  const commandsBlocked = Boolean(conn.blockingCommand)
 
   const tabs: { id: CardmedTab; label: string; icon: string }[] = [
     { id: 'registry', label: 'Registro', icon: 'bookmark' },
@@ -486,7 +515,7 @@ export function CardmedDevicePage() {
         </div>
       )}
 
-      {conn.lastError && conn.phase === 'error' && (
+      {conn.lastError && (conn.phase === 'error' || conn.phase === 'disconnected') && (
         <div className="nilo-cardmed__alert nilo-cardmed__alert--error">{conn.lastError}</div>
       )}
 
@@ -496,7 +525,11 @@ export function CardmedDevicePage() {
             phase={conn.phase}
             busy={busy}
             bleSupported={bleSupported}
+            hasCachedDevice={conn.hasCachedDevice}
+            blockingCommand={conn.blockingCommand}
+            lastError={conn.lastError}
             onConnect={() => void handleConnectSaved(activePaired)}
+            onReconnect={() => void handleReconnectActive()}
             onDisconnect={conn.disconnect}
             onUnpair={handleUnpairActive}
           />
@@ -529,11 +562,16 @@ export function CardmedDevicePage() {
 
             {tab === 'dashboard' && isBleConnected && (
               <div className="nilo-cardmed__section">
+                {commandsBlocked && (
+                  <p className="nilo-cardmed__hint">
+                    Comando en curso: {conn.blockingCommand}. Ping y actualizar deshabilitados temporalmente.
+                  </p>
+                )}
                 <div className="nilo-cardmed__row">
-                  <button type="button" onClick={() => void refreshDashboard()} disabled={busy}>
+                  <button type="button" onClick={() => void refreshDashboard()} disabled={busy || commandsBlocked}>
                     Actualizar
                   </button>
-                  <button type="button" onClick={() => void handlePing()} disabled={busy}>
+                  <button type="button" onClick={() => void handlePing()} disabled={busy || commandsBlocked}>
                     Ping
                   </button>
                 </div>
@@ -543,8 +581,11 @@ export function CardmedDevicePage() {
 
             {tab === 'wifi' && isBleConnected && (
               <div className="nilo-cardmed__section">
+                {commandsBlocked && conn.blockingCommand === 'wifi_scan' && (
+                  <p className="nilo-cardmed__hint">Escaneo WiFi en curso… (~30 s)</p>
+                )}
                 <div className="nilo-cardmed__row">
-                  <button type="button" onClick={() => void handleWifiScan()} disabled={busy}>
+                  <button type="button" onClick={() => void handleWifiScan()} disabled={busy || commandsBlocked}>
                     Escanear redes
                   </button>
                   <button type="button" onClick={() => void handleWifiTest()} disabled={busy}>

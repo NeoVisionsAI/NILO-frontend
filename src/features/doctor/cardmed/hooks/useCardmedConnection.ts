@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { CARDMED_BLOCKING_COMMANDS, isConnectionLostError } from '../ble/ble-errors'
 import { connectGatt, NiloCardmedClient } from '../ble/NiloCardmedClient'
 import { CARDMED_TIMEOUTS } from '../ble/constants'
 import {
@@ -20,36 +21,75 @@ import {
 export function useCardmedConnection() {
   const clientRef = useRef<NiloCardmedClient | null>(null)
   const deviceRef = useRef<BluetoothDevice | null>(null)
+  const disconnectHandlerRef = useRef<(() => void) | null>(null)
+  const connectedIdRef = useRef<string | null>(null)
+
   const [phase, setPhase] = useState<CardmedConnectionPhase>('idle')
   const [deviceLabel, setDeviceLabel] = useState<string | null>(null)
   const [connectedDeviceId, setConnectedDeviceId] = useState<string | null>(null)
   const [pairedDevices, setPairedDevices] = useState<SavedCardmedDevice[]>(() => loadPairedDevices())
   const [lastError, setLastError] = useState<string | null>(null)
+  const [blockingCommand, setBlockingCommand] = useState<string | null>(null)
+  const [hasCachedDevice, setHasCachedDevice] = useState(false)
 
   const refreshPaired = useCallback(() => {
     setPairedDevices(loadPairedDevices())
   }, [])
 
+  const handleInvoluntaryDisconnect = useCallback((message = 'Conexión Bluetooth perdida.') => {
+    clientRef.current?.dispose()
+    clientRef.current = null
+    setBlockingCommand(null)
+    setConnectedDeviceId(null)
+    connectedIdRef.current = null
+    setPhase('disconnected')
+    setLastError(message)
+    setHasCachedDevice(Boolean(deviceRef.current))
+  }, [])
+
+  const detachDisconnectHandler = useCallback((device: BluetoothDevice | null) => {
+    if (device && disconnectHandlerRef.current) {
+      device.removeEventListener('gattserverdisconnected', disconnectHandlerRef.current)
+    }
+    disconnectHandlerRef.current = null
+  }, [])
+
+  const attachDisconnectHandler = useCallback(
+    (device: BluetoothDevice) => {
+      detachDisconnectHandler(device)
+      const handler = () => handleInvoluntaryDisconnect()
+      disconnectHandlerRef.current = handler
+      device.addEventListener('gattserverdisconnected', handler)
+    },
+    [detachDisconnectHandler, handleInvoluntaryDisconnect],
+  )
+
   const disconnect = useCallback(() => {
+    detachDisconnectHandler(deviceRef.current)
     clientRef.current?.dispose()
     clientRef.current = null
     if (deviceRef.current?.gatt?.connected) {
       deviceRef.current.gatt.disconnect()
     }
     deviceRef.current = null
+    connectedIdRef.current = null
+    setBlockingCommand(null)
     setDeviceLabel(null)
     setConnectedDeviceId(null)
+    setHasCachedDevice(false)
+    setLastError(null)
     setPhase('idle')
-  }, [])
+  }, [detachDisconnectHandler])
 
   useEffect(() => {
     return () => {
+      detachDisconnectHandler(deviceRef.current)
       clientRef.current?.dispose()
       if (deviceRef.current?.gatt?.connected) {
         deviceRef.current.gatt.disconnect()
       }
     }
-  }, [])
+  }, [detachDisconnectHandler])
 
   const scanDevice = useCallback(async () => {
     setLastError(null)
@@ -62,54 +102,91 @@ export function useCardmedConnection() {
     }
   }, [])
 
+  const establishSession = useCallback(
+    async (device: BluetoothDevice, password: string) => {
+      if (clientRef.current) {
+        clientRef.current.dispose()
+        clientRef.current = null
+      }
+
+      const { rx, tx } = await connectGatt(device)
+      const client = new NiloCardmedClient(rx, tx)
+      client.onUnauthorized = () => handleInvoluntaryDisconnect('Sesión BLE expirada.')
+
+      deviceRef.current = device
+      setHasCachedDevice(true)
+      attachDisconnectHandler(device)
+      clientRef.current = client
+
+      setPhase('authenticating')
+      const auth = await client.auth(password)
+      const bleName = auth.device_name || device.name || device.id
+
+      const paired = pairDevice({
+        id: device.id,
+        bleName,
+        password,
+      })
+
+      refreshPaired()
+      connectedIdRef.current = device.id
+      setConnectedDeviceId(device.id)
+      setDeviceLabel(deviceDisplayLabel(paired))
+      setLastError(null)
+      setPhase('connected')
+      return client
+    },
+    [attachDisconnectHandler, handleInvoluntaryDisconnect, refreshPaired],
+  )
+
   const connect = useCallback(
     async (device: BluetoothDevice, password: string) => {
       setLastError(null)
       setPhase('connecting')
 
       try {
-        if (clientRef.current) {
-          clientRef.current.dispose()
-          clientRef.current = null
-        }
-
-        const { rx, tx } = await connectGatt(device)
-        const client = new NiloCardmedClient(rx, tx)
-        client.onUnauthorized = () => setPhase('disconnected')
-
-        deviceRef.current = device
-        clientRef.current = client
-
-        device.addEventListener('gattserverdisconnected', () => {
-          setPhase('disconnected')
-          setDeviceLabel(null)
-          setConnectedDeviceId(null)
-        })
-
-        setPhase('authenticating')
-        const auth = await client.auth(password)
-        const bleName = auth.device_name || device.name || device.id
-
-        const paired = pairDevice({
-          id: device.id,
-          bleName,
-          password,
-        })
-
-        refreshPaired()
-        setConnectedDeviceId(device.id)
-        setDeviceLabel(deviceDisplayLabel(paired))
-        setPhase('connected')
-        return client
+        return await establishSession(device, password)
       } catch (err) {
-        setPhase('error')
-        const message = cardmedErrorMessage(err)
-        setLastError(message)
-        throw new Error(message)
+        if (isConnectionLostError(err)) {
+          handleInvoluntaryDisconnect(cardmedErrorMessage(err))
+        } else {
+          setPhase('error')
+          const message = cardmedErrorMessage(err)
+          setLastError(message)
+          setHasCachedDevice(Boolean(deviceRef.current))
+        }
+        throw new Error(cardmedErrorMessage(err))
       }
     },
-    [refreshPaired],
+    [establishSession, handleInvoluntaryDisconnect],
   )
+
+  const reconnect = useCallback(async () => {
+    const device = deviceRef.current
+    if (!device) {
+      throw new Error('No hay dispositivo en caché. Usa Conectar.')
+    }
+
+    const saved = getPairedDevice(device.id)
+    if (!saved?.password) {
+      throw new Error('Falta la contraseña guardada para reconectar.')
+    }
+
+    setLastError(null)
+    setPhase('connecting')
+
+    try {
+      return await establishSession(device, saved.password)
+    } catch (err) {
+      if (isConnectionLostError(err)) {
+        handleInvoluntaryDisconnect(cardmedErrorMessage(err))
+      } else {
+        setPhase('disconnected')
+        setLastError(cardmedErrorMessage(err))
+      }
+      throw new Error(cardmedErrorMessage(err))
+    }
+  }, [establishSession, handleInvoluntaryDisconnect])
 
   const connectPaired = useCallback(
     async (saved: SavedCardmedDevice, passwordOverride?: string) => {
@@ -118,12 +195,33 @@ export function useCardmedConnection() {
         throw new Error('Este dispositivo no tiene contraseña guardada.')
       }
 
-      const device = await requestDeviceByBleName(saved.bleName)
+      setLastError(null)
+
+      let device = deviceRef.current
+      if (device?.id === saved.id) {
+        setPhase('connecting')
+        try {
+          await establishSession(device, password)
+          touchPairedDevice(saved.id)
+          refreshPaired()
+          return
+        } catch (err) {
+          if (isConnectionLostError(err)) {
+            handleInvoluntaryDisconnect(cardmedErrorMessage(err))
+          } else {
+            setPhase('disconnected')
+            setLastError(cardmedErrorMessage(err))
+          }
+          throw new Error(cardmedErrorMessage(err))
+        }
+      }
+
+      device = await requestDeviceByBleName(saved.bleName)
       await connect(device, password)
       touchPairedDevice(saved.id)
       refreshPaired()
     },
-    [connect, refreshPaired],
+    [connect, establishSession, handleInvoluntaryDisconnect, refreshPaired],
   )
 
   const saveDeviceMetadata = useCallback(
@@ -142,7 +240,7 @@ export function useCardmedConnection() {
     (deviceId: string) => {
       unpairDevice(deviceId)
       refreshPaired()
-      if (deviceId === connectedDeviceId) {
+      if (deviceId === connectedDeviceId || deviceRef.current?.id === deviceId) {
         disconnect()
       }
     },
@@ -168,16 +266,34 @@ export function useCardmedConnection() {
       fields: Record<string, unknown> = {},
       timeoutMs: number = CARDMED_TIMEOUTS.default,
     ) => {
-      const client = getClient()
-      const response = await client.command<T>(cmd, fields, timeoutMs)
-
-      if (response.error === 'unauthorized' || response.error === 'privileged_auth_required') {
-        throw new Error(response.error)
+      if (blockingCommand && blockingCommand !== cmd) {
+        throw new Error(`Espera a que termine «${blockingCommand}» antes de enviar «${cmd}».`)
       }
 
-      return response
+      const blocksOthers = CARDMED_BLOCKING_COMMANDS.has(cmd)
+      if (blocksOthers) setBlockingCommand(cmd)
+
+      try {
+        const client = getClient()
+        const response = await client.command<T>(cmd, fields, timeoutMs)
+
+        if (response.error === 'unauthorized' || response.error === 'privileged_auth_required') {
+          throw new Error(response.error)
+        }
+
+        return response
+      } catch (err) {
+        if (isConnectionLostError(err)) {
+          handleInvoluntaryDisconnect(
+            err instanceof Error ? err.message : 'Conexión Bluetooth perdida.',
+          )
+        }
+        throw err
+      } finally {
+        if (blocksOthers) setBlockingCommand(null)
+      }
     },
-    [getClient],
+    [blockingCommand, getClient, handleInvoluntaryDisconnect],
   )
 
   const reauth = useCallback(async (password: string) => {
@@ -191,8 +307,11 @@ export function useCardmedConnection() {
     connectedDeviceId,
     pairedDevices,
     lastError,
+    blockingCommand,
+    hasCachedDevice,
     scanDevice,
     connect,
+    reconnect,
     connectPaired,
     disconnect,
     runCommand,

@@ -149,6 +149,12 @@ export function cardmedErrorMessage(error: unknown): string {
     if (error.message === 'GATT operation already in progress.') {
       return 'Operación BLE en curso. Espera un momento e inténtalo de nuevo.'
     }
+    if (error.message === 'disconnected' || error.message.includes('Conexión Bluetooth')) {
+      return error.message
+    }
+    if (error.name === 'NetworkError') {
+      return 'Conexión Bluetooth perdida.'
+    }
     return error.message
   }
   if (typeof error === 'object' && error && 'error' in error) {

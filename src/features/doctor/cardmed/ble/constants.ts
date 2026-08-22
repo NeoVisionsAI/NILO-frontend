@@ -6,7 +6,7 @@ export const CARDMED_STORAGE_KEY = 'nilo.cardmed.saved-devices'
 
 export const CARDMED_TIMEOUTS = {
   default: 30_000,
-  wifiScan: 60_000,
+  wifiScan: 30_000,
   wifiConnect: 60_000,
   imageDownload: 120_000,
 } as const satisfies Record<string, number>

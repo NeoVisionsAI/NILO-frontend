@@ -81,8 +81,10 @@ export class NiloCardmedClient {
       const id = String(payload.id ?? Date.now())
       const body = { ...payload, id }
 
+      let timer: ReturnType<typeof setTimeout> | undefined
+
       const responsePromise = new Promise<CardmedResponse>((resolve, reject) => {
-        const timer = setTimeout(() => {
+        timer = setTimeout(() => {
           this.waiters.delete(id)
           reject(new Error(`timeout BLE id=${id}`))
         }, timeoutMs)
@@ -90,7 +92,14 @@ export class NiloCardmedClient {
         this.waiters.set(id, { resolve, reject, timer })
       })
 
-      await writeRaw(this.rx, JSON.stringify(body))
+      try {
+        await writeRaw(this.rx, JSON.stringify(body))
+      } catch (err) {
+        if (timer) clearTimeout(timer)
+        this.waiters.delete(id)
+        throw err instanceof Error ? err : new Error(String(err))
+      }
+
       return responsePromise
     })
   }
