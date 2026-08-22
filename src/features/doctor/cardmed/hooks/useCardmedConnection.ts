@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { CARDMED_BLOCKING_COMMANDS, isConnectionLostError } from '../ble/ble-errors'
+import { CARDMED_BLOCKING_COMMANDS, isBleTimeout, isConnectionLostError } from '../ble/ble-errors'
 import { connectGatt, NiloCardmedClient } from '../ble/NiloCardmedClient'
-import { CARDMED_TIMEOUTS } from '../ble/constants'
 import {
   deviceDisplayLabel,
   getPairedDevice,
@@ -11,7 +10,7 @@ import {
   unpairDevice,
   updatePairedDevice,
 } from '../ble/device-registry'
-import type { CardmedConnectionPhase, CardmedDeviceLocation, SavedCardmedDevice } from '../ble/types'
+import type { CardmedConnectionPhase, CardmedDeviceLocation, CardmedResponse, SavedCardmedDevice } from '../ble/types'
 import {
   cardmedErrorMessage,
   requestCardmedBleDevice,
@@ -264,25 +263,50 @@ export function useCardmedConnection() {
     async <T = Record<string, unknown>>(
       cmd: string,
       fields: Record<string, unknown> = {},
-      timeoutMs: number = CARDMED_TIMEOUTS.default,
+      timeoutMs?: number,
     ) => {
       if (blockingCommand && blockingCommand !== cmd) {
         throw new Error(`Espera a que termine «${blockingCommand}» antes de enviar «${cmd}».`)
       }
 
-      const blocksOthers = CARDMED_BLOCKING_COMMANDS.has(cmd)
-      if (blocksOthers) setBlockingCommand(cmd)
+      const blocksUi = CARDMED_BLOCKING_COMMANDS.has(cmd)
+      if (blocksUi) setBlockingCommand(cmd)
+
+      const execute = async (): Promise<CardmedResponse<T>> => {
+        const client = getClient()
+        return client.command<T>(cmd, fields, timeoutMs)
+      }
 
       try {
-        const client = getClient()
-        const response = await client.command<T>(cmd, fields, timeoutMs)
+        let response: CardmedResponse<T>
+        try {
+          response = await execute()
+        } catch (err) {
+          const authError =
+            typeof err === 'object' &&
+            err &&
+            'ok' in err &&
+            (err as CardmedResponse).ok === false &&
+            ((err as CardmedResponse).error === 'privileged_auth_required' ||
+              (err as CardmedResponse).error === 'unauthorized')
 
-        if (response.error === 'unauthorized' || response.error === 'privileged_auth_required') {
-          throw new Error(response.error)
+          if (authError && connectedIdRef.current) {
+            const saved = getPairedDevice(connectedIdRef.current)
+            if (!saved?.password) throw err
+            const client = getClient()
+            await client.auth(saved.password)
+            response = await execute()
+          } else {
+            throw err
+          }
         }
 
         return response
       } catch (err) {
+        if (isBleTimeout(err)) {
+          setLastError(err instanceof Error ? err.message : 'Timeout BLE')
+          throw err
+        }
         if (isConnectionLostError(err)) {
           handleInvoluntaryDisconnect(
             err instanceof Error ? err.message : 'Conexión Bluetooth perdida.',
@@ -290,7 +314,7 @@ export function useCardmedConnection() {
         }
         throw err
       } finally {
-        if (blocksOthers) setBlockingCommand(null)
+        if (blocksUi) setBlockingCommand(null)
       }
     },
     [blockingCommand, getClient, handleInvoluntaryDisconnect],

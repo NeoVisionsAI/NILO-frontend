@@ -6,7 +6,6 @@ import { ROOT_PATHS } from '@/router/paths'
 import { BleDevicePickerModal } from '../components/BleDevicePickerModal'
 import { CardmedDeviceRegistryPanel } from '../components/CardmedDeviceRegistryPanel'
 import { CardmedDeviceStatusBar } from '../components/CardmedDeviceStatusBar'
-import { CARDMED_TIMEOUTS } from '../ble/constants'
 import { deviceDisplayLabel, formatDeviceLocation } from '../ble/device-registry'
 import { blobToObjectUrl, chunksToBlob } from '../ble/camera-utils'
 import type { CameraDevice, SavedCardmedDevice, WifiNetwork } from '../ble/types'
@@ -80,25 +79,34 @@ export function CardmedDevicePage() {
     }
   }, [captureUrl])
 
+  const runChainRef = useRef(Promise.resolve())
+
   const run = useCallback(
     async (action: () => Promise<void>) => {
-      setBusy(true)
-      try {
-        await action()
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Error en el dispositivo'
-        if (msg === 'unauthorized' || msg === 'privileged_auth_required') {
-          toast.error('Sesión expirada. Pulsa Reconectar.')
-        } else if (conn.phase === 'disconnected') {
-          toast.error(msg || 'Conexión perdida. Pulsa Reconectar.')
-        } else if (msg.startsWith('Espera a que termine')) {
-          toast.info(msg)
-        } else {
-          toast.error(msg)
+      const execute = async () => {
+        setBusy(true)
+        try {
+          await action()
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : 'Error en el dispositivo'
+          if (msg === 'unauthorized' || msg === 'privileged_auth_required') {
+            toast.error('Sesión expirada. Pulsa Reconectar.')
+          } else if (conn.phase === 'disconnected') {
+            toast.error(msg || 'Conexión perdida. Pulsa Reconectar.')
+          } else if (msg.startsWith('Espera a que termine') || msg.startsWith('Comando BLE en curso')) {
+            toast.info(msg)
+          } else if (msg.startsWith('timeout BLE')) {
+            toast.error(`${msg}. Si persiste, pulsa Reconectar sin reintentar en bucle.`)
+          } else {
+            toast.error(msg)
+          }
+        } finally {
+          setBusy(false)
         }
-      } finally {
-        setBusy(false)
       }
+
+      runChainRef.current = runChainRef.current.then(execute, execute)
+      await runChainRef.current
     },
     [conn.phase],
   )
@@ -287,12 +295,8 @@ export function CardmedDevicePage() {
 
   async function handleWifiScan() {
     await run(async () => {
-      toast.info('Escaneando WiFi (~30 s). No se enviarán otros comandos BLE.')
-      const resp = await conn.runCommand<{ networks: WifiNetwork[] }>(
-        'wifi_scan',
-        {},
-        CARDMED_TIMEOUTS.wifiScan,
-      )
+      toast.info('Escaneando WiFi (~60 s). No se enviarán otros comandos BLE.')
+      const resp = await conn.runCommand<{ networks: WifiNetwork[] }>('wifi_scan')
       setWifiNetworks(resp.data?.networks ?? [])
       toast.success('Escaneo WiFi completado.')
     })
@@ -307,7 +311,6 @@ export function CardmedDevicePage() {
       const resp = await conn.runCommand(
         'wifi_connect',
         { ssid: selectedSsid, password: wifiPassword, persist: true },
-        CARDMED_TIMEOUTS.wifiConnect,
       )
       setWifiStatus(resp.data as Record<string, unknown>)
       toast.success('WiFi configurado.')
@@ -325,7 +328,7 @@ export function CardmedDevicePage() {
 
   async function handleWifiTest() {
     await run(async () => {
-      const resp = await conn.runCommand('wifi_test', {}, CARDMED_TIMEOUTS.wifiConnect)
+      const resp = await conn.runCommand('wifi_test')
       toast.info(JSON.stringify(resp.data))
     })
   }
@@ -349,7 +352,7 @@ export function CardmedDevicePage() {
         capture_id: string
         total_chunks: number
         mode: string
-      }>('camera_capture_test', { device: selectedCamera, mode: 'chunked' }, CARDMED_TIMEOUTS.imageDownload)
+      }>('camera_capture_test', { device: selectedCamera, mode: 'chunked' })
 
       const captureId = meta.data?.capture_id
       const total = meta.data?.total_chunks ?? 0
@@ -360,7 +363,6 @@ export function CardmedDevicePage() {
         const chunk = await conn.runCommand(
           'camera_capture_chunk',
           { capture_id: captureId, index },
-          CARDMED_TIMEOUTS.imageDownload,
         )
         chunks.push(chunk)
       }
@@ -396,7 +398,7 @@ export function CardmedDevicePage() {
 
   async function testCardmed() {
     await run(async () => {
-      const resp = await conn.runCommand('cardmed_test', {}, CARDMED_TIMEOUTS.wifiConnect)
+      const resp = await conn.runCommand('cardmed_test')
       toast.info('Prueba CardMed completada.')
       setCardmedConfig((prev) => ({ ...prev, last_test: resp.data }))
     })

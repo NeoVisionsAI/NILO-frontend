@@ -2,10 +2,10 @@
 export class BleGattQueue {
   private chain: Promise<unknown> = Promise.resolve()
 
-  run<T>(fn: () => Promise<T>): Promise<T> {
-    const run = this.chain.then(fn, fn)
-    this.chain = run.catch(() => {})
-    return run
+  write(rx: BluetoothRemoteGATTCharacteristic, bytes: BufferSource): Promise<void> {
+    const next = this.chain.then(() => rx.writeValue(bytes))
+    this.chain = next.catch(() => {})
+    return next
   }
 
   clear() {

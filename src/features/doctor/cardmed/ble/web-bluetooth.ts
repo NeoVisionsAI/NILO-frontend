@@ -220,7 +220,7 @@ export function cardmedErrorMessage(error: unknown): string {
     if (error.name === 'SecurityError') return 'Permiso Bluetooth denegado.'
     if (error.name === 'AbortError') return 'Escaneo cancelado.'
     if (error.message === 'timeout' || error.message.startsWith('timeout BLE')) {
-      return 'Tiempo de espera agotado.'
+      return 'Tiempo de espera agotado en el dispositivo.'
     }
     if (error.message === 'SCAN_NOT_SUPPORTED') {
       return 'Escaneo en segundo plano no disponible; usa el selector del sistema.'
