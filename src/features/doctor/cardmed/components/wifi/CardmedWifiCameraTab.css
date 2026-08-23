@@ -1,1 +1,135 @@
 @import './CardmedWifiShared.css';
+
+.wifi-camera-tab__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.wifi-camera-tab__btn {
+  height: 44px;
+  padding: 0 18px;
+  font-size: 14px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.wifi-camera-tab__btn.nilo-cardmed__primary {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.wifi-camera-tab__select {
+  height: 40px;
+  min-width: 120px;
+  max-width: 200px;
+  flex: 0 1 180px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid var(--m3-outline-variant);
+  background: var(--m3-surface);
+  font-size: 13px;
+  color: var(--m3-on-surface);
+}
+
+.wifi-camera-tab__preview-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+  gap: 16px;
+  align-items: stretch;
+}
+
+.wifi-camera-tab__preview-image {
+  min-height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  border: 1px dashed var(--m3-outline-variant);
+  background: var(--m3-surface-container-low);
+  overflow: hidden;
+  padding: 12px;
+}
+
+.wifi-camera-tab__preview-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--m3-on-surface-variant);
+}
+
+.wifi-camera-tab__preview {
+  max-width: 100%;
+  max-height: 360px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+.wifi-camera-tab__meta-panel {
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--m3-outline-variant);
+  background: var(--m3-surface);
+  min-height: 220px;
+}
+
+.wifi-camera-tab__meta-panel h3 {
+  margin-bottom: 12px;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--m3-on-surface);
+}
+
+.wifi-camera-tab__meta-panel dl {
+  display: grid;
+  grid-template-columns: minmax(96px, auto) 1fr;
+  gap: 8px 12px;
+  margin: 0;
+}
+
+.wifi-camera-tab__meta-panel dt {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--m3-on-surface-variant);
+}
+
+.wifi-camera-tab__meta-panel dd {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--m3-on-surface);
+  word-break: break-word;
+}
+
+@media (max-width: 900px) {
+  .wifi-camera-tab__controls {
+    align-items: stretch;
+  }
+
+  .wifi-camera-tab__select {
+    flex: 1 1 160px;
+    max-width: none;
+  }
+
+  .wifi-camera-tab__preview-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .wifi-camera-tab__btn {
+    flex: 1 1 calc(50% - 5px);
+    min-width: 140px;
+  }
+
+  .wifi-camera-tab__select {
+    flex: 1 1 100%;
+  }
+}

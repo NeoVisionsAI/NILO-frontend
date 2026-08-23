@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import type { WifiNetwork } from '../../ble/types'
 import './CardmedWifiWifiTab.css'
@@ -31,14 +32,20 @@ export function CardmedWifiWifiTab({
   onPasswordChange,
   onConnect,
 }: CardmedWifiWifiTabProps) {
+  const [showPassword, setShowPassword] = useState(false)
   const scanActive = scanning || scanPending
   const showEmpty = !scanActive && networks.length === 0
 
   return (
     <div className="wifi-config-tab">
       <div className="wifi-config-tab__toolbar">
-        <button type="button" onClick={onScan} disabled={busy || scanActive}>
-          <MaterialIcon name="wifi_find" size={18} />
+        <button
+          type="button"
+          className="nilo-cardmed__primary wifi-config-tab__scan"
+          onClick={onScan}
+          disabled={busy || scanActive}
+        >
+          <MaterialIcon name="wifi_find" size={20} />
           {scanActive ? 'Escaneando…' : 'Escanear redes'}
         </button>
         {scanMode && <span className="wifi-status-tab__meta">{scanMode}</span>}
@@ -67,13 +74,24 @@ export function CardmedWifiWifiTab({
 
         <label className="wifi-config-tab__field">
           <span>Contraseña</span>
-          <input
-            type="password"
-            value={wifiPassword}
-            onChange={(e) => onPasswordChange(e.target.value)}
-            autoComplete="off"
-            disabled={busy}
-          />
+          <div className="wifi-config-tab__input-wrap">
+            <input
+              type={showPassword ? 'text' : 'password'}
+              value={wifiPassword}
+              onChange={(e) => onPasswordChange(e.target.value)}
+              autoComplete="off"
+              disabled={busy}
+            />
+            <button
+              type="button"
+              className="wifi-config-tab__toggle"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              disabled={busy}
+            >
+              <MaterialIcon name={showPassword ? 'visibility_off' : 'visibility'} size={20} />
+            </button>
+          </div>
         </label>
 
         <button type="button" className="nilo-cardmed__primary wifi-config-tab__connect" onClick={onConnect} disabled={busy || !selectedSsid}>

@@ -60,6 +60,23 @@ export interface CardmedCaptureBase64Data {
   image_base64?: string
   capture_id?: string
   device?: string
+  device_path?: string
+  size_bytes?: number
+  width?: number
+  height?: number
+  backend?: string
+  sha256?: string
+  mode?: string
+}
+
+export interface CameraCaptureMeta {
+  device?: string
+  sizeBytes?: number
+  width?: number
+  height?: number
+  backend?: string
+  sha256?: string
+  mode?: string
 }
 
 export interface CardmedTestStep {

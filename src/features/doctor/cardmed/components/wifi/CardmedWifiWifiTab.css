@@ -1,1 +1,44 @@
 @import './CardmedWifiShared.css';
+
+.wifi-config-tab__scan {
+  min-width: 200px;
+  height: 44px;
+  padding: 0 20px;
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.wifi-config-tab__input-wrap {
+  display: flex;
+  align-items: center;
+  height: 40px;
+  border: 1px solid var(--m3-outline-variant);
+  border-radius: 10px;
+  background: var(--m3-surface);
+  overflow: hidden;
+}
+
+.wifi-config-tab__input-wrap input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 10px;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+}
+
+.wifi-config-tab__input-wrap input:focus {
+  outline: none;
+}
+
+.wifi-config-tab__toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  color: var(--m3-on-surface-variant);
+}

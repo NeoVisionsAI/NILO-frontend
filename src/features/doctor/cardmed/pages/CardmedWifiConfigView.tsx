@@ -10,7 +10,7 @@ import { CardmedWifiLoginForm } from '../components/wifi/CardmedWifiLoginForm'
 import { CardmedWifiStatusTab } from '../components/wifi/CardmedWifiStatusTab'
 import { CardmedWifiWifiTab } from '../components/wifi/CardmedWifiWifiTab'
 import type { useCardmedWifiConnection } from '../hooks/useCardmedWifiConnection'
-import type { CardmedDashboard, CardmedTestData } from '../wifi/types'
+import type { CameraCaptureMeta, CardmedCaptureBase64Data, CardmedDashboard, CardmedTestData } from '../wifi/types'
 import { formatWifiScanMode, withWifiScanMinWait } from '../wifi/wifi-errors'
 import '../components/wifi/CardmedWifiShared.css'
 import './CardmedDevicePage.css'
@@ -44,6 +44,7 @@ export function CardmedWifiConfigView({ conn, onBackToPair }: CardmedWifiConfigV
   const [selectedCamera, setSelectedCamera] = useState('')
   const [savedCamera, setSavedCamera] = useState<string | undefined>()
   const [captureUrl, setCaptureUrl] = useState<string | null>(null)
+  const [captureMeta, setCaptureMeta] = useState<CameraCaptureMeta | null>(null)
 
   const [configCode, setConfigCode] = useState('')
   const [configJson, setConfigJson] = useState('')
@@ -186,13 +187,24 @@ export function CardmedWifiConfigView({ conn, onBackToPair }: CardmedWifiConfigV
   async function capturePhoto() {
     if (!selectedCamera) return
     await run(async () => {
-      const resp = await conn.runCommand<{ image_base64?: string }>('camera_capture_test', {
+      const resp = await conn.runCommand<CardmedCaptureBase64Data>('camera_capture_test', {
         device: selectedCamera,
         mode: 'base64',
       })
-      const b64 = resp.data?.image_base64
+      const data = resp.data ?? {}
+      const b64 = data.image_base64
       if (!b64) throw new Error('La captura no incluyó imagen.')
       setCaptureUrl(`data:image/jpeg;base64,${b64}`)
+      setCaptureMeta({
+        device: data.device_path ?? data.device ?? selectedCamera,
+        sizeBytes:
+          typeof data.size_bytes === 'number' ? data.size_bytes : Math.round((b64.length * 3) / 4),
+        width: typeof data.width === 'number' ? data.width : undefined,
+        height: typeof data.height === 'number' ? data.height : undefined,
+        backend: typeof data.backend === 'string' ? data.backend : undefined,
+        sha256: typeof data.sha256 === 'string' ? data.sha256 : undefined,
+        mode: typeof data.mode === 'string' ? data.mode : 'base64',
+      })
       toast.success('Foto de prueba capturada.')
     })
   }
@@ -361,6 +373,7 @@ export function CardmedWifiConfigView({ conn, onBackToPair }: CardmedWifiConfigV
                 selectedDevice={selectedCamera}
                 savedDevice={savedCamera}
                 captureUrl={captureUrl}
+                captureMeta={captureMeta}
                 onRefreshList={() => void loadCameras()}
                 onSelectDevice={setSelectedCamera}
                 onSaveDevice={() => void saveCameraDevice()}
