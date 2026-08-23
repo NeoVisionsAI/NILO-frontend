@@ -2,6 +2,10 @@
 export const CARDMED_WIFI_API_BASE =
   import.meta.env.VITE_CARDMED_WIFI_API_BASE ?? 'http://192.168.4.1:8080'
 
+/** GUI de configuración servida por el Pi (se abre en pestaña nueva desde la tablet). */
+export const CARDMED_WIFI_GUI_URL =
+  import.meta.env.VITE_CARDMED_WIFI_GUI_URL ?? `${CARDMED_WIFI_API_BASE}/`
+
 export const CARDMED_WIFI_AP_PREFIX = 'Nilocardmed-Config-'
 
 export const CARDMED_WIFI_TIMEOUTS = {
