@@ -18,6 +18,12 @@ export interface User {
   email: string
   role: UserRole
   avatarUrl?: string
+  /** Valor crudo de `type_user` del backend (`root`, `clinician`, `patient`). */
+  typeUser?: string
+}
+
+export function isRootUser(user: Pick<User, 'typeUser' | 'role'>): boolean {
+  return user.typeUser === 'root' || user.role === UserRole.ADMIN
 }
 
 /** Etiqueta legible por humanos para cada rol (ES). */

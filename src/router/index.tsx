@@ -7,7 +7,14 @@ import { LoginPage } from '@/features/auth'
 import { RootRedirect } from '@/features/shared/pages/RootRedirect'
 import { NotFoundPage } from '@/features/shared/pages/NotFoundPage'
 
-import { AdminLayout, AdminDashboardPage, UsersPage, SettingsPage } from '@/features/admin'
+import {
+  AdminLayout,
+  AdminDashboardPage,
+  AdminPatientsPage,
+  AdminCliniciansPage,
+  AdminNodesPage,
+} from '@/features/admin'
+import { RootAdminRoute } from './RootAdminRoute'
 import {
   DoctorLayout,
   SummaryPage,
@@ -41,18 +48,19 @@ export const router = createBrowserRouter([
 
   { path: ROOT_PATHS.login, element: <LoginPage /> },
 
-  // Área ADMINISTRADOR
+  // Área ROOT ADMIN (type_user === "root")
   {
     path: ROOT_PATHS.admin,
     element: (
-      <ProtectedRoute allow={[UserRole.ADMIN]}>
+      <RootAdminRoute>
         <AdminLayout />
-      </ProtectedRoute>
+      </RootAdminRoute>
     ),
     children: [
       { index: true, element: <AdminDashboardPage /> },
-      { path: 'usuarios', element: <UsersPage /> },
-      { path: 'configuracion', element: <SettingsPage /> },
+      { path: 'pacientes', element: <AdminPatientsPage /> },
+      { path: 'medicos', element: <AdminCliniciansPage /> },
+      { path: 'nodos', element: <AdminNodesPage /> },
     ],
   },
 

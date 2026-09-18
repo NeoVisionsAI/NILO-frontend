@@ -26,6 +26,7 @@ function mapUser(u: ApiUser): User {
     lastName: u.lastname ?? '',
     email,
     role: roleFromApi(u.type_user),
+    typeUser: u.type_user,
   }
 }
 

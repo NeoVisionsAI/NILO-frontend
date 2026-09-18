@@ -45,3 +45,30 @@ export type NodeUpdate = Partial<NodeCreate> & {
   wifi_enabled?: boolean
   wired_enabled?: boolean
 }
+
+/** Nodo admin con telemetría (`NodeOut` en /admin/nodes). */
+export interface AdminNode extends Node {
+  private_ip?: string | null
+  uptime_seconds?: number | null
+  ssh_enabled?: boolean
+  telemetry?: Record<string, unknown> | null
+  last_heartbeat?: string | null
+}
+
+/** Alta de nodo vía admin — POST /admin/nodes. */
+export interface AdminNodeCreate {
+  name: string
+  mac_address: string
+  access_password?: string
+  address?: string
+  city?: string
+  zip?: string
+  location?: string
+  bluetooth_enabled?: boolean
+  wifi_enabled?: boolean
+  wired_enabled?: boolean
+  ssh_enabled?: boolean
+}
+
+/** Actualización admin — PATCH /admin/nodes/{id}. */
+export type AdminNodeUpdate = Partial<AdminNodeCreate>

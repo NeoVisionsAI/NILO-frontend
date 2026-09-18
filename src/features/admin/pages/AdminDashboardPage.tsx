@@ -1,30 +1,50 @@
+import { Link } from 'react-router-dom'
 import { PageHeader } from '@/components/common'
-import { StatCard } from '@/components/ui/StatCard'
 import { Card } from '@/components/ui/Card'
-import { IconUsers, IconActivity, IconAlert, IconStethoscope } from '@/components/icons'
+import { ROOT_PATHS } from '@/router/paths'
+import { IconHeart, IconStethoscope, IconActivity } from '@/components/icons'
+
+const SECTIONS = [
+  {
+    to: `${ROOT_PATHS.admin}/pacientes`,
+    title: 'Pacientes',
+    description: 'Alta, búsqueda y gestión global de pacientes.',
+    icon: <IconHeart />,
+  },
+  {
+    to: `${ROOT_PATHS.admin}/medicos`,
+    title: 'Médicos',
+    description: 'Clínicos registrados en la plataforma.',
+    icon: <IconStethoscope />,
+  },
+  {
+    to: `${ROOT_PATHS.admin}/nodos`,
+    title: 'NILO Nodes',
+    description: 'Nodos edge, telemetría y heartbeat (vía nilo-node).',
+    icon: <IconActivity />,
+  },
+]
 
 export function AdminDashboardPage() {
   return (
     <div>
       <PageHeader
-        title="Panel de administración"
-        description="Visión general del estado de la plataforma NILO."
+        title="Root Admin"
+        description="Administración global de NILO. Usa los endpoints /api/v1/admin/*."
       />
 
-      <div className="u-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', marginBottom: 'var(--space-6)' }}>
-        <StatCard label="Usuarios activos" value="1.284" icon={<IconUsers />} trend={{ value: '+4,2%', tone: 'success' }} />
-        <StatCard label="Profesionales" value="176" icon={<IconStethoscope />} />
-        <StatCard label="Dispositivos online" value="932" icon={<IconActivity />} trend={{ value: '98% uptime', tone: 'success' }} />
-        <StatCard label="Alertas 24h" value="12" icon={<IconAlert />} trend={{ value: '3 críticas', tone: 'danger' }} />
+      <div className="u-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
+        {SECTIONS.map((section) => (
+          <Link key={section.to} to={section.to} style={{ textDecoration: 'none', color: 'inherit' }}>
+            <Card title={section.title} subtitle={section.description}>
+              <div className="u-row" style={{ marginTop: 'var(--space-2)', color: 'var(--color-primary)' }}>
+                {section.icon}
+                <span style={{ fontWeight: 'var(--font-semibold)' }}>Abrir sección →</span>
+              </div>
+            </Card>
+          </Link>
+        ))}
       </div>
-
-      <Card title="Actividad reciente" subtitle="Últimos eventos del sistema">
-        <ul className="u-stack">
-          <li>Nuevo médico dado de alta · hace 2 h</li>
-          <li>Actualización de firmware en 12 dispositivos · hace 5 h</li>
-          <li>Copia de seguridad completada · hace 8 h</li>
-        </ul>
-      </Card>
     </div>
   )
 }

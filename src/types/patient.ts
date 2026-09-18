@@ -53,6 +53,36 @@ export interface PatientProfileInput {
   node_id?: string | null
 }
 
+/** Cuerpo para crear un paciente — POST /admin/patients (root). */
+export interface AdminPatientCreate {
+  name: string
+  lastname: string
+  email: string
+  password: string
+  birthdate?: string
+  address?: string
+  zip?: string
+  country?: string
+  phone?: string
+  is_active?: boolean
+  patient_profile: PatientProfileInput
+}
+
+/** Cuerpo para actualizar un paciente admin — PATCH /admin/patients/{id}. */
+export interface AdminPatientUpdate {
+  name?: string
+  lastname?: string
+  email?: string
+  password?: string
+  birthdate?: string
+  address?: string
+  zip?: string
+  country?: string
+  phone?: string
+  is_active?: boolean
+  patient_profile?: PatientProfileInput
+}
+
 /** Cuerpo para crear un paciente — POST /users. */
 export interface PatientUserCreate {
   name: string
