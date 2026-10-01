@@ -54,6 +54,31 @@ Ver `certs/README.md` para instalar la CA mkcert en tablet.
 El `Dockerfile` es multi-stage: compila con Node y sirve los estáticos con
 nginx, que incluye fallback SPA para que funcione el enrutado del lado cliente.
 
+## Despliegue en GHCR (producción sin clonar el repo)
+
+Imagen publicada en cada push a `main`:
+
+```text
+ghcr.io/neovisionsai/nilo-frontend:latest
+```
+
+**Desarrollo (repo clonado):** `./deploy.sh --rebuild`
+
+**Servidor / VM (solo Docker):**
+
+```bash
+mkdir -p ~/nilo-frontend && cd ~/nilo-frontend
+curl -fsSL https://raw.githubusercontent.com/NeoVisionsAI/NILO-frontend/main/deploy/vm-ghcr/bootstrap.sh | bash
+cp credentials.env.example credentials.env   # editar
+mkdir -p certs && # cert.pem + key.pem
+docker login ghcr.io   # si el paquete es privado
+./deploy.sh
+```
+
+Cada actualización de código: `./deploy.sh` (pull de la imagen). No hace falta `git pull`.
+
+Guía completa: [`docs/07.ghcr_deploy.md`](docs/07.ghcr_deploy.md).
+
 ## Arquitectura
 
 Diseño **modular por características (feature-based)**. Cada rol vive en su

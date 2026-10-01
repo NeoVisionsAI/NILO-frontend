@@ -1,0 +1,24 @@
+# NILO Frontend — solo imagen GHCR (sin build, sin código fuente en el host).
+#
+#   cp credentials.env.example credentials.env   # editar proxy backend + certs
+#   mkdir -p certs && colocar cert.pem + key.pem
+#   docker login ghcr.io                         # si el paquete es privado
+#   ./deploy.sh
+#   sudo ./deploy.sh --install-systemd
+
+services:
+  frontend:
+    image: ${FRONTEND_IMAGE:-ghcr.io/neovisionsai/nilo-frontend:latest}
+    container_name: nilo-frontend
+    restart: always
+    env_file:
+      - credentials.env
+    network_mode: host
+    volumes:
+      - ${CERTS_DIR:-./certs}:/etc/nginx/ssl:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q -O- http://127.0.0.1/healthz | grep -q ok']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s

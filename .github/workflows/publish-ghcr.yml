@@ -1,0 +1,77 @@
+# Build and push the frontend image to GitHub Container Registry (ghcr.io).
+#
+# Image: ghcr.io/<owner>/nilo-frontend:<tag>
+# Tags: branch name, sha, latest (default branch only)
+#
+# Pull on another host (after login if private):
+#   docker pull ghcr.io/neovisionsai/nilo-frontend:latest
+
+name: Publish frontend image (GHCR)
+
+on:
+  push:
+    branches: [main, master]
+    tags: ['v*']
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: nilo-frontend
+  # Opcional: define repository variables VITE_* en GitHub para otro entorno.
+  VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL != '' && vars.VITE_API_BASE_URL || 'https://192.168.1.43:8443/api/v1' }}
+  VITE_API_DIRECT: ${{ vars.VITE_API_DIRECT != '' && vars.VITE_API_DIRECT || 'false' }}
+  VITE_APP_NAME: ${{ vars.VITE_APP_NAME != '' && vars.VITE_APP_NAME || 'NILO' }}
+  VITE_CARDMED_PROVISIONING_MODE: ${{ vars.VITE_CARDMED_PROVISIONING_MODE != '' && vars.VITE_CARDMED_PROVISIONING_MODE || 'wifi' }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=sha,prefix=
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VITE_API_BASE_URL=${{ env.VITE_API_BASE_URL }}
+            VITE_API_DIRECT=${{ env.VITE_API_DIRECT }}
+            VITE_APP_NAME=${{ env.VITE_APP_NAME }}
+            VITE_CARDMED_PROVISIONING_MODE=${{ env.VITE_CARDMED_PROVISIONING_MODE }}
+
+      - name: VM deploy bundle (sin código fuente)
+        run: chmod +x deploy/vm-ghcr/deploy.sh deploy/vm-ghcr/run.sh deploy/vm-ghcr/bootstrap.sh
+
+      - name: Upload deploy bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nilo-frontend-vm-ghcr-deploy
+          path: deploy/vm-ghcr/
+          if-no-files-found: error
