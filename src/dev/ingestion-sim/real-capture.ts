@@ -120,22 +120,30 @@ export async function captureFaceLandmarksClip(
   deviceId?: string,
   onTick?: (secondsLeft: number) => void,
   videoPreview?: HTMLVideoElement,
+  reuseStream?: MediaStream | null,
 ): Promise<{
   payload: FaceLandmarksCapturePayload
   frameCount: number
   startedAt: Date
   endedAt: Date
 }> {
-  const stream = await requestCameraStream({
-    video: videoConstraints(deviceId),
-    audio: false,
-  })
+  const ownsStream = !reuseStream
+  const stream =
+    reuseStream ??
+    (await requestCameraStream({
+      video: videoConstraints(deviceId),
+      audio: false,
+    }))
 
   const video = videoPreview ?? document.createElement('video')
-  video.srcObject = stream
-  video.muted = true
-  video.playsInline = true
-  await video.play()
+  if (!video.srcObject) {
+    video.srcObject = stream
+    video.muted = true
+    video.playsInline = true
+    await video.play()
+  } else if (video.paused) {
+    await video.play()
+  }
 
   const landmarker = await getFaceLandmarker()
   const targetFps = 15
@@ -165,9 +173,11 @@ export async function captureFaceLandmarksClip(
   }
 
   onTick?.(0)
-  stream.getTracks().forEach((t) => t.stop())
-  if (!videoPreview) {
-    video.srcObject = null
+  if (ownsStream) {
+    stream.getTracks().forEach((t) => t.stop())
+    if (!videoPreview) {
+      video.srcObject = null
+    }
   }
 
   const endedAt = new Date()

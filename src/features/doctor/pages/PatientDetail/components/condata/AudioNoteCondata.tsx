@@ -6,6 +6,11 @@ import { monitoringSessionService } from '@/services/monitoring-session.service'
 import type { AudioRecording } from '@/types/monitoring-session'
 import { CondataModuleLayout, type CondataModuleView } from './CondataModuleLayout'
 import { SessionPickerBar } from './SessionPickerBar'
+import {
+  deviceLabel,
+  ensureMediaPermission,
+  listMediaInputDevices,
+} from '@/lib/media-devices'
 import { useClinicalPatientResolution } from './useClinicalPatientResolution'
 import { useMonitoringSessions } from './useMonitoringSessions'
 
@@ -55,6 +60,9 @@ export function AudioNoteCondata({
   const [playUrl, setPlayUrl] = useState<string | null>(null)
   const [transcriptionDraft, setTranscriptionDraft] = useState('')
   const [savingTranscription, setSavingTranscription] = useState(false)
+  const [micDevices, setMicDevices] = useState<MediaDeviceInfo[]>([])
+  const [micDeviceId, setMicDeviceId] = useState('')
+  const [micsLoading, setMicsLoading] = useState(false)
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const mediaStreamRef = useRef<MediaStream | null>(null)
@@ -92,6 +100,31 @@ export function AudioNoteCondata({
       onViewChange('list')
     }
   }, [view, selectedClip, onViewChange])
+
+  useEffect(() => {
+    if (view !== 'add') return
+    let cancelled = false
+    ;(async () => {
+      setMicsLoading(true)
+      try {
+        await ensureMediaPermission('audioinput')
+        const list = await listMediaInputDevices('audioinput')
+        if (cancelled) return
+        setMicDevices(list)
+        setMicDeviceId((prev) => {
+          if (prev && list.some((d) => d.deviceId === prev)) return prev
+          return list[0]?.deviceId ?? ''
+        })
+      } catch {
+        if (!cancelled) toast.error('No se pudo listar micrófonos.')
+      } finally {
+        if (!cancelled) setMicsLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [view])
 
   useEffect(() => {
     if (view !== 'detail' || !selectedClip) {
@@ -153,7 +186,10 @@ export function AudioNoteCondata({
       return
     }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const audio: MediaTrackConstraints | boolean = micDeviceId
+        ? { deviceId: { exact: micDeviceId } }
+        : true
+      const stream = await navigator.mediaDevices.getUserMedia({ audio })
       const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
         ? 'audio/webm;codecs=opus'
         : 'audio/webm'
@@ -327,6 +363,23 @@ export function AudioNoteCondata({
         <p className="nilo-cmodule__hint">
           Para ingestar audio la sesión debe estar <strong>activa</strong>. Inicia una nueva sesión si hace falta.
         </p>
+      )}
+      {micDevices.length > 1 && (
+        <label className="nilo-cmodule__textarea-label">
+          <span>Micrófono</span>
+          <select
+            className="nilo-cmodule__select"
+            value={micDeviceId}
+            disabled={recording || uploading || micsLoading}
+            onChange={(e) => setMicDeviceId(e.target.value)}
+          >
+            {micDevices.map((d, i) => (
+              <option key={d.deviceId} value={d.deviceId}>
+                {deviceLabel(d, i)}
+              </option>
+            ))}
+          </select>
+        </label>
       )}
       <div className="nilo-cmodule__recorder">
         {recording ? (

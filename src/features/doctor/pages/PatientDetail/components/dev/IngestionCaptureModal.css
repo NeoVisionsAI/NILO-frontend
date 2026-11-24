@@ -66,16 +66,39 @@
 }
 
 .nilo-ingest-cap__preview-wrap {
+  position: relative;
   margin-bottom: 12px;
 }
 
 .nilo-ingest-cap__preview {
+  display: block;
   width: 100%;
   aspect-ratio: 4 / 3;
   object-fit: cover;
   border-radius: 12px;
   background: #0f172a;
   transform: scaleX(-1);
+}
+
+.nilo-ingest-cap__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  pointer-events: none;
+}
+
+.nilo-ingest-cap__overlay-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  background: rgba(15, 23, 42, 0.75);
+  color: #f8fafc;
 }
 
 .nilo-ingest-cap__hint {

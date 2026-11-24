@@ -8,6 +8,7 @@ import {
   type MediaDeviceKind,
 } from '@/lib/media-devices'
 import { canUseLiveCamera } from '@/lib/camera'
+import { drawFaceLandmarks, getFaceLandmarker } from '@/features/doctor/pages/PatientDetail/pain-episode/faceLandmarker'
 import {
   captureFaceLandmarksClip,
   recordAudioClip,
@@ -50,12 +51,28 @@ export function IngestionCaptureModal({
   const [status, setStatus] = useState('')
 
   const videoRef = useRef<HTMLVideoElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
   const previewStreamRef = useRef<MediaStream | null>(null)
+  const facePreviewRafRef = useRef<number>(0)
+  const lastVideoTimeRef = useRef(-1)
+  const [faceModelReady, setFaceModelReady] = useState(false)
 
   const stopPreview = useCallback(() => {
     previewStreamRef.current?.getTracks().forEach((t) => t.stop())
     previewStreamRef.current = null
     if (videoRef.current) videoRef.current.srcObject = null
+  }, [])
+
+  const syncFaceCanvasSize = useCallback(() => {
+    const video = videoRef.current
+    const canvas = canvasRef.current
+    if (!video || !canvas || !video.videoWidth) return
+    const w = video.clientWidth
+    const h = video.clientHeight
+    canvas.width = w
+    canvas.height = h
+    canvas.style.width = `${w}px`
+    canvas.style.height = `${h}px`
   }, [])
 
   const startPreview = useCallback(async () => {
@@ -74,8 +91,75 @@ export function IngestionCaptureModal({
     if (videoRef.current) {
       videoRef.current.srcObject = stream
       await videoRef.current.play()
+      syncFaceCanvasSize()
     }
-  }, [deviceId, mode, stopPreview])
+  }, [deviceId, mode, stopPreview, syncFaceCanvasSize])
+
+  useEffect(() => {
+    if (mode !== 'face') {
+      setFaceModelReady(false)
+      return
+    }
+
+    let cancelled = false
+    void getFaceLandmarker()
+      .then(() => {
+        if (!cancelled) setFaceModelReady(true)
+      })
+      .catch(() => {
+        if (!cancelled) toast.error('No se pudo cargar MediaPipe Face Landmarker.')
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [mode])
+
+  useEffect(() => {
+    if (mode !== 'face' || phase !== 'idle' || !faceModelReady) return
+
+    let running = true
+
+    async function loop() {
+      const video = videoRef.current
+      const canvas = canvasRef.current
+      if (!video || !canvas || video.readyState < 2) {
+        if (running) facePreviewRafRef.current = requestAnimationFrame(loop)
+        return
+      }
+
+      if (video.currentTime !== lastVideoTimeRef.current) {
+        lastVideoTimeRef.current = video.currentTime
+        syncFaceCanvasSize()
+
+        try {
+          const landmarker = await getFaceLandmarker()
+          const results = landmarker.detectForVideo(video, performance.now())
+          const ctx = canvas.getContext('2d')
+          if (ctx) {
+            const w = canvas.width
+            const h = canvas.height
+            ctx.setTransform(1, 0, 0, 1, 0, 0)
+            ctx.clearRect(0, 0, w, h)
+            drawFaceLandmarks(ctx, results, video, w, h, true, true)
+          }
+        } catch {
+          /* frame suelto */
+        }
+      }
+
+      if (running) facePreviewRafRef.current = requestAnimationFrame(loop)
+    }
+
+    facePreviewRafRef.current = requestAnimationFrame(loop)
+    return () => {
+      running = false
+      cancelAnimationFrame(facePreviewRafRef.current)
+      const canvas = canvasRef.current
+      const ctx = canvas?.getContext('2d')
+      if (canvas && ctx) ctx.clearRect(0, 0, canvas.width, canvas.height)
+    }
+  }, [faceModelReady, mode, phase, syncFaceCanvasSize])
 
   useEffect(() => {
     let cancelled = false
@@ -117,7 +201,7 @@ export function IngestionCaptureModal({
     setStatus('Capturando…')
 
     try {
-      stopPreview()
+      if (mode !== 'face') stopPreview()
       const dev = deviceId || undefined
       const durationMs = durationSeconds * 1000
       const onTick = (left: number) => setSecondsLeft(left)
@@ -150,11 +234,13 @@ export function IngestionCaptureModal({
         })
       } else {
         setStatus('Detectando rostro con MediaPipe…')
+        cancelAnimationFrame(facePreviewRafRef.current)
         const capture = await captureFaceLandmarksClip(
           durationSeconds,
           dev,
           onTick,
           videoRef.current ?? undefined,
+          previewStreamRef.current,
         )
         const framesWithFace = capture.payload.frames.filter((f) => f.landmarks.length > 0).length
         if (framesWithFace === 0) {
@@ -193,29 +279,43 @@ export function IngestionCaptureModal({
           </button>
         </header>
 
-        <label className="nilo-ingest-cap__field">
-          <span>{mode === 'audio' ? 'Micrófono' : 'Cámara'}</span>
-          <select
-            value={deviceId}
-            disabled={loadingDevices || phase !== 'idle'}
-            onChange={(e) => setDeviceId(e.target.value)}
-          >
-            {devices.length === 0 ? (
-              <option value="">Sin dispositivos</option>
-            ) : (
-              devices.map((d, i) => (
-                <option key={d.deviceId} value={d.deviceId}>
-                  {deviceLabel(d, i)}
-                </option>
-              ))
-            )}
-          </select>
-        </label>
+        {(devices.length > 1 || loadingDevices) && (
+          <label className="nilo-ingest-cap__field">
+            <span>{mode === 'audio' ? 'Micrófono' : 'Cámara'}</span>
+            <select
+              value={deviceId}
+              disabled={loadingDevices || phase !== 'idle'}
+              onChange={(e) => setDeviceId(e.target.value)}
+            >
+              {devices.length === 0 ? (
+                <option value="">Sin dispositivos</option>
+              ) : (
+                devices.map((d, i) => (
+                  <option key={d.deviceId} value={d.deviceId}>
+                    {deviceLabel(d, i)}
+                  </option>
+                ))
+              )}
+            </select>
+          </label>
+        )}
 
         {meta.needsCamera && (
           <div className="nilo-ingest-cap__preview-wrap">
-            <video ref={videoRef} className="nilo-ingest-cap__preview" playsInline muted />
-            {mode === 'face' && <span className="nilo-ingest-cap__hint">Rostro centrado en el recuadro</span>}
+            <video
+              ref={videoRef}
+              className="nilo-ingest-cap__preview"
+              playsInline
+              muted
+              onLoadedMetadata={() => syncFaceCanvasSize()}
+            />
+            {mode === 'face' && <canvas ref={canvasRef} className="nilo-ingest-cap__canvas" aria-hidden />}
+            {mode === 'face' && !faceModelReady && (
+              <span className="nilo-ingest-cap__overlay-hint">Cargando modelo facial…</span>
+            )}
+            {mode === 'face' && faceModelReady && (
+              <span className="nilo-ingest-cap__hint">Rostro centrado — malla en vivo</span>
+            )}
           </div>
         )}
 
