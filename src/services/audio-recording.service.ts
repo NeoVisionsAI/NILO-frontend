@@ -1,4 +1,4 @@
-import { api } from './api'
+import { api, ApiError } from './api'
 import type {
   AudioRecording,
   AudioUploadRequest,
@@ -6,6 +6,7 @@ import type {
   PresignedDownload,
 } from '@/types/monitoring-session'
 import { buildQueryString } from '@/types/admin-common'
+import { putPresignedObject } from '@/lib/presigned-upload'
 
 export const audioRecordingService = {
   requestUpload(body: AudioUploadRequest): Promise<AudioUploadResponse> {
@@ -39,16 +40,34 @@ export const audioRecordingService = {
     return api.get<PresignedDownload>(`/audio/${audioId}/download`)
   },
 
-  /** PUT directo a MinIO (sin Bearer NILO). */
-  async uploadToPresignedUrl(uploadUrl: string, blob: Blob, contentType: string): Promise<void> {
-    const res = await fetch(uploadUrl, {
-      method: 'PUT',
-      headers: { 'Content-Type': contentType },
-      body: blob,
-    })
-    if (!res.ok) {
-      throw new Error(`Error al subir audio a almacenamiento (${res.status}).`)
+  /** Multipart vía API (navegador HTTPS). */
+  uploadMultipart(params: {
+    session_id: string
+    patient_id: string
+    node_id?: string
+    kind?: 'voice_note' | 'ambient'
+    startedAt: Date
+    endedAt: Date
+    duration_seconds?: number
+    format: string
+    fileExtension: string
+    blob: Blob
+    contentType: string
+  }): Promise<AudioRecording> {
+    const form = new FormData()
+    form.append('session_id', params.session_id)
+    form.append('patient_id', params.patient_id)
+    form.append('start_ts', params.startedAt.toISOString())
+    form.append('end_ts', params.endedAt.toISOString())
+    form.append('kind', params.kind ?? 'voice_note')
+    if (params.node_id) form.append('node_id', params.node_id)
+    if (params.duration_seconds != null) {
+      form.append('duration_seconds', String(params.duration_seconds))
     }
+    form.append('file_extension', params.fileExtension)
+    if (params.format) form.append('format', params.format)
+    form.append('file', params.blob, `audio.${params.fileExtension}`)
+    return api.postFormData<AudioRecording>('/audio/upload', form)
   },
 
   async uploadVoiceNote(params: {
@@ -63,18 +82,27 @@ export const audioRecordingService = {
     contentType: string
   }): Promise<AudioRecording> {
     const durationSeconds = Math.max(0.1, (params.endedAt.getTime() - params.startedAt.getTime()) / 1000)
-    const meta = await this.requestUpload({
-      session_id: params.session_id,
-      patient_id: params.patient_id,
-      node_id: params.node_id,
-      kind: 'voice_note',
-      start_ts: params.startedAt.toISOString(),
-      end_ts: params.endedAt.toISOString(),
-      duration_seconds: durationSeconds,
-      format: params.format,
-      file_extension: params.fileExtension,
-    })
-    await this.uploadToPresignedUrl(meta.upload_url, params.blob, params.contentType)
-    return this.confirm(meta.id)
+    const uploadParams = { ...params, duration_seconds: durationSeconds, kind: 'voice_note' as const }
+
+    try {
+      return await this.uploadMultipart(uploadParams)
+    } catch (err) {
+      if (!(err instanceof ApiError) || (err.status !== 404 && err.status !== 405)) {
+        throw err
+      }
+      const meta = await this.requestUpload({
+        session_id: params.session_id,
+        patient_id: params.patient_id,
+        node_id: params.node_id,
+        kind: 'voice_note',
+        start_ts: params.startedAt.toISOString(),
+        end_ts: params.endedAt.toISOString(),
+        duration_seconds: durationSeconds,
+        format: params.format,
+        file_extension: params.fileExtension,
+      })
+      await putPresignedObject(meta.upload_url, params.blob, params.contentType)
+      return this.confirm(meta.id)
+    }
   },
 }

@@ -35,6 +35,20 @@ export interface SessionOverview {
   text_notes: number
 }
 
+export interface SessionMediaAccessItem {
+  kind: string
+  id: string
+  download_url: string
+  expires_in: number
+  object_key?: string | null
+}
+
+export interface SessionMediaAccess {
+  session_id: string
+  expires_in: number
+  items: SessionMediaAccessItem[]
+}
+
 export interface SessionTextNote {
   id: string
   session_id: string

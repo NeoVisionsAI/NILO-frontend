@@ -111,8 +111,9 @@ async function request<T>(path: string, options: RequestOptions = {}, isRetry = 
   const { auth = true, silent = false, ...init } = options
 
   const headers = new Headers(init.headers)
-  const isForm = init.body instanceof URLSearchParams
-  if (init.body != null && !isForm && !headers.has('Content-Type')) {
+  const isUrlEncoded = init.body instanceof URLSearchParams
+  const isMultipart = init.body instanceof FormData
+  if (init.body != null && !isUrlEncoded && !isMultipart && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json')
   }
   if (auth && accessToken) headers.set('Authorization', `Bearer ${accessToken}`)

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import { toast } from '@/lib/toast'
 import { audioRecordingService } from '@/services/audio-recording.service'
+import { monitoringSessionService } from '@/services/monitoring-session.service'
 import type { AudioRecording } from '@/types/monitoring-session'
 import { CondataModuleLayout, type CondataModuleView } from './CondataModuleLayout'
 import { SessionPickerBar } from './SessionPickerBar'
@@ -99,14 +100,28 @@ export function AudioNoteCondata({
     }
     setTranscriptionDraft(selectedClip.transcription ?? '')
     let cancelled = false
-    audioRecordingService
-      .getDownloadUrl(selectedClip.id)
-      .then((res) => {
+    void (async () => {
+      try {
+        const access = await monitoringSessionService.mediaAccess(selectedClip.session_id, 86_400, {
+          silent: true,
+        })
+        const fromBundle = access.items.find(
+          (item) => item.kind === 'audio' && item.id === selectedClip.id,
+        )
+        if (!cancelled && fromBundle?.download_url) {
+          setPlayUrl(fromBundle.download_url)
+          return
+        }
+      } catch {
+        /* media-access opcional */
+      }
+      try {
+        const res = await audioRecordingService.getDownloadUrl(selectedClip.id)
         if (!cancelled) setPlayUrl(res.download_url)
-      })
-      .catch(() => {
+      } catch {
         if (!cancelled) toast.error('No se pudo obtener la URL de reproducción.')
-      })
+      }
+    })()
     return () => {
       cancelled = true
     }

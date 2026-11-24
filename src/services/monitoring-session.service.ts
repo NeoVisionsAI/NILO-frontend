@@ -1,6 +1,7 @@
 import { api } from './api'
 import type {
   MonitoringSession,
+  SessionMediaAccess,
   SessionOverview,
   SessionTextNote,
   SessionTextNoteCreate,
@@ -30,6 +31,17 @@ export const monitoringSessionService = {
 
   overview(sessionId: string, options?: { silent?: boolean }): Promise<SessionOverview> {
     return api.get<SessionOverview>(`/sessions/${sessionId}/overview`, { silent: options?.silent })
+  },
+
+  mediaAccess(
+    sessionId: string,
+    expiresIn = 86_400,
+    options?: { silent?: boolean },
+  ): Promise<SessionMediaAccess> {
+    const q = new URLSearchParams({ expires_in: String(expiresIn) })
+    return api.get<SessionMediaAccess>(`/sessions/${sessionId}/media-access?${q}`, {
+      silent: options?.silent,
+    })
   },
 
   create(body: {
