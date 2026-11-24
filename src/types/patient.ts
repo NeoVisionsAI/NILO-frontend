@@ -5,6 +5,8 @@ export type PatientType = 'adult' | 'child' | 'neonate' | 'other'
 export interface PatientProfile {
   type_patient: PatientType
   monitoring_active: boolean
+  /** Sesión de monitorización abierta (backend, cuando esté desplegado). */
+  active_session_id?: string | null
   node_id?: string | null
   medical_record_number?: string | null
   sex?: PatientSex | null

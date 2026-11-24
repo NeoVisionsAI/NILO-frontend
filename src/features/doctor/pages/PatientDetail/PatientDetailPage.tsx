@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { toast } from '@/lib/toast'
-import { patientDisplayName, patientProfileToInput } from '@/types'
+import { patientDisplayName } from '@/types'
 import { useClinicalData } from '../../context/ClinicalDataContext'
 import { ROOT_PATHS } from '@/router/paths'
 import { RecordFormPanel } from './components/RecordFormPanel'
@@ -11,8 +11,10 @@ import { CondataPanel } from './components/CondataPanel'
 import {
   PainEpisodeCondata,
   type PainEpisodeCapturePhase,
-  type PainEpisodeCondataView,
 } from './components/condata/PainEpisodeCondata'
+import { TextNoteCondata } from './components/condata/TextNoteCondata'
+import { AudioNoteCondata } from './components/condata/AudioNoteCondata'
+import type { CondataModuleView } from './components/condata/CondataModuleLayout'
 import {
   findPatientSection,
   resolvePatientSections,
@@ -25,6 +27,8 @@ import { PatientQuickActionsFab } from './components/PatientQuickActionsFab'
 import type { PatientQuickAction } from './patient-quick-actions'
 import type { PainEpisode } from './pain-episode/types'
 import { LiveTab } from './tabs/LiveTab'
+import { patientMonitoringService } from '@/services/patient-monitoring.service'
+import type { MonitoringSession } from '@/types/monitoring-session'
 import './PatientDetailPage.css'
 import './components/CondataPanel.css'
 
@@ -49,7 +53,7 @@ function getInitials(name: string): string {
 export function PatientDetailPage() {
   const { patientId = '' } = useParams()
   const navigate = useNavigate()
-  const { patients, nodes, updatePatient, assignPatientNode, deletePatient } = useClinicalData()
+  const { patients, nodes, setPatientMonitoring, assignPatientNode, deletePatient } = useClinicalData()
   const patient = patients.find((p) => p.id === patientId)
 
   const sections = useMemo(() => (patient ? resolvePatientSections(patient) : []), [patient])
@@ -59,17 +63,43 @@ export function PatientDetailPage() {
   const [activeSectionId, setActiveSectionId] = useState<PatientSectionId>('clinical-results')
   const [sectionViewMode, setSectionViewMode] = useState<SectionViewMode>('browse')
   const [activeModule, setActiveModule] = useState<PatientQuickAction | null>(null)
-  const [moduleView, setModuleView] = useState<PainEpisodeCondataView>('list')
+  const [moduleView, setModuleView] = useState<CondataModuleView>('list')
   const [painCapturePhase, setPainCapturePhase] = useState<'capture' | 'summary'>('capture')
   const [painSummaryBackSignal, setPainSummaryBackSignal] = useState(0)
   const [selectedEpisodeId, setSelectedEpisodeId] = useState<string | null>(null)
+  const [selectedModuleRecordId, setSelectedModuleRecordId] = useState<string | null>(null)
   const [painEpisodes, setPainEpisodes] = useState<PainEpisode[]>([])
   const [assigningNode, setAssigningNode] = useState(false)
   const [togglingMonitor, setTogglingMonitor] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [activeMonitoringSession, setActiveMonitoringSession] = useState<MonitoringSession | null>(null)
+  const [loadingActiveSession, setLoadingActiveSession] = useState(false)
 
   const activeSection = findPatientSection(recordSections, activeSectionId) ?? recordSections[0]
+
+  useEffect(() => {
+    if (!patient?.patient_profile?.monitoring_active) {
+      setActiveMonitoringSession(null)
+      return
+    }
+    let cancelled = false
+    setLoadingActiveSession(true)
+    patientMonitoringService
+      .resolveActiveSession(patient.id, patient.patient_profile)
+      .then((session) => {
+        if (!cancelled) setActiveMonitoringSession(session)
+      })
+      .catch(() => {
+        if (!cancelled) setActiveMonitoringSession(null)
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingActiveSession(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [patient?.id, patient?.patient_profile?.monitoring_active, patient?.patient_profile?.active_session_id])
 
   useEffect(() => {
     setCondataMode('live')
@@ -78,6 +108,7 @@ export function PatientDetailPage() {
     setActiveModule(null)
     setModuleView('list')
     setSelectedEpisodeId(null)
+    setSelectedModuleRecordId(null)
     setPainCapturePhase('capture')
     setPainSummaryBackSignal(0)
   }, [patientId, recordSections])
@@ -111,6 +142,7 @@ export function PatientDetailPage() {
     setActiveModule(null)
     setModuleView('list')
     setSelectedEpisodeId(null)
+    setSelectedModuleRecordId(null)
     setSectionViewMode('browse')
     resetPainCaptureState()
   }
@@ -122,6 +154,7 @@ export function PatientDetailPage() {
     setActiveModule(action ?? null)
     setModuleView('list')
     setSelectedEpisodeId(null)
+    setSelectedModuleRecordId(null)
   }
 
   function openPainEpisodeModule(action: PatientQuickAction) {
@@ -129,6 +162,17 @@ export function PatientDetailPage() {
     setActiveModule(action)
     setModuleView('list')
     setSelectedEpisodeId(null)
+    setSelectedModuleRecordId(null)
+    setSectionViewMode('browse')
+    resetPainCaptureState()
+  }
+
+  function openSessionNotesModule(action: PatientQuickAction) {
+    setCondataMode('module')
+    setActiveModule(action)
+    setModuleView('list')
+    setSelectedEpisodeId(null)
+    setSelectedModuleRecordId(null)
     setSectionViewMode('browse')
     resetPainCaptureState()
   }
@@ -145,13 +189,23 @@ export function PatientDetailPage() {
       return
     }
 
+    if (action.actionKey === 'text-note' || action.actionKey === 'audio-note') {
+      openSessionNotesModule(action)
+      return
+    }
+
     toast.info(`«${action.label}»: pendiente de implementar.`)
   }
 
-  function handlePainEpisodeViewChange(view: PainEpisodeCondataView, episodeId?: string | null) {
+  function handlePainEpisodeViewChange(view: CondataModuleView, episodeId?: string | null) {
     setModuleView(view)
     setSelectedEpisodeId(episodeId ?? null)
     if (view === 'add') resetPainCaptureState()
+  }
+
+  function handleSessionNotesViewChange(view: CondataModuleView, recordId?: string | null) {
+    setModuleView(view)
+    setSelectedModuleRecordId(recordId ?? null)
   }
 
   function handlePainCapturePhaseChange(phase: PainEpisodeCapturePhase) {
@@ -184,18 +238,32 @@ export function PatientDetailPage() {
     setTogglingMonitor(true)
     try {
       const next = !monitoring
-      await updatePatient(p.id, {
-        patient_profile: {
-          ...patientProfileToInput(p.patient_profile),
-          monitoring_active: next,
-        },
-      })
-      toast.success(next ? 'Monitoring activated.' : 'Monitoring deactivated.')
-    } catch {
-      /* toast de error del cliente API */
+      const { session } = await setPatientMonitoring(
+        p,
+        next,
+        activeMonitoringSession?.id ?? p.patient_profile.active_session_id,
+      )
+      setActiveMonitoringSession(session)
+      if (next && session) {
+        toast.success('Monitorización activa. Sesión iniciada.')
+      } else if (next) {
+        toast.success('Monitorización activada.')
+      } else {
+        toast.success('Monitorización detenida. Sesión cerrada.')
+        setActiveMonitoringSession(null)
+      }
+    } catch (err) {
+      if (err && typeof err === 'object' && 'code' in err && err.code === 'NO_CLINICAL_PATIENT') {
+        toast.error('No hay registro clínico vinculado. No se puede abrir una sesión.')
+      }
+      /* otros errores: toast del cliente API */
     } finally {
       setTogglingMonitor(false)
     }
+  }
+
+  function copySessionId(label: string, value: string) {
+    void navigator.clipboard.writeText(value).then(() => toast.success(`${label} copiado al portapapeles.`))
   }
 
   async function handleDelete() {
@@ -214,6 +282,32 @@ export function PatientDetailPage() {
   function renderCondataBody() {
     if (condataMode === 'live') {
       return <LiveTab embedded />
+    }
+
+    if (condataMode === 'module' && activeModule?.actionKey === 'text-note') {
+      return (
+        <TextNoteCondata
+          userPatientId={p.id}
+          nodeId={p.patient_profile?.node_id}
+          view={moduleView}
+          selectedNoteId={selectedModuleRecordId}
+          preferredSessionId={activeMonitoringSession?.id ?? p.patient_profile?.active_session_id}
+          onViewChange={handleSessionNotesViewChange}
+        />
+      )
+    }
+
+    if (condataMode === 'module' && activeModule?.actionKey === 'audio-note') {
+      return (
+        <AudioNoteCondata
+          userPatientId={p.id}
+          nodeId={p.patient_profile?.node_id}
+          view={moduleView}
+          selectedAudioId={selectedModuleRecordId}
+          preferredSessionId={activeMonitoringSession?.id ?? p.patient_profile?.active_session_id}
+          onViewChange={handleSessionNotesViewChange}
+        />
+      )
     }
 
     if (condataMode === 'module' && activeModule?.actionKey === 'pain-episode') {
@@ -264,6 +358,16 @@ export function PatientDetailPage() {
       if (moduleView === 'detail') return 'Revisión del episodio'
       return 'Buscar y registrar episodios'
     }
+    if (condataMode === 'module' && activeModule?.actionKey === 'text-note') {
+      if (moduleView === 'add') return 'Nueva nota de texto'
+      if (moduleView === 'detail') return 'Detalle de la nota'
+      return 'Notas por sesión de monitorización'
+    }
+    if (condataMode === 'module' && activeModule?.actionKey === 'audio-note') {
+      if (moduleView === 'add') return 'Grabar nota de voz'
+      if (moduleView === 'detail') return 'Reproducción y transcripción'
+      return 'Notas de audio por sesión'
+    }
     if (condataMode === 'section') {
       if (sectionViewMode === 'add') return 'Nuevo registro'
       return 'Buscar y registrar'
@@ -280,6 +384,13 @@ export function PatientDetailPage() {
     }
     if (condataMode === 'module' && activeModule?.actionKey === 'pain-episode' && moduleView === 'detail') {
       return () => handlePainEpisodeViewChange('list')
+    }
+    if (
+      condataMode === 'module' &&
+      (activeModule?.actionKey === 'text-note' || activeModule?.actionKey === 'audio-note') &&
+      (moduleView === 'add' || moduleView === 'detail')
+    ) {
+      return () => handleSessionNotesViewChange('list')
     }
     if (condataMode === 'section' && sectionViewMode === 'add') {
       return () => setSectionViewMode('browse')
@@ -347,9 +458,46 @@ export function PatientDetailPage() {
                   <span className="nilo-pdetail__toggle-thumb" />
                 </button>
                 <span className="nilo-pdetail__monitor-label">
-                  {monitoring ? 'Monitoring active' : 'Monitoring inactive'}
+                  {monitoring ? 'Monitorización activa' : 'Monitorización inactiva'}
                 </span>
               </label>
+
+              {monitoring && (
+                <div className="nilo-pdetail__session" aria-live="polite">
+                  {loadingActiveSession ? (
+                    <span className="nilo-pdetail__session-loading">Cargando sesión…</span>
+                  ) : activeMonitoringSession ? (
+                    <>
+                      <span className="nilo-pdetail__session-label">Sesión activa</span>
+                      <code className="nilo-pdetail__session-id" title={activeMonitoringSession.id}>
+                        {activeMonitoringSession.external_session_id ?? activeMonitoringSession.id}
+                      </code>
+                      <button
+                        type="button"
+                        className="nilo-pdetail__session-copy"
+                        onClick={() =>
+                          copySessionId(
+                            'ID de sesión',
+                            activeMonitoringSession.external_session_id ?? activeMonitoringSession.id,
+                          )
+                        }
+                        aria-label="Copiar ID de sesión"
+                      >
+                        <MaterialIcon name="content_copy" size={16} />
+                      </button>
+                      {activeMonitoringSession.external_session_id && (
+                        <span className="nilo-pdetail__session-ref" title={activeMonitoringSession.id}>
+                          ref. {activeMonitoringSession.id.slice(-8)}
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <span className="nilo-pdetail__session-missing">
+                      Monitorización activa sin sesión abierta — desactiva y vuelve a activar.
+                    </span>
+                  )}
+                </div>
+              )}
 
               <button
                 type="button"

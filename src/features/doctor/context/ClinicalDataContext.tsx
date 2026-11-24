@@ -8,10 +8,13 @@ import {
   type ReactNode,
 } from 'react'
 import { patientService } from '@/services/patient.service'
+import { patientMonitoringService } from '@/services/patient-monitoring.service'
+import type { MonitoringSession } from '@/types/monitoring-session'
 import { nodeService } from '@/services/node.service'
 import { toast } from '@/lib/toast'
 import {
   patientDisplayName,
+  patientProfileToInput,
   type MonitoringActivePatient,
   type Node,
   type NodeCreate,
@@ -29,6 +32,11 @@ interface ClinicalDataValue {
   refresh: () => Promise<void>
   createPatient: (body: PatientUserCreate) => Promise<PatientUser>
   updatePatient: (id: string, body: PatientUserUpdate) => Promise<PatientUser>
+  setPatientMonitoring: (
+    patient: PatientUser,
+    enable: boolean,
+    activeSessionId?: string | null,
+  ) => Promise<{ patient: PatientUser; session: MonitoringSession | null }>
   assignPatientNode: (patientId: string, nodeId: string | null) => Promise<PatientUser>
   deletePatient: (id: string) => Promise<void>
   createNode: (body: NodeCreate) => Promise<Node>
@@ -92,6 +100,23 @@ export function ClinicalDataProvider({ children }: { children: ReactNode }) {
     [refreshMonitoringActive],
   )
 
+  const setPatientMonitoring = useCallback(
+    async (patient: PatientUser, enable: boolean, activeSessionId?: string | null) => {
+      const profileInput = patientProfileToInput(patient.patient_profile)
+      if (enable) {
+        const { user, session } = await patientMonitoringService.start(patient, profileInput)
+        setPatients((prev) => prev.map((p) => (p.id === user.id ? user : p)))
+        await refreshMonitoringActive()
+        return { patient: user, session }
+      }
+      const user = await patientMonitoringService.stop(patient, profileInput, { activeSessionId })
+      setPatients((prev) => prev.map((p) => (p.id === user.id ? user : p)))
+      await refreshMonitoringActive()
+      return { patient: user, session: null }
+    },
+    [refreshMonitoringActive],
+  )
+
   const assignPatientNode = useCallback(
     async (patientId: string, nodeId: string | null) => {
       const updated = await patientService.assignNode(patientId, nodeId)
@@ -142,6 +167,7 @@ export function ClinicalDataProvider({ children }: { children: ReactNode }) {
       refresh,
       createPatient,
       updatePatient,
+      setPatientMonitoring,
       assignPatientNode,
       deletePatient,
       createNode,
@@ -156,6 +182,7 @@ export function ClinicalDataProvider({ children }: { children: ReactNode }) {
       refresh,
       createPatient,
       updatePatient,
+      setPatientMonitoring,
       assignPatientNode,
       deletePatient,
       createNode,

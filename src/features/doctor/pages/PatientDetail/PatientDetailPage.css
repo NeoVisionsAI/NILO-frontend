@@ -101,6 +101,54 @@
   transform: translateX(18px);
 }
 
+.nilo-pdetail__session {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--m3-on-surface-variant);
+}
+
+.nilo-pdetail__session-label {
+  font-weight: 600;
+  color: var(--m3-on-surface);
+}
+
+.nilo-pdetail__session-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: var(--m3-surface-container-high);
+  border: 1px solid var(--m3-outline-variant);
+  max-width: min(320px, 100%);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nilo-pdetail__session-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9999px;
+  color: var(--m3-primary);
+}
+
+.nilo-pdetail__session-ref {
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+.nilo-pdetail__session-missing,
+.nilo-pdetail__session-loading {
+  font-size: 12px;
+  color: #b45309;
+}
+
 .nilo-pdetail__monitor-label {
   font-size: 14px;
   font-weight: 500;

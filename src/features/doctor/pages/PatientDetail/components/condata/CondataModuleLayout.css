@@ -265,3 +265,128 @@
   color: #dc2626;
   border: 1px solid rgba(220, 38, 38, 0.25);
 }
+
+.nilo-cmodule__session-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--m3-outline-variant);
+}
+
+.nilo-cmodule__session-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 200px;
+}
+
+.nilo-cmodule__session-field select {
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--m3-outline-variant);
+  background: var(--m3-surface-container);
+  color: var(--m3-on-surface);
+  font-size: 14px;
+}
+
+.nilo-cmodule__session-new {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--m3-surface-container-high);
+  border: 1px solid var(--m3-outline-variant);
+  color: var(--m3-on-surface);
+}
+
+.nilo-cmodule__hint {
+  margin: 8px 0;
+  font-size: 13px;
+  color: var(--m3-on-surface-variant);
+  line-height: 1.45;
+}
+
+.nilo-cmodule__item-preview {
+  display: block;
+  color: var(--m3-on-surface-variant);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.nilo-cmodule__note-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+}
+
+.nilo-cmodule__textarea-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--m3-on-surface-variant);
+}
+
+.nilo-cmodule__textarea-label textarea {
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--m3-outline-variant);
+  background: var(--m3-surface-container);
+  color: var(--m3-on-surface);
+  font-size: 14px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.nilo-cmodule__form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.nilo-cmodule__detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 12px;
+}
+
+.nilo-cmodule__badge {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  background: var(--m3-primary-container);
+  color: var(--m3-on-primary-container);
+}
+
+.nilo-cmodule__recorder {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.nilo-cmodule__rec-indicator {
+  font-size: 13px;
+  font-weight: 600;
+  color: #dc2626;
+}
+
+.nilo-cmodule__audio-player {
+  width: 100%;
+  margin-bottom: 12px;
+}
