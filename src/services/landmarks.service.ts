@@ -1,3 +1,4 @@
+import { buildLandmarksZip } from '@/lib/landmarks-zip'
 import { api, ApiError } from './api'
 import { putPresignedObject } from '@/lib/presigned-upload'
 import { buildQueryString } from '@/types/admin-common'
@@ -55,12 +56,14 @@ export const landmarksService = {
     return api.post<LandmarksOut>(`/landmarks/${landmarksId}/confirm`, {})
   },
 
-  /** Navegador HTTPS: multipart vía API (sin PUT a MinIO). */
+  /**
+   * Navegador HTTPS: multipart ZIP (un `landmarks.json` dentro) vía API — sin PUT a MinIO.
+   */
   uploadMultipart(body: LandmarksUploadRequest, jsonPayload: object): Promise<LandmarksOut> {
     const form = new FormData()
     appendLandmarksFormFields(form, body)
-    const blob = new Blob([JSON.stringify(jsonPayload)], { type: 'application/json' })
-    form.append('file', blob, `landmarks_${body.start_ts}.${body.file_extension ?? 'json'}`)
+    const zip = buildLandmarksZip(jsonPayload)
+    form.append('file', zip, 'landmarks.zip')
     return api.postFormData<LandmarksOut>('/landmarks/upload', form)
   },
 

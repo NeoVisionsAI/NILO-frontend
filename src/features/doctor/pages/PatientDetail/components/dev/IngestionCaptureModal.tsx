@@ -14,6 +14,7 @@ import {
   recordAudioClip,
   recordVideoClip,
 } from '@/dev/ingestion-sim/real-capture'
+import { ApiError } from '@/services/api'
 import { ingestionSimulator, type IngestionTarget, type SimResult } from '@/dev/ingestion-sim/ingestion-simulator'
 import './IngestionCaptureModal.css'
 
@@ -266,7 +267,7 @@ export function IngestionCaptureModal({
           throw new Error('No se detectaron landmarks; revisa encuadre o iluminación.')
         }
         setPhase('uploading')
-        setStatus('Subiendo JSON de landmarks…')
+        setStatus('Subiendo landmarks.zip…')
         result = await ingestionSimulator.sendFaceLandmarksPayload(target, {
           payload: capture.payload,
           frameCount: capture.payload.frame_count,
@@ -278,7 +279,14 @@ export function IngestionCaptureModal({
       onSuccess(result)
       onClose()
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Error en captura'
+      let msg = err instanceof Error ? err.message : 'Error en captura'
+      if (err instanceof ApiError && err.status === 413) {
+        msg =
+          'El lote de landmarks supera el límite del servidor (413). Reduce la duración o confirma nginx client_max_body_size (p. ej. 64m) en /api/.'
+      }
+      if (err instanceof ApiError && err.status === 400) {
+        msg = `${msg} (si es ZIP: debe contener exactamente un landmarks.json).`
+      }
       toast.error(msg)
       phaseRef.current = 'idle'
       setPhase('idle')

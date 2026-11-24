@@ -3,16 +3,34 @@ import type { FaceLandmarkerResult } from '@mediapipe/tasks-vision'
 import { requestCameraStream } from '@/lib/camera'
 
 export interface FaceLandmarksCapturePayload {
-  schema: string
+  schema: 'nilo-mediapipe-face-capture-v1'
   kind: 'face'
+  /** Coordenadas normalizadas MediaPipe: [x,y,z, x,y,z, …] por frame (≈478 puntos). */
+  landmark_encoding: 'flat-xyz'
+  landmark_count: number
   frame_count: number
   fps: number
   duration_seconds: number
   frames: Array<{
     index: number
     timestamp_ms: number
-    landmarks: Array<{ x: number; y: number; z: number; visibility: number }>
+    landmarks: number[]
   }>
+}
+
+function roundLandmarkCoord(value: number): number {
+  return Math.round(value * 10_000) / 10_000
+}
+
+function flattenFaceLandmarks(points: Array<{ x: number; y: number; z: number }>): number[] {
+  const flat = new Array(points.length * 3)
+  for (let i = 0; i < points.length; i += 1) {
+    const p = points[i]
+    flat[i * 3] = roundLandmarkCoord(p.x)
+    flat[i * 3 + 1] = roundLandmarkCoord(p.y)
+    flat[i * 3 + 2] = roundLandmarkCoord(p.z)
+  }
+  return flat
 }
 
 function pickAudioMime(): string {
@@ -188,12 +206,7 @@ export async function captureFaceLandmarksClip(
     frames.push({
       index: frames.length,
       timestamp_ms: Date.now() - startedAt.getTime(),
-      landmarks: points.map((p) => ({
-        x: p.x,
-        y: p.y,
-        z: p.z,
-        visibility: 1,
-      })),
+      landmarks: flattenFaceLandmarks(points),
     })
     onTick?.(Math.max(0, Math.ceil((endAt - Date.now()) / 1000)))
     await new Promise((r) => window.setTimeout(r, frameIntervalMs))
@@ -208,9 +221,14 @@ export async function captureFaceLandmarksClip(
   }
 
   const endedAt = new Date()
+  const landmarkCount = frames.find((f) => f.landmarks.length > 0)?.landmarks.length
+    ? (frames.find((f) => f.landmarks.length > 0)!.landmarks.length / 3) | 0
+    : 0
   const payload: FaceLandmarksCapturePayload = {
     schema: 'nilo-mediapipe-face-capture-v1',
     kind: 'face',
+    landmark_encoding: 'flat-xyz',
+    landmark_count: landmarkCount,
     frame_count: frames.length,
     fps: targetFps,
     duration_seconds: durationSeconds,
