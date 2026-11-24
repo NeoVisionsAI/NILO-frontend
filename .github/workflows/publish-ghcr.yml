@@ -22,6 +22,7 @@ env:
   VITE_API_DIRECT: ${{ vars.VITE_API_DIRECT != '' && vars.VITE_API_DIRECT || 'false' }}
   VITE_APP_NAME: ${{ vars.VITE_APP_NAME != '' && vars.VITE_APP_NAME || 'NILO' }}
   VITE_CARDMED_PROVISIONING_MODE: ${{ vars.VITE_CARDMED_PROVISIONING_MODE != '' && vars.VITE_CARDMED_PROVISIONING_MODE || 'wifi' }}
+  VITE_ENABLE_INGESTION_DEV_PANEL: ${{ vars.VITE_ENABLE_INGESTION_DEV_PANEL != '' && vars.VITE_ENABLE_INGESTION_DEV_PANEL || 'false' }}
 
 jobs:
   build-and-push:
@@ -65,6 +66,7 @@ jobs:
             VITE_API_DIRECT=${{ env.VITE_API_DIRECT }}
             VITE_APP_NAME=${{ env.VITE_APP_NAME }}
             VITE_CARDMED_PROVISIONING_MODE=${{ env.VITE_CARDMED_PROVISIONING_MODE }}
+            VITE_ENABLE_INGESTION_DEV_PANEL=${{ env.VITE_ENABLE_INGESTION_DEV_PANEL }}
 
       - name: VM deploy bundle (sin código fuente)
         run: chmod +x deploy/vm-ghcr/deploy.sh deploy/vm-ghcr/run.sh deploy/vm-ghcr/bootstrap.sh
