@@ -24,8 +24,12 @@ export const monitoringSessionService = {
     return api.get<MonitoringSession>(`/sessions/${sessionId}`)
   },
 
-  overview(sessionId: string): Promise<SessionOverview> {
-    return api.get<SessionOverview>(`/sessions/${sessionId}/overview`)
+  update(sessionId: string, body: { display_name: string | null }): Promise<MonitoringSession> {
+    return api.patch<MonitoringSession>(`/sessions/${sessionId}`, body)
+  },
+
+  overview(sessionId: string, options?: { silent?: boolean }): Promise<SessionOverview> {
+    return api.get<SessionOverview>(`/sessions/${sessionId}/overview`, { silent: options?.silent })
   },
 
   create(body: {

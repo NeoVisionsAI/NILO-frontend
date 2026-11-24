@@ -1,3 +1,4 @@
+import { ApiError } from '@/services/api'
 import { audioRecordingService } from '@/services/audio-recording.service'
 import { landmarksService } from '@/services/landmarks.service'
 import { monitoringSessionService } from '@/services/monitoring-session.service'
@@ -20,7 +21,10 @@ export interface IngestionTarget {
 export interface SimResult {
   label: string
   detail: string
+  ok: boolean
   overview?: SessionOverview
+  /** Si la ingestión fue bien pero GET overview falló (p. ej. 500 en backend). */
+  overviewWarning?: string
 }
 
 function timeWindow(durationSeconds: number): { start: Date; end: Date } {
@@ -34,8 +38,18 @@ async function withOverview(
   label: string,
   detail: string,
 ): Promise<SimResult> {
-  const overview = await monitoringSessionService.overview(sessionId)
-  return { label, detail, overview }
+  let overview: SessionOverview | undefined
+  let overviewWarning: string | undefined
+  try {
+    overview = await monitoringSessionService.overview(sessionId, { silent: true })
+  } catch (err) {
+    const hint =
+      err instanceof ApiError
+        ? `(${err.status}) ${err.message}`
+        : 'error de red'
+    overviewWarning = `Datos enviados; el resumen de sesión falló: ${hint}`
+  }
+  return { label, detail, ok: true, overview, overviewWarning }
 }
 
 export const ingestionSimulator = {
@@ -156,7 +170,7 @@ export const ingestionSimulator = {
   },
 
   async fetchOverview(sessionId: string): Promise<SimResult> {
-    const overview = await monitoringSessionService.overview(sessionId)
-    return { label: 'Resumen sesión', detail: 'Conteos actualizados', overview }
+    const overview = await monitoringSessionService.overview(sessionId, { silent: true })
+    return { label: 'Resumen sesión', detail: 'Conteos actualizados', ok: true, overview }
   },
 }

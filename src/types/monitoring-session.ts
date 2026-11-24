@@ -14,6 +14,8 @@ export interface MonitoringSession {
   patient_id: string
   node_id?: string | null
   external_session_id?: string | null
+  /** Nombre legible para el clínico (no sustituye al id). */
+  display_name?: string | null
   started_at: string
   ended_at?: string | null
   status: MonitoringSessionStatus

@@ -35,6 +35,7 @@ import {
   setIngestionDevPanelVisible,
 } from '@/dev/ingestion-dev-panel'
 import { SessionIngestionDevPanel } from './components/dev/SessionIngestionDevPanel'
+import { ActiveSessionInfo } from './components/ActiveSessionInfo'
 import './PatientDetailPage.css'
 import './components/CondataPanel.css'
 import './components/dev/SessionIngestionDevPanel.css'
@@ -270,10 +271,6 @@ export function PatientDetailPage() {
     }
   }
 
-  function copySessionId(label: string, value: string) {
-    void navigator.clipboard.writeText(value).then(() => toast.success(`${label} copiado al portapapeles.`))
-  }
-
   async function handleDelete() {
     setDeleting(true)
     try {
@@ -472,33 +469,14 @@ export function PatientDetailPage() {
 
               {monitoring && (
                 <div className="nilo-pdetail__session" aria-live="polite">
-                  {loadingActiveSession ? (
+                  {activeMonitoringSession ? (
+                    <ActiveSessionInfo
+                      session={activeMonitoringSession}
+                      loading={loadingActiveSession}
+                      onSessionUpdated={setActiveMonitoringSession}
+                    />
+                  ) : loadingActiveSession ? (
                     <span className="nilo-pdetail__session-loading">Cargando sesión…</span>
-                  ) : activeMonitoringSession ? (
-                    <>
-                      <span className="nilo-pdetail__session-label">Sesión activa</span>
-                      <code className="nilo-pdetail__session-id" title={activeMonitoringSession.id}>
-                        {activeMonitoringSession.external_session_id ?? activeMonitoringSession.id}
-                      </code>
-                      <button
-                        type="button"
-                        className="nilo-pdetail__session-copy"
-                        onClick={() =>
-                          copySessionId(
-                            'ID de sesión',
-                            activeMonitoringSession.external_session_id ?? activeMonitoringSession.id,
-                          )
-                        }
-                        aria-label="Copiar ID de sesión"
-                      >
-                        <MaterialIcon name="content_copy" size={16} />
-                      </button>
-                      {activeMonitoringSession.external_session_id && (
-                        <span className="nilo-pdetail__session-ref" title={activeMonitoringSession.id}>
-                          ref. {activeMonitoringSession.id.slice(-8)}
-                        </span>
-                      )}
-                    </>
                   ) : (
                     <span className="nilo-pdetail__session-missing">
                       Monitorización activa sin sesión abierta — desactiva y vuelve a activar.

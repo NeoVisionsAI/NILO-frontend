@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import { toast } from '@/lib/toast'
 import { clinicalPatientService } from '@/services/clinical-patient.service'
+import { ApiError } from '@/services/api'
+import { waitCountdown } from '@/dev/ingestion-sim/countdown'
 import { ingestionSimulator, type SimResult } from '@/dev/ingestion-sim/ingestion-simulator'
 import type { SessionOverview } from '@/types/monitoring-session'
 import './SessionIngestionDevPanel.css'
@@ -33,6 +35,19 @@ const ACTIONS: { key: ActionKey; label: string; icon: string; hint: string }[] =
   { key: 'overview', label: 'Ver resumen', icon: 'analytics', hint: 'GET …/overview' },
 ]
 
+const ACTION_LABELS: Record<ActionKey, string> = Object.fromEntries(
+  ACTIONS.map((a) => [a.key, a.label]),
+) as Record<ActionKey, string>
+
+type ProgressPhase = 'idle' | 'capture' | 'upload' | 'done' | 'error'
+
+interface ProgressState {
+  phase: ProgressPhase
+  actionKey: ActionKey | null
+  secondsLeft: number
+  message: string
+}
+
 function formatOverview(o: SessionOverview): string {
   return [
     `vídeo: ${o.video_segments}`,
@@ -42,6 +57,10 @@ function formatOverview(o: SessionOverview): string {
     `dolor: ${o.pain_events}`,
     `notas: ${o.text_notes}`,
   ].join(' · ')
+}
+
+function usesCaptureCountdown(key: ActionKey): boolean {
+  return key !== 'text' && key !== 'overview'
 }
 
 export function SessionIngestionDevPanel({
@@ -54,6 +73,12 @@ export function SessionIngestionDevPanel({
   const [clinicalPatientId, setClinicalPatientId] = useState<string | null>(null)
   const [duration, setDuration] = useState(10)
   const [busy, setBusy] = useState<ActionKey | null>(null)
+  const [progress, setProgress] = useState<ProgressState>({
+    phase: 'idle',
+    actionKey: null,
+    secondsLeft: 0,
+    message: '',
+  })
   const [log, setLog] = useState<SimResult[]>([])
   const [overview, setOverview] = useState<SessionOverview | null>(null)
 
@@ -68,6 +93,30 @@ export function SessionIngestionDevPanel({
   }, [userPatientId])
 
   const ready = Boolean(clinicalPatientId && sessionId && monitoringActive)
+
+  const executeSim = useCallback(
+    async (key: ActionKey, target: { sessionId: string; clinicalPatientId: string; nodeId?: string | null }) => {
+      switch (key) {
+        case 'pose':
+          return ingestionSimulator.sendPoseLandmarks(target, duration)
+        case 'physio':
+          return ingestionSimulator.sendPhysiological(target, duration)
+        case 'face':
+          return ingestionSimulator.sendFaceLandmarks(target, duration)
+        case 'text':
+          return ingestionSimulator.sendTextNote(target)
+        case 'audio':
+          return ingestionSimulator.sendAudioNote(target, Math.min(duration, 15))
+        case 'video':
+          return ingestionSimulator.sendVideoChunk(target, duration)
+        case 'overview':
+          return ingestionSimulator.fetchOverview(target.sessionId)
+        default:
+          throw new Error('Acción desconocida')
+      }
+    },
+    [duration],
+  )
 
   const run = useCallback(
     async (key: ActionKey) => {
@@ -86,44 +135,86 @@ export function SessionIngestionDevPanel({
         nodeId,
       }
 
+      const label = ACTION_LABELS[key]
       setBusy(key)
+      setProgress({
+        phase: key === 'overview' ? 'upload' : usesCaptureCountdown(key) ? 'capture' : 'upload',
+        actionKey: key,
+        secondsLeft: usesCaptureCountdown(key) ? duration : 0,
+        message: usesCaptureCountdown(key)
+          ? `Capturando «${label}» (${duration} s)…`
+          : key === 'text'
+            ? 'Enviando nota de texto…'
+            : 'Consultando resumen de sesión…',
+      })
+
       try {
-        let result: SimResult
-        switch (key) {
-          case 'pose':
-            result = await ingestionSimulator.sendPoseLandmarks(target, duration)
-            break
-          case 'physio':
-            result = await ingestionSimulator.sendPhysiological(target, duration)
-            break
-          case 'face':
-            result = await ingestionSimulator.sendFaceLandmarks(target, duration)
-            break
-          case 'text':
-            result = await ingestionSimulator.sendTextNote(target)
-            break
-          case 'audio':
-            result = await ingestionSimulator.sendAudioNote(target, Math.min(duration, 15))
-            break
-          case 'video':
-            result = await ingestionSimulator.sendVideoChunk(target, duration)
-            break
-          case 'overview':
-            result = await ingestionSimulator.fetchOverview(sessionId)
-            break
-          default:
-            return
+        if (usesCaptureCountdown(key)) {
+          await waitCountdown(duration, (remaining) => {
+            setProgress((p) => ({
+              ...p,
+              secondsLeft: remaining,
+              message:
+                remaining > 0
+                  ? `Capturando «${label}» — ${remaining} s restantes…`
+                  : `Captura completa. Subiendo al backend…`,
+            }))
+          })
         }
+
+        setProgress((p) => ({
+          ...p,
+          phase: 'upload',
+          secondsLeft: 0,
+          message: `Subiendo «${label}» (API + MinIO si aplica)…`,
+        }))
+
+        const result = await executeSim(key, target)
+
         setLog((prev) => [result, ...prev].slice(0, 8))
         if (result.overview) setOverview(result.overview)
-        toast.success(`${result.label}: ${result.detail}`)
-      } catch {
-        toast.error('Falló el envío de prueba. Revisa consola/red/API.')
+
+        const successDetail = result.overviewWarning
+          ? `${result.detail}. ${result.overviewWarning}`
+          : result.detail
+
+        setProgress({
+          phase: 'done',
+          actionKey: key,
+          secondsLeft: 0,
+          message: `✓ Subida correcta: ${successDetail}`,
+        })
+
+        if (result.overviewWarning) {
+          toast.info(result.overviewWarning)
+          toast.success(`${result.label}: ${result.detail}`)
+        } else {
+          toast.success(`${result.label}: ${result.detail}`)
+        }
+      } catch (err) {
+        const message =
+          err instanceof ApiError
+            ? `${err.status ? `[${err.status}] ` : ''}${err.message}`
+            : err instanceof Error
+              ? err.message
+              : 'Error desconocido'
+
+        setProgress({
+          phase: 'error',
+          actionKey: key,
+          secondsLeft: 0,
+          message: `✗ Falló «${label}»: ${message}`,
+        })
+        setLog((prev) => [
+          { label, detail: message, ok: false },
+          ...prev,
+        ].slice(0, 8))
+        toast.error(`No se pudo enviar «${label}»: ${message}`)
       } finally {
         setBusy(null)
       }
     },
-    [clinicalPatientId, duration, monitoringActive, nodeId, sessionId],
+    [clinicalPatientId, duration, executeSim, monitoringActive, nodeId, sessionId],
   )
 
   return (
@@ -154,9 +245,41 @@ export function SessionIngestionDevPanel({
           min={1}
           max={120}
           value={duration}
+          disabled={busy !== null}
           onChange={(e) => setDuration(Number(e.target.value) || 10)}
         />
       </label>
+
+      {progress.phase !== 'idle' && (
+        <div
+          className={`nilo-ingest-dev__progress nilo-ingest-dev__progress--${progress.phase}`}
+          role="status"
+          aria-live="polite"
+        >
+          <div className="nilo-ingest-dev__progress-row">
+            {progress.phase === 'capture' && (
+              <span className="nilo-ingest-dev__countdown" aria-hidden="true">
+                {progress.secondsLeft}
+              </span>
+            )}
+            {progress.phase === 'upload' && (
+              <MaterialIcon name="cloud_upload" size={28} className="nilo-ingest-dev__spin" />
+            )}
+            {progress.phase === 'done' && <MaterialIcon name="check_circle" size={28} />}
+            {progress.phase === 'error' && <MaterialIcon name="error" size={28} />}
+            <p className="nilo-ingest-dev__progress-msg">{progress.message}</p>
+          </div>
+          {progress.phase === 'capture' && duration > 0 && (
+            <div className="nilo-ingest-dev__bar" aria-hidden="true">
+              <span
+                style={{
+                  width: `${100 - (progress.secondsLeft / duration) * 100}%`,
+                }}
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="nilo-ingest-dev__grid">
         {ACTIONS.map((action) => (
@@ -164,7 +287,7 @@ export function SessionIngestionDevPanel({
             key={action.key}
             type="button"
             className="nilo-ingest-dev__btn"
-            disabled={!ready && action.key !== 'overview' ? true : busy !== null}
+            disabled={(!ready && action.key !== 'overview') || busy !== null}
             title={action.hint}
             onClick={() => void run(action.key)}
           >
@@ -185,9 +308,13 @@ export function SessionIngestionDevPanel({
       {log.length > 0 && (
         <ul className="nilo-ingest-dev__log">
           {log.map((entry, i) => (
-            <li key={`${entry.label}-${i}`}>
-              <strong>{entry.label}</strong>
+            <li
+              key={`${entry.label}-${i}`}
+              className={entry.ok === false ? 'nilo-ingest-dev__log-item--err' : undefined}
+            >
+              <strong>{entry.ok === false ? 'Error' : entry.label}</strong>
               <span>{entry.detail}</span>
+              {entry.overviewWarning && <span className="nilo-ingest-dev__log-warn">{entry.overviewWarning}</span>}
             </li>
           ))}
         </ul>

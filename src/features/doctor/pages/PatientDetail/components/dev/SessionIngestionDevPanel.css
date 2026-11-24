@@ -133,6 +133,96 @@
   border-top: 1px solid var(--m3-outline-variant);
 }
 
+.nilo-ingest-dev__log-item--err strong {
+  color: #dc2626;
+}
+
+.nilo-ingest-dev__log-warn {
+  font-size: 11px;
+  color: #b45309;
+}
+
+.nilo-ingest-dev__progress {
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--m3-outline-variant);
+  background: var(--m3-surface-container);
+}
+
+.nilo-ingest-dev__progress--capture {
+  border-color: #0369a1;
+}
+
+.nilo-ingest-dev__progress--upload {
+  border-color: #7c3aed;
+}
+
+.nilo-ingest-dev__progress--done {
+  border-color: #059669;
+  background: color-mix(in srgb, #059669 10%, var(--m3-surface-container));
+}
+
+.nilo-ingest-dev__progress--error {
+  border-color: #dc2626;
+  background: color-mix(in srgb, #dc2626 8%, var(--m3-surface-container));
+}
+
+.nilo-ingest-dev__progress-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.nilo-ingest-dev__progress-msg {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  flex: 1;
+}
+
+.nilo-ingest-dev__countdown {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  font-size: 20px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  background: #0369a1;
+  color: #fff;
+}
+
+.nilo-ingest-dev__bar {
+  margin-top: 10px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--m3-outline-variant);
+  overflow: hidden;
+}
+
+.nilo-ingest-dev__bar span {
+  display: block;
+  height: 100%;
+  border-radius: 9999px;
+  background: #0369a1;
+  transition: width 1s linear;
+}
+
+@keyframes nilo-ingest-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.nilo-ingest-dev__spin {
+  animation: nilo-ingest-spin 1.2s linear infinite;
+  color: #7c3aed;
+}
+
 .nilo-pdetail__dev-tools {
   display: flex;
   align-items: center;
