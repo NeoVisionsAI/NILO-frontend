@@ -1,0 +1,154 @@
+.nilo-ingest-dev {
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: 16px;
+  border: 2px dashed #b45309;
+  background: color-mix(in srgb, #b45309 8%, var(--m3-surface-container-low));
+}
+
+.nilo-ingest-dev__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.nilo-ingest-dev__head strong {
+  display: block;
+  font-size: 15px;
+  color: var(--m3-on-surface);
+}
+
+.nilo-ingest-dev__head p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--m3-on-surface-variant);
+  line-height: 1.4;
+}
+
+.nilo-ingest-dev__close {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nilo-ingest-dev__warn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #b45309;
+  margin: 0 0 12px;
+}
+
+.nilo-ingest-dev__duration {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.nilo-ingest-dev__duration input {
+  width: 72px;
+  height: 36px;
+  padding: 0 8px;
+  border-radius: 8px;
+  border: 1px solid var(--m3-outline-variant);
+}
+
+.nilo-ingest-dev__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 8px;
+}
+
+.nilo-ingest-dev__btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 10px 12px;
+  min-height: 72px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  background: var(--m3-surface-container);
+  border: 1px solid var(--m3-outline-variant);
+  color: var(--m3-on-surface);
+  position: relative;
+}
+
+.nilo-ingest-dev__btn:disabled {
+  opacity: 0.55;
+}
+
+.nilo-ingest-dev__busy {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 14px;
+}
+
+.nilo-ingest-dev__overview {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--m3-surface-container-high);
+  font-size: 12px;
+}
+
+.nilo-ingest-dev__overview-title {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.nilo-ingest-dev__overview code {
+  display: block;
+  font-size: 11px;
+  word-break: break-word;
+}
+
+.nilo-ingest-dev__log {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  max-height: 140px;
+  overflow-y: auto;
+}
+
+.nilo-ingest-dev__log li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 0;
+  border-top: 1px solid var(--m3-outline-variant);
+}
+
+.nilo-pdetail__dev-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nilo-pdetail__dev-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px dashed #b45309;
+  color: #b45309;
+  background: transparent;
+}

@@ -7,6 +7,8 @@ interface ImportMetaEnv {
   readonly VITE_PREVIEW_PORT?: string
   readonly VITE_API_DIRECT?: string
   readonly VITE_APP_NAME?: string
+  /** Panel simulador de ingestión en ficha paciente (producción). */
+  readonly VITE_ENABLE_INGESTION_DEV_PANEL?: string
 }
 
 interface ImportMeta {

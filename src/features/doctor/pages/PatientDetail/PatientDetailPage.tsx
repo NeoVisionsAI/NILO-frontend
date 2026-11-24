@@ -29,8 +29,15 @@ import type { PainEpisode } from './pain-episode/types'
 import { LiveTab } from './tabs/LiveTab'
 import { patientMonitoringService } from '@/services/patient-monitoring.service'
 import type { MonitoringSession } from '@/types/monitoring-session'
+import {
+  ingestionDevPanelBuildEnabled,
+  isIngestionDevPanelVisible,
+  setIngestionDevPanelVisible,
+} from '@/dev/ingestion-dev-panel'
+import { SessionIngestionDevPanel } from './components/dev/SessionIngestionDevPanel'
 import './PatientDetailPage.css'
 import './components/CondataPanel.css'
+import './components/dev/SessionIngestionDevPanel.css'
 
 const AVATAR_COLORS = ['#0369a1', '#0f766e', '#7c3aed', '#be123c', '#b45309', '#4338ca', '#0891b2']
 
@@ -75,6 +82,7 @@ export function PatientDetailPage() {
   const [deleting, setDeleting] = useState(false)
   const [activeMonitoringSession, setActiveMonitoringSession] = useState<MonitoringSession | null>(null)
   const [loadingActiveSession, setLoadingActiveSession] = useState(false)
+  const [showIngestionDev, setShowIngestionDev] = useState(() => isIngestionDevPanelVisible())
 
   const activeSection = findPatientSection(recordSections, activeSectionId) ?? recordSections[0]
 
@@ -531,6 +539,23 @@ export function PatientDetailPage() {
             </select>
           </div>
 
+          {ingestionDevPanelBuildEnabled() && (
+            <div className="nilo-pdetail__dev-tools">
+              <button
+                type="button"
+                className={`nilo-pdetail__dev-toggle${showIngestionDev ? ' nilo-pdetail__dev-toggle--on' : ''}`}
+                onClick={() => {
+                  const next = !showIngestionDev
+                  setShowIngestionDev(next)
+                  setIngestionDevPanelVisible(next)
+                }}
+              >
+                <MaterialIcon name="science" size={18} />
+                <span>{showIngestionDev ? 'Ocultar simulador' : 'Simulador ingestión'}</span>
+              </button>
+            </div>
+          )}
+
           <button
             type="button"
             className="nilo-pdetail__btn nilo-pdetail__btn--outlined"
@@ -550,6 +575,19 @@ export function PatientDetailPage() {
           </button>
         </div>
       </header>
+
+      {showIngestionDev && ingestionDevPanelBuildEnabled() && (
+        <SessionIngestionDevPanel
+          userPatientId={p.id}
+          nodeId={assignedNodeId || undefined}
+          sessionId={activeMonitoringSession?.id ?? null}
+          monitoringActive={monitoring}
+          onClose={() => {
+            setShowIngestionDev(false)
+            setIngestionDevPanelVisible(false)
+          }}
+        />
+      )}
 
       <div className="nilo-pdetail__workspace">
         <div className="nilo-pdetail__content">
