@@ -4,8 +4,9 @@ import { toast } from '@/lib/toast'
 import { clinicalPatientService } from '@/services/clinical-patient.service'
 import { ApiError } from '@/services/api'
 import { waitCountdown } from '@/dev/ingestion-sim/countdown'
-import { ingestionSimulator, type SimResult } from '@/dev/ingestion-sim/ingestion-simulator'
+import { ingestionSimulator, type IngestionTarget, type SimResult } from '@/dev/ingestion-sim/ingestion-simulator'
 import type { SessionOverview } from '@/types/monitoring-session'
+import { IngestionCaptureModal, type CaptureMode } from './IngestionCaptureModal'
 import './SessionIngestionDevPanel.css'
 
 interface SessionIngestionDevPanelProps {
@@ -28,10 +29,10 @@ type ActionKey =
 const ACTIONS: { key: ActionKey; label: string; icon: string; hint: string }[] = [
   { key: 'pose', label: 'Datos posturales', icon: 'accessibility_new', hint: 'Landmarks pose → MinIO' },
   { key: 'physio', label: 'Datos fisiológicos', icon: 'monitor_heart', hint: 'Bulk → MongoDB' },
-  { key: 'face', label: 'Landmarks faciales', icon: 'face', hint: 'JSON → MinIO' },
+  { key: 'face', label: 'Landmarks faciales', icon: 'face', hint: 'Cámara + MediaPipe → MinIO' },
   { key: 'text', label: 'Nota de texto', icon: 'edit_note', hint: 'MongoDB' },
-  { key: 'audio', label: 'Nota de audio', icon: 'mic', hint: 'MinIO + MongoDB' },
-  { key: 'video', label: 'Chunk de vídeo', icon: 'videocam', hint: 'Placeholder MP4' },
+  { key: 'audio', label: 'Nota de audio', icon: 'mic', hint: 'Micrófono real → MinIO' },
+  { key: 'video', label: 'Chunk de vídeo', icon: 'videocam', hint: 'Cámara real (webm)' },
   { key: 'overview', label: 'Ver resumen', icon: 'analytics', hint: 'GET …/overview' },
 ]
 
@@ -63,6 +64,13 @@ function usesCaptureCountdown(key: ActionKey): boolean {
   return key !== 'text' && key !== 'overview'
 }
 
+const REAL_CAPTURE_KEYS = new Set<ActionKey>(['audio', 'video', 'face'])
+
+function actionToCaptureMode(key: ActionKey): CaptureMode | null {
+  if (key === 'audio' || key === 'video' || key === 'face') return key
+  return null
+}
+
 export function SessionIngestionDevPanel({
   userPatientId,
   nodeId,
@@ -71,8 +79,9 @@ export function SessionIngestionDevPanel({
   onClose,
 }: SessionIngestionDevPanelProps) {
   const [clinicalPatientId, setClinicalPatientId] = useState<string | null>(null)
-  const [duration, setDuration] = useState(10)
+  const [duration, setDuration] = useState(5)
   const [busy, setBusy] = useState<ActionKey | null>(null)
+  const [captureMode, setCaptureMode] = useState<CaptureMode | null>(null)
   const [progress, setProgress] = useState<ProgressState>({
     phase: 'idle',
     actionKey: null,
@@ -93,6 +102,64 @@ export function SessionIngestionDevPanel({
   }, [userPatientId])
 
   const ready = Boolean(clinicalPatientId && sessionId && monitoringActive)
+
+  const applySimResult = useCallback((result: SimResult) => {
+    setLog((prev) => [result, ...prev].slice(0, 8))
+    if (result.overview) setOverview(result.overview)
+  }, [])
+
+  const onRealCaptureSuccess = useCallback(
+    (mode: CaptureMode, result: SimResult) => {
+      const key = mode as ActionKey
+      applySimResult(result)
+      setProgress({
+        phase: 'done',
+        actionKey: key,
+        secondsLeft: 0,
+        message: result.overviewWarning
+          ? `✓ Subida correcta: ${result.detail}. ${result.overviewWarning}`
+          : `✓ Subida correcta: ${result.detail}`,
+      })
+      if (result.overviewWarning) {
+        toast.info(result.overviewWarning)
+        toast.success(`${result.label}: ${result.detail}`)
+      } else {
+        toast.success(`${result.label}: ${result.detail}`)
+      }
+      setBusy(null)
+      setCaptureMode(null)
+    },
+    [applySimResult],
+  )
+
+  const openRealCapture = useCallback(
+    (key: ActionKey) => {
+      if (!sessionId || !clinicalPatientId) {
+        toast.error('Activa monitorización y asegúrate de que hay sesión y paciente clínico.')
+        return
+      }
+      if (!monitoringActive) {
+        toast.error('La sesión debe estar activa para ingestión.')
+        return
+      }
+      const mode = actionToCaptureMode(key)
+      if (!mode) return
+      setBusy(key)
+      setProgress({
+        phase: 'idle',
+        actionKey: key,
+        secondsLeft: 0,
+        message: '',
+      })
+      setCaptureMode(mode)
+    },
+    [clinicalPatientId, monitoringActive, sessionId],
+  )
+
+  const captureTarget: IngestionTarget | null =
+    sessionId && clinicalPatientId
+      ? { sessionId, clinicalPatientId, nodeId }
+      : null
 
   const executeSim = useCallback(
     async (key: ActionKey, target: { sessionId: string; clinicalPatientId: string; nodeId?: string | null }) => {
@@ -171,8 +238,7 @@ export function SessionIngestionDevPanel({
 
         const result = await executeSim(key, target)
 
-        setLog((prev) => [result, ...prev].slice(0, 8))
-        if (result.overview) setOverview(result.overview)
+        applySimResult(result)
 
         const successDetail = result.overviewWarning
           ? `${result.detail}. ${result.overviewWarning}`
@@ -214,7 +280,7 @@ export function SessionIngestionDevPanel({
         setBusy(null)
       }
     },
-    [clinicalPatientId, duration, executeSim, monitoringActive, nodeId, sessionId],
+    [applySimResult, clinicalPatientId, duration, executeSim, monitoringActive, nodeId, sessionId],
   )
 
   return (
@@ -222,7 +288,9 @@ export function SessionIngestionDevPanel({
       <header className="nilo-ingest-dev__head">
         <div>
           <strong>Simulador de ingestión (DEV)</strong>
-          <p>Envía datos sintéticos a la sesión activa — mismo flujo que nilo-node.</p>
+          <p>
+            Audio, vídeo y cara con captura real; postura/fisiológicos siguen siendo sintéticos hasta conectar sensores.
+          </p>
         </div>
         {onClose && (
           <button type="button" className="nilo-ingest-dev__close" onClick={onClose} aria-label="Cerrar panel">
@@ -239,7 +307,7 @@ export function SessionIngestionDevPanel({
       )}
 
       <label className="nilo-ingest-dev__duration">
-        <span>Duración simulada (s)</span>
+        <span>Duración captura / simulación (s)</span>
         <input
           type="number"
           min={1}
@@ -289,7 +357,9 @@ export function SessionIngestionDevPanel({
             className="nilo-ingest-dev__btn"
             disabled={(!ready && action.key !== 'overview') || busy !== null}
             title={action.hint}
-            onClick={() => void run(action.key)}
+            onClick={() =>
+              REAL_CAPTURE_KEYS.has(action.key) ? openRealCapture(action.key) : void run(action.key)
+            }
           >
             <MaterialIcon name={action.icon} size={22} />
             <span>{action.label}</span>
@@ -303,6 +373,20 @@ export function SessionIngestionDevPanel({
           <span className="nilo-ingest-dev__overview-title">Último resumen de sesión</span>
           <code>{formatOverview(overview)}</code>
         </div>
+      )}
+
+      {captureMode && captureTarget && (
+        <IngestionCaptureModal
+          mode={captureMode}
+          durationSeconds={Math.min(Math.max(duration, 1), 120)}
+          target={captureTarget}
+          onClose={() => {
+            setCaptureMode(null)
+            setBusy(null)
+            setProgress((p) => (p.phase === 'idle' ? p : { phase: 'idle', actionKey: null, secondsLeft: 0, message: '' }))
+          }}
+          onSuccess={(result) => onRealCaptureSuccess(captureMode, result)}
+        />
       )}
 
       {log.length > 0 && (

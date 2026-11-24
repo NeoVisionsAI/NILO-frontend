@@ -126,6 +126,90 @@ export const ingestionSimulator = {
     return withOverview(target.sessionId, 'Nota de texto', `id ${note.id}`)
   },
 
+  async sendAudioBlob(
+    target: IngestionTarget,
+    params: { blob: Blob; startedAt: Date; endedAt: Date; format: string; fileExtension: string; contentType: string },
+  ): Promise<SimResult> {
+    const rec = await audioRecordingService.uploadVoiceNote({
+      session_id: target.sessionId,
+      patient_id: target.clinicalPatientId,
+      node_id: target.nodeId ?? undefined,
+      blob: params.blob,
+      startedAt: params.startedAt,
+      endedAt: params.endedAt,
+      format: params.format,
+      fileExtension: params.fileExtension,
+      contentType: params.contentType,
+    })
+    return withOverview(target.sessionId, 'Nota de audio', `id ${rec.id} (${params.blob.size} B)`)
+  },
+
+  async sendFaceLandmarksPayload(
+    target: IngestionTarget,
+    params: {
+      payload: object
+      frameCount: number
+      startedAt: Date
+      endedAt: Date
+    },
+  ): Promise<SimResult> {
+    const doc = await landmarksService.uploadJsonBatch(
+      {
+        session_id: target.sessionId,
+        patient_id: target.clinicalPatientId,
+        node_id: target.nodeId ?? undefined,
+        source: 'mediapipe',
+        model_name: 'face_landmarker',
+        start_ts: params.startedAt.toISOString(),
+        end_ts: params.endedAt.toISOString(),
+        frame_count: params.frameCount,
+        file_extension: 'json',
+      },
+      params.payload,
+    )
+    return withOverview(
+      target.sessionId,
+      'Landmarks faciales',
+      `${params.frameCount} frames reales → ${doc.object_key}`,
+    )
+  },
+
+  async sendVideoBlob(
+    target: IngestionTarget,
+    params: {
+      blob: Blob
+      durationSeconds: number
+      startedAt: Date
+      endedAt: Date
+      seq?: number
+    },
+  ): Promise<SimResult> {
+    const bytes = await params.blob.arrayBuffer()
+    const segmentId = await videoSegmentService.uploadPlaceholder(
+      target.sessionId,
+      {
+        node_id: target.nodeId ?? undefined,
+        seq: params.seq ?? 0,
+        kind: 'archive',
+        fmt: 'mp4',
+        start_ts: params.startedAt.toISOString(),
+        end_ts: params.endedAt.toISOString(),
+        duration_seconds: params.durationSeconds,
+        codec: 'vp9',
+        width: 1280,
+        height: 720,
+        fps: 25,
+        file_extension: 'webm',
+      },
+      bytes,
+    )
+    return withOverview(
+      target.sessionId,
+      'Chunk de vídeo',
+      `segment ${segmentId} (${params.blob.size} B, webm real)`,
+    )
+  },
+
   async sendAudioNote(target: IngestionTarget, durationSeconds: number): Promise<SimResult> {
     const { start, end } = timeWindow(durationSeconds)
     const samples = Math.max(8000, Math.round(durationSeconds * 8000))

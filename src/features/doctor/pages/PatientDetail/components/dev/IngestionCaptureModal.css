@@ -1,0 +1,129 @@
+.nilo-ingest-cap {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.nilo-ingest-cap__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+}
+
+.nilo-ingest-cap__panel {
+  position: relative;
+  width: min(480px, 100%);
+  max-height: min(90vh, 720px);
+  overflow: auto;
+  padding: 18px;
+  border-radius: 16px;
+  background: var(--m3-surface-container-low);
+  border: 1px solid var(--m3-outline-variant);
+  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.2);
+}
+
+.nilo-ingest-cap__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.nilo-ingest-cap__head h2 {
+  flex: 1;
+  margin: 0;
+  font-size: 17px;
+}
+
+.nilo-ingest-cap__close {
+  width: 36px;
+  height: 36px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nilo-ingest-cap__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.nilo-ingest-cap__field select {
+  height: 40px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid var(--m3-outline-variant);
+  font-size: 14px;
+}
+
+.nilo-ingest-cap__preview-wrap {
+  margin-bottom: 12px;
+}
+
+.nilo-ingest-cap__preview {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 12px;
+  background: #0f172a;
+  transform: scaleX(-1);
+}
+
+.nilo-ingest-cap__hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--m3-on-surface-variant);
+}
+
+.nilo-ingest-cap__duration {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+
+.nilo-ingest-cap__countdown {
+  font-weight: 700;
+  color: #dc2626;
+}
+
+.nilo-ingest-cap__status {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--m3-on-surface-variant);
+}
+
+.nilo-ingest-cap__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.nilo-ingest-cap__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.nilo-ingest-cap__btn--primary {
+  background: var(--m3-primary);
+  color: var(--m3-on-primary);
+}
+
+.nilo-ingest-cap__btn--ghost {
+  border: 1px solid var(--m3-outline-variant);
+  background: var(--m3-surface-container);
+}
