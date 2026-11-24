@@ -1,4 +1,5 @@
 import { getFaceLandmarker, landmarksFromResult } from '@/features/doctor/pages/PatientDetail/pain-episode/faceLandmarker'
+import type { FaceLandmarkerResult } from '@mediapipe/tasks-vision'
 import { requestCameraStream } from '@/lib/camera'
 
 export interface FaceLandmarksCapturePayload {
@@ -33,6 +34,16 @@ function videoConstraints(deviceId?: string): MediaTrackConstraints {
   return deviceId
     ? { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }
     : { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }
+}
+
+async function waitForVideoFrame(video: HTMLVideoElement, timeoutMs = 4000): Promise<void> {
+  const deadline = Date.now() + timeoutMs
+  while ((!video.videoWidth || !video.videoHeight || video.readyState < 2) && Date.now() < deadline) {
+    await new Promise((r) => window.setTimeout(r, 40))
+  }
+  if (!video.videoWidth || !video.videoHeight) {
+    throw new Error('La cámara no entregó vídeo; comprueba permisos y encuadre.')
+  }
 }
 
 export async function recordAudioClip(
@@ -121,6 +132,7 @@ export async function captureFaceLandmarksClip(
   onTick?: (secondsLeft: number) => void,
   videoPreview?: HTMLVideoElement,
   reuseStream?: MediaStream | null,
+  onVisualFrame?: (results: FaceLandmarkerResult, video: HTMLVideoElement) => void,
 ): Promise<{
   payload: FaceLandmarksCapturePayload
   frameCount: number
@@ -144,6 +156,7 @@ export async function captureFaceLandmarksClip(
   } else if (video.paused) {
     await video.play()
   }
+  await waitForVideoFrame(video)
 
   const landmarker = await getFaceLandmarker()
   const targetFps = 15
@@ -154,8 +167,22 @@ export async function captureFaceLandmarksClip(
   const endAt = startedAt.getTime() + durationSeconds * 1000
 
   while (Date.now() < endAt) {
+    if (!video.videoWidth || !video.videoHeight) {
+      await waitForVideoFrame(video, 1500)
+    }
+
     const ts = performance.now()
-    const result = landmarker.detectForVideo(video, ts)
+    let result: FaceLandmarkerResult
+    try {
+      result = landmarker.detectForVideo(video, ts)
+    } catch {
+      onTick?.(Math.max(0, Math.ceil((endAt - Date.now()) / 1000)))
+      await new Promise((r) => window.setTimeout(r, frameIntervalMs))
+      continue
+    }
+
+    onVisualFrame?.(result, video)
+
     const faces = landmarksFromResult(result)
     const points = faces[0] ?? []
     frames.push({

@@ -56,6 +56,8 @@ export function IngestionCaptureModal({
   const facePreviewRafRef = useRef<number>(0)
   const lastVideoTimeRef = useRef(-1)
   const [faceModelReady, setFaceModelReady] = useState(false)
+  const phaseRef = useRef(phase)
+  phaseRef.current = phase
 
   const stopPreview = useCallback(() => {
     previewStreamRef.current?.getTracks().forEach((t) => t.stop())
@@ -184,18 +186,34 @@ export function IngestionCaptureModal({
   }, [deviceKind, stopPreview])
 
   useEffect(() => {
-    if (meta.needsCamera && deviceId && phase === 'idle') {
-      void startPreview().catch(() => {
-        /* permiso o dispositivo */
-      })
-    }
+    if (!meta.needsCamera || !deviceId || phase !== 'idle') return
+    void startPreview().catch(() => {
+      /* permiso o dispositivo */
+    })
     return () => {
-      if (phase !== 'capturing') stopPreview()
+      if (phaseRef.current === 'idle') stopPreview()
     }
   }, [deviceId, meta.needsCamera, phase, startPreview, stopPreview])
 
+  const paintFaceOverlay = useCallback(
+    (results: Parameters<typeof drawFaceLandmarks>[1], video: HTMLVideoElement) => {
+      const canvas = canvasRef.current
+      if (!canvas) return
+      syncFaceCanvasSize()
+      const ctx = canvas.getContext('2d')
+      if (!ctx || canvas.width <= 0 || canvas.height <= 0) return
+      const w = canvas.width
+      const h = canvas.height
+      ctx.setTransform(1, 0, 0, 1, 0, 0)
+      ctx.clearRect(0, 0, w, h)
+      drawFaceLandmarks(ctx, results, video, w, h, true, true)
+    },
+    [syncFaceCanvasSize],
+  )
+
   async function handleCapture() {
     if (phase !== 'idle') return
+    phaseRef.current = 'capturing'
     setPhase('capturing')
     setSecondsLeft(durationSeconds)
     setStatus('Capturando…')
@@ -241,6 +259,7 @@ export function IngestionCaptureModal({
           onTick,
           videoRef.current ?? undefined,
           previewStreamRef.current,
+          paintFaceOverlay,
         )
         const framesWithFace = capture.payload.frames.filter((f) => f.landmarks.length > 0).length
         if (framesWithFace === 0) {
@@ -261,6 +280,7 @@ export function IngestionCaptureModal({
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error en captura'
       toast.error(msg)
+      phaseRef.current = 'idle'
       setPhase('idle')
       setStatus('')
       if (meta.needsCamera) void startPreview()
