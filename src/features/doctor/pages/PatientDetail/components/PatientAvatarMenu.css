@@ -1,0 +1,73 @@
+.nilo-pdetail-avatar-menu {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.nilo-pdetail-avatar-menu__trigger {
+  position: relative;
+  display: block;
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 9999px;
+  cursor: pointer;
+  line-height: 0;
+  overflow: hidden;
+}
+
+.nilo-pdetail-avatar-menu__trigger:focus-visible {
+  outline: 2px solid var(--m3-primary);
+  outline-offset: 3px;
+}
+
+.nilo-pdetail-avatar-menu__overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: inherit;
+  background: rgba(15, 23, 42, 0.72);
+  backdrop-filter: blur(4px);
+  animation: nilo-avatar-menu-in 0.15s ease-out;
+}
+
+@keyframes nilo-avatar-menu-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.nilo-pdetail-avatar-menu__action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  min-width: 118px;
+  justify-content: center;
+}
+
+.nilo-pdetail-avatar-menu__action:hover {
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.nilo-pdetail-avatar-menu__action--danger {
+  background: color-mix(in srgb, #dc2626 75%, transparent);
+  border-color: color-mix(in srgb, #fca5a5 50%, transparent);
+}
+
+.nilo-pdetail-avatar-menu__action--danger:hover {
+  background: #dc2626;
+}

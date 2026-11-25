@@ -13,6 +13,10 @@ interface ActiveSessionInfoProps {
   profileActiveSessionId?: string | null
   loading?: boolean
   onSessionUpdated?: (session: MonitoringSession) => void
+  /** Variante más pequeña para la cabecera del paciente */
+  compact?: boolean
+  /** Oculta el cronómetro (se muestra junto a monitorización) */
+  hideElapsed?: boolean
 }
 
 export function ActiveSessionInfo({
@@ -20,6 +24,8 @@ export function ActiveSessionInfo({
   profileActiveSessionId,
   loading,
   onSessionUpdated,
+  compact,
+  hideElapsed,
 }: ActiveSessionInfoProps) {
   const [elapsed, setElapsed] = useState(() => formatSessionElapsed(session.started_at))
   const [editingName, setEditingName] = useState(false)
@@ -97,7 +103,7 @@ export function ActiveSessionInfo({
   }
 
   return (
-    <div className="nilo-session-card">
+    <div className={`nilo-session-card${compact ? ' nilo-session-card--compact' : ''}`}>
       <div className="nilo-session-card__row nilo-session-card__row--name">
         <div className="nilo-session-card__name-wrap">
           {editingName ? (
@@ -133,7 +139,7 @@ export function ActiveSessionInfo({
             </>
           )}
         </div>
-        {session.status === 'active' && (
+        {session.status === 'active' && !hideElapsed && (
           <span className="nilo-session-card__elapsed" title="Tiempo desde el inicio">
             <MaterialIcon name="timer" size={16} />
             {elapsed}

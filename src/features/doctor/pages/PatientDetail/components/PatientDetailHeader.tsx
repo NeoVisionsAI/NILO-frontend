@@ -3,6 +3,8 @@ import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import type { MonitoringSession } from '@/types/monitoring-session'
 import type { Node, PatientUser } from '@/types'
 import { ActiveSessionInfo } from './ActiveSessionInfo'
+import { PatientAvatarMenu } from './PatientAvatarMenu'
+import { SessionElapsedBadge } from './SessionElapsedBadge'
 import './PatientDetailHeader.css'
 
 export type PatientViewMode = 'live' | 'explore'
@@ -59,11 +61,15 @@ export function PatientDetailHeader({
   onDelete,
 }: PatientDetailHeaderProps) {
   const profile = p.patient_profile
+  const nodeSelected = Boolean(assignedNodeId)
 
   return (
     <header className="nilo-pdetail-hdr">
       <section className="nilo-pdetail-hdr__top" aria-label="Identidad del paciente">
-        {avatar}
+        <PatientAvatarMenu patientName={fullName} onEdit={onEdit} onDelete={onDelete}>
+          {avatar}
+        </PatientAvatarMenu>
+
         <div className="nilo-pdetail-hdr__identity">
           <h1 className="nilo-pdetail-hdr__name">{fullName}</h1>
           <div className="nilo-pdetail-hdr__chips">
@@ -73,26 +79,50 @@ export function PatientDetailHeader({
             {profileChip('Sexo', profile.sex ?? undefined)}
             {profileChip('Tipo', profile.type_patient)}
           </div>
+
+          {monitoring && (
+            <div className="nilo-pdetail-hdr__session-inline" aria-label="Sesión activa">
+              {activeSession ? (
+                <ActiveSessionInfo
+                  session={activeSession}
+                  profileActiveSessionId={p.patient_profile?.active_session_id}
+                  loading={loadingSession}
+                  onSessionUpdated={onSessionUpdated}
+                  compact
+                  hideElapsed
+                />
+              ) : loadingSession ? (
+                <p className="nilo-pdetail-hdr__session-empty">Cargando sesión…</p>
+              ) : (
+                <p className="nilo-pdetail-hdr__session-warn">Sin sesión abierta.</p>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="nilo-pdetail-hdr__controls">
-          <div className="nilo-pdetail-hdr__controls-main">
-            <button
-              type="button"
-              role="switch"
-              aria-checked={monitoring}
-              disabled={togglingMonitor}
-              className={`nilo-pdetail-hdr__mon-pill${monitoring ? ' nilo-pdetail-hdr__mon-pill--on' : ''}`}
-              onClick={onMonitoringToggle}
-            >
+          <button
+            type="button"
+            role="switch"
+            aria-checked={monitoring}
+            disabled={togglingMonitor}
+            className={`nilo-pdetail-hdr__mon-pill${monitoring ? ' nilo-pdetail-hdr__mon-pill--on' : ''}`}
+            onClick={onMonitoringToggle}
+          >
+            <span className="nilo-pdetail-hdr__mon-pill-main">
               <span className="nilo-pdetail-hdr__mon-pill-text">
                 {monitoring ? 'Monitorización activada' : 'Monitorización desactivada'}
               </span>
-              <span className="nilo-pdetail-hdr__mon-pill-track" aria-hidden>
-                <span className="nilo-pdetail-hdr__mon-pill-thumb" />
-              </span>
-            </button>
+              {monitoring && activeSession?.status === 'active' && (
+                <SessionElapsedBadge startedAt={activeSession.started_at} />
+              )}
+            </span>
+            <span className="nilo-pdetail-hdr__mon-pill-track" aria-hidden>
+              <span className="nilo-pdetail-hdr__mon-pill-thumb" />
+            </span>
+          </button>
 
+          <div className="nilo-pdetail-hdr__actions-row">
             <div className="nilo-pdetail-hdr__view-switch" role="group" aria-label="Vista de contenido">
               {monitoring && (
                 <button
@@ -116,13 +146,13 @@ export function PatientDetailHeader({
                 Explorar
               </button>
             </div>
-          </div>
 
-          <div className="nilo-pdetail-hdr__tools">
-            <label className="nilo-pdetail-hdr__node">
+            <label
+              className={`nilo-pdetail-hdr__node${nodeSelected ? ' nilo-pdetail-hdr__node--selected' : ''}`}
+            >
               <MaterialIcon name="hub" size={20} />
               <select value={assignedNodeId} disabled={assigningNode} onChange={onNodeChange} aria-label="Nodo">
-                <option value="">Sin nodo</option>
+                <option value="">Nodo</option>
                 {nodes.map((n) => (
                   <option key={n.id} value={n.id}>
                     {n.name}
@@ -130,40 +160,11 @@ export function PatientDetailHeader({
                 ))}
               </select>
             </label>
+
             {devToolsSlot}
-            <button type="button" className="nilo-pdetail-hdr__icon-btn" onClick={onEdit} aria-label="Editar paciente">
-              <MaterialIcon name="edit" size={20} />
-            </button>
-            <button
-              type="button"
-              className="nilo-pdetail-hdr__icon-btn nilo-pdetail-hdr__icon-btn--danger"
-              onClick={onDelete}
-              aria-label="Eliminar paciente"
-            >
-              <MaterialIcon name="delete" size={20} />
-            </button>
           </div>
         </div>
       </section>
-
-      {monitoring && (
-        <section className="nilo-pdetail-hdr__session-strip" aria-label="Sesión activa">
-          {activeSession ? (
-            <ActiveSessionInfo
-              session={activeSession}
-              profileActiveSessionId={p.patient_profile?.active_session_id}
-              loading={loadingSession}
-              onSessionUpdated={onSessionUpdated}
-            />
-          ) : loadingSession ? (
-            <p className="nilo-pdetail-hdr__session-empty">Cargando sesión…</p>
-          ) : (
-            <p className="nilo-pdetail-hdr__session-warn">
-              Sin sesión abierta — desactiva y vuelve a activar monitorización.
-            </p>
-          )}
-        </section>
-      )}
     </header>
   )
 }

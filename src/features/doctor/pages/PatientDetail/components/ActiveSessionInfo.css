@@ -118,3 +118,25 @@
   font-size: 13px;
   color: var(--m3-on-surface-variant);
 }
+
+.nilo-session-card--compact {
+  gap: 6px;
+}
+
+.nilo-session-card--compact .nilo-session-card__name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.nilo-session-card--compact .nilo-session-card__row--id {
+  padding: 6px 8px;
+}
+
+.nilo-session-card--compact .nilo-session-card__id {
+  font-size: 11px;
+}
+
+.nilo-session-card--compact .nilo-session-card__icon-btn {
+  width: 28px;
+  height: 28px;
+}
