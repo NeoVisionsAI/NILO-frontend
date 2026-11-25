@@ -3,16 +3,24 @@ import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import { formatSessionElapsed } from '@/lib/format-session-elapsed'
 import { resolveSessionDisplayName, sessionDisplayNameCache } from '@/lib/session-display-name-cache'
 import { toast } from '@/lib/toast'
+import { canonicalSessionId } from '@/lib/session-id'
 import { monitoringSessionService } from '@/services/monitoring-session.service'
 import type { MonitoringSession } from '@/types/monitoring-session'
 
 interface ActiveSessionInfoProps {
   session: MonitoringSession
+  /** `patient_profile.active_session_id` — fuente de verdad MinIO/Mongo. */
+  profileActiveSessionId?: string | null
   loading?: boolean
   onSessionUpdated?: (session: MonitoringSession) => void
 }
 
-export function ActiveSessionInfo({ session, loading, onSessionUpdated }: ActiveSessionInfoProps) {
+export function ActiveSessionInfo({
+  session,
+  profileActiveSessionId,
+  loading,
+  onSessionUpdated,
+}: ActiveSessionInfoProps) {
   const [elapsed, setElapsed] = useState(() => formatSessionElapsed(session.started_at))
   const [editingName, setEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
@@ -27,7 +35,8 @@ export function ActiveSessionInfo({ session, loading, onSessionUpdated }: Active
     resolveSessionDisplayName(session) ||
     null
 
-  const sessionId = session.id
+  const sessionId = canonicalSessionId(session, profileActiveSessionId) ?? session.id
+  const sessionIdForApi = sessionId
 
   useEffect(() => {
     if (session.status !== 'active') return
@@ -62,16 +71,16 @@ export function ActiveSessionInfo({ session, loading, onSessionUpdated }: Active
       }
       setSavingName(true)
       try {
-        const updated = await monitoringSessionService.update(session.id, {
+        const updated = await monitoringSessionService.update(sessionIdForApi, {
           display_name: trimmed,
         })
-        sessionDisplayNameCache.set(session.id, trimmed)
+        sessionDisplayNameCache.set(sessionIdForApi, trimmed)
         setLocalNameOverride(trimmed)
         onSessionUpdated?.(updated)
         setEditingName(false)
         toast.success('Nombre de sesión guardado.')
       } catch {
-        sessionDisplayNameCache.set(session.id, trimmed)
+        sessionDisplayNameCache.set(sessionIdForApi, trimmed)
         setLocalNameOverride(trimmed)
         onSessionUpdated?.({
           ...session,
@@ -83,7 +92,7 @@ export function ActiveSessionInfo({ session, loading, onSessionUpdated }: Active
         setSavingName(false)
       }
     },
-    [nameDraft, onSessionUpdated, session],
+    [nameDraft, onSessionUpdated, session, sessionIdForApi],
   )
 
   if (loading) {

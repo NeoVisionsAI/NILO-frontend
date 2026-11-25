@@ -27,6 +27,7 @@ import { PatientQuickActionsFab } from './components/PatientQuickActionsFab'
 import type { PatientQuickAction } from './patient-quick-actions'
 import type { PainEpisode } from './pain-episode/types'
 import { LiveTab } from './tabs/LiveTab'
+import { canonicalSessionId } from '@/lib/session-id'
 import { patientMonitoringService } from '@/services/patient-monitoring.service'
 import type { MonitoringSession } from '@/types/monitoring-session'
 import {
@@ -139,6 +140,8 @@ export function PatientDetailPage() {
   const p = patient
   const fullName = patientDisplayName(p)
   const monitoring = p.patient_profile?.monitoring_active ?? false
+  const ingestionSessionId =
+    canonicalSessionId(activeMonitoringSession, p.patient_profile?.active_session_id) ?? null
   const assignedNodeId = p.patient_profile?.node_id ?? ''
 
   function resetPainCaptureState() {
@@ -247,12 +250,15 @@ export function PatientDetailPage() {
     setTogglingMonitor(true)
     try {
       const next = !monitoring
-      const { session } = await setPatientMonitoring(
+      const { patient: updatedPatient, session } = await setPatientMonitoring(
         p,
         next,
         activeMonitoringSession?.id ?? p.patient_profile.active_session_id,
       )
-      setActiveMonitoringSession(session)
+      const mongoSessionId = canonicalSessionId(session, updatedPatient.patient_profile.active_session_id)
+      setActiveMonitoringSession(
+        session && mongoSessionId ? { ...session, id: mongoSessionId } : session,
+      )
       if (next && session) {
         toast.success('Monitorización activa. Sesión iniciada.')
       } else if (next) {
@@ -472,6 +478,7 @@ export function PatientDetailPage() {
                   {activeMonitoringSession ? (
                     <ActiveSessionInfo
                       session={activeMonitoringSession}
+                      profileActiveSessionId={p.patient_profile?.active_session_id}
                       loading={loadingActiveSession}
                       onSessionUpdated={setActiveMonitoringSession}
                     />
@@ -558,7 +565,7 @@ export function PatientDetailPage() {
         <SessionIngestionDevPanel
           userPatientId={p.id}
           nodeId={assignedNodeId || undefined}
-          sessionId={activeMonitoringSession?.id ?? null}
+          sessionId={ingestionSessionId}
           monitoringActive={monitoring}
           onClose={() => {
             setShowIngestionDev(false)
