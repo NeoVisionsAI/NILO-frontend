@@ -49,7 +49,7 @@ export function AudioNoteCondata({
     setSelectedSessionId,
     loading: sessionsLoading,
     createSession,
-  } = useMonitoringSessions(clinicalPatient?.id ?? null, nodeId, preferredSessionId)
+  } = useMonitoringSessions(clinicalPatient?.id ?? null, nodeId, preferredSessionId, userPatientId)
 
   const [clips, setClips] = useState<AudioRecording[]>([])
   const [clipsLoading, setClipsLoading] = useState(false)

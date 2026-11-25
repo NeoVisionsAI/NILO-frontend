@@ -67,6 +67,7 @@ export const ingestionSimulator = {
         end_ts: end.toISOString(),
         frame_count: payload.frame_count,
         file_extension: 'json',
+        capture_kind: 'pose',
       },
       payload,
     )
@@ -91,6 +92,7 @@ export const ingestionSimulator = {
         end_ts: end.toISOString(),
         frame_count: payload.frame_count,
         file_extension: 'json',
+        capture_kind: 'face',
       },
       payload,
     )
@@ -164,6 +166,7 @@ export const ingestionSimulator = {
         end_ts: params.endedAt.toISOString(),
         frame_count: params.frameCount,
         file_extension: 'json',
+        capture_kind: 'face',
       },
       params.payload,
     )

@@ -27,7 +27,7 @@ export function ActiveSessionInfo({ session, loading, onSessionUpdated }: Active
     resolveSessionDisplayName(session) ||
     null
 
-  const technicalId = session.external_session_id ?? session.id
+  const sessionId = session.id
 
   useEffect(() => {
     if (session.status !== 'active') return
@@ -41,11 +41,11 @@ export function ActiveSessionInfo({ session, loading, onSessionUpdated }: Active
     setLocalNameOverride(sessionDisplayNameCache.get(session.id))
   }, [session.id, session.display_name])
 
-  const copyTechnicalId = useCallback(() => {
-    void navigator.clipboard.writeText(technicalId).then(() => {
-      toast.success('Identificador técnico copiado.')
+  const copySessionId = useCallback(() => {
+    void navigator.clipboard.writeText(sessionId).then(() => {
+      toast.success('Id de sesión copiado (mismo que en MinIO).')
     })
-  }, [technicalId])
+  }, [sessionId])
 
   const openRename = useCallback(() => {
     setNameDraft(displayName ?? '')
@@ -113,14 +113,18 @@ export function ActiveSessionInfo({ session, loading, onSessionUpdated }: Active
       )}
 
       <div className="nilo-pdetail__session-tech-row">
-        <code className="nilo-pdetail__session-id" title={`Id MongoDB: ${session.id}`}>
-          {technicalId}
+        <code
+          className="nilo-pdetail__session-id"
+          title="Id de sesión (MongoDB / MinIO)"
+          aria-label={`Id de sesión (MongoDB / MinIO): ${sessionId}`}
+        >
+          {sessionId}
         </code>
         <button
           type="button"
           className="nilo-pdetail__session-copy"
-          onClick={copyTechnicalId}
-          aria-label="Copiar identificador técnico"
+          onClick={copySessionId}
+          aria-label="Copiar id de sesión"
         >
           <MaterialIcon name="content_copy" size={16} />
         </button>
@@ -132,11 +136,6 @@ export function ActiveSessionInfo({ session, loading, onSessionUpdated }: Active
         >
           <MaterialIcon name="edit" size={16} />
         </button>
-        {session.external_session_id && session.id !== technicalId && (
-          <span className="nilo-pdetail__session-ref" title={session.id}>
-            ref. {session.id.slice(-8)}
-          </span>
-        )}
       </div>
 
       {editingName && (

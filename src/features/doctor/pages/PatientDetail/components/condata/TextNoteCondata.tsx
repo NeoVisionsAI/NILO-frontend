@@ -40,7 +40,7 @@ export function TextNoteCondata({
     setSelectedSessionId,
     loading: sessionsLoading,
     createSession,
-  } = useMonitoringSessions(clinicalPatient?.id ?? null, nodeId, preferredSessionId)
+  } = useMonitoringSessions(clinicalPatient?.id ?? null, nodeId, preferredSessionId, userPatientId)
 
   const [notes, setNotes] = useState<SessionTextNote[]>([])
   const [notesLoading, setNotesLoading] = useState(false)

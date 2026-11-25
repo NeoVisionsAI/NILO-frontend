@@ -1,4 +1,5 @@
 import { api } from './api'
+import type { MonitoringSession } from '@/types/monitoring-session'
 import type { MonitoringActivePatient, PatientUser, PatientUserCreate, PatientUserUpdate } from '@/types'
 
 export interface ListPatientUsersParams {
@@ -44,6 +45,18 @@ export const patientService = {
   /** Pacientes con monitorización activa — GET /users/monitoring-active */
   listMonitoringActive(): Promise<MonitoringActivePatient[]> {
     return api.get<MonitoringActivePatient[]>('/users/monitoring-active')
+  },
+
+  /** Lifecycle monitorización — una sola sesión Mongo (POST /sessions manual prohibido en UI). */
+  monitoringStart(userId: string): Promise<{ user: PatientUser; session: MonitoringSession }> {
+    return api.post<{ user: PatientUser; session: MonitoringSession }>(
+      `/users/${userId}/monitoring/start`,
+      {},
+    )
+  },
+
+  monitoringStop(userId: string): Promise<PatientUser> {
+    return api.post<PatientUser>(`/users/${userId}/monitoring/stop`, {})
   },
 
   /** Opción B: subir foto como multipart (el backend la convierte a base64). */

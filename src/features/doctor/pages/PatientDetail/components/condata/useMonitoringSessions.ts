@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { monitoringSessionService } from '@/services/monitoring-session.service'
+import { patientService } from '@/services/patient.service'
 import type { MonitoringSession } from '@/types/monitoring-session'
 import { toast } from '@/lib/toast'
 
@@ -12,8 +13,9 @@ function pickDefaultSession(sessions: MonitoringSession[]): MonitoringSession | 
 
 export function useMonitoringSessions(
   clinicalPatientId: string | null,
-  nodeId?: string | null,
+  _nodeId?: string | null,
   preferredSessionId?: string | null,
+  userPatientId?: string | null,
 ) {
   const [sessions, setSessions] = useState<MonitoringSession[]>([])
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
@@ -57,21 +59,21 @@ export function useMonitoringSessions(
   }, [preferredSessionId, sessions])
 
   const createSession = useCallback(async () => {
-    if (!clinicalPatientId) return null
-    try {
-      const created = await monitoringSessionService.create({
-        patient_id: clinicalPatientId,
-        node_id: nodeId || undefined,
-      })
-      setSessions((prev) => [created, ...prev])
-      setSelectedSessionId(created.id)
-      toast.success('Sesión de monitorización iniciada.')
-      return created
-    } catch {
-      toast.error('No se pudo crear la sesión.')
+    if (!userPatientId) {
+      toast.error('Activa la monitorización desde la ficha del paciente para abrir sesión.')
       return null
     }
-  }, [clinicalPatientId, nodeId])
+    try {
+      const { session } = await patientService.monitoringStart(userPatientId)
+      await refresh()
+      setSelectedSessionId(session.id)
+      toast.success('Sesión de monitorización iniciada.')
+      return session
+    } catch {
+      toast.error('No se pudo iniciar la sesión.')
+      return null
+    }
+  }, [refresh, userPatientId])
 
   const selectedSession = sessions.find((s) => s.id === selectedSessionId) ?? null
 

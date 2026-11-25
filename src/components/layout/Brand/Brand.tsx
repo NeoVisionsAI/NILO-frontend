@@ -1,3 +1,4 @@
+import { NILO_LOGO_ALT, niloLogoUrl } from '@/assets/brand/logo'
 import './Brand.css'
 
 interface BrandProps {
@@ -8,19 +9,14 @@ interface BrandProps {
 export function Brand({ compact = false }: BrandProps) {
   return (
     <div className="nilo-brand">
-      <span className="nilo-brand__mark" aria-hidden="true">
-        <svg viewBox="0 0 64 64" width="28" height="28">
-          <rect width="64" height="64" rx="14" fill="currentColor" />
-          <path
-            d="M10 34 h10 l4 -12 l7 24 l6 -18 l4 6 h13"
-            fill="none"
-            stroke="#fff"
-            strokeWidth="4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </span>
+      <img
+        src={niloLogoUrl}
+        alt={compact ? '' : NILO_LOGO_ALT}
+        className="nilo-brand__logo"
+        width={32}
+        height={32}
+        decoding="async"
+      />
       {!compact && <span className="nilo-brand__name">NILO</span>}
     </div>
   )

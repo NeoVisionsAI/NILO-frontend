@@ -44,6 +44,7 @@ export const monitoringSessionService = {
     })
   },
 
+  /** Solo herramientas/nilo-node — la UI usa `patientService.monitoringStart`. */
   create(body: {
     patient_id: string
     node_id?: string

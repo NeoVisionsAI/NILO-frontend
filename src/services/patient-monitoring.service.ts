@@ -4,26 +4,25 @@ import { patientService } from './patient.service'
 import type { MonitoringSession } from '@/types/monitoring-session'
 import type { PatientProfile, PatientProfileInput, PatientUser } from '@/types'
 
-async function findActiveSessionForClinicalPatient(
-  clinicalPatientId: string,
-): Promise<MonitoringSession | null> {
-  const list = await monitoringSessionService.list({
-    patient_id: clinicalPatientId,
-    status_filter: 'active',
-    limit: 5,
-  })
-  return list.find((s) => s.status === 'active') ?? list[0] ?? null
+function profileNeedsSync(user: PatientUser, input: PatientProfileInput): boolean {
+  const p = user.patient_profile
+  return (
+    input.type_patient !== p.type_patient ||
+    (input.node_id ?? null) !== (p.node_id ?? null) ||
+    (input.medical_record_number ?? '') !== (p.medical_record_number ?? '') ||
+    (input.room ?? '') !== (p.room ?? '') ||
+    (input.bed ?? '') !== (p.bed ?? '') ||
+    (input.notes ?? '') !== (p.notes ?? '')
+  )
 }
 
 /**
- * Al activar monitorización: crea sesión (`POST /sessions`) y luego `monitoring_active: true`.
- * Al desactivar: cierra la sesión activa (`POST …/end`) y apaga el flag.
- *
- * Cuando el backend exponga `patient_profile.active_session_id`, se usará como fuente de verdad.
+ * Monitorización: lifecycle vía `POST /users/{id}/monitoring/start|stop`.
+ * No crear sesión con `POST /sessions` + UUID desde el toggle.
  */
 export const patientMonitoringService = {
   async resolveActiveSession(
-    userId: string,
+    _userId: string,
     profile: Pick<PatientProfile, 'monitoring_active' | 'active_session_id'>,
   ): Promise<MonitoringSession | null> {
     if (!profile.monitoring_active) return null
@@ -33,13 +32,11 @@ export const patientMonitoringService = {
         const session = await monitoringSessionService.get(profile.active_session_id)
         if (session.status === 'active') return session
       } catch {
-        /* seguir con listado */
+        return null
       }
     }
 
-    const clinical = await clinicalPatientService.resolveByUserId(userId)
-    if (!clinical) return null
-    return findActiveSessionForClinicalPatient(clinical.id)
+    return null
   },
 
   async start(
@@ -51,52 +48,47 @@ export const patientMonitoringService = {
       throw Object.assign(new Error('No clinical patient'), { code: 'NO_CLINICAL_PATIENT' as const })
     }
 
-    const existing = await findActiveSessionForClinicalPatient(clinical.id)
-    if (existing) {
-      const updated = await patientService.update(user.id, {
-        patient_profile: { ...profileInput, monitoring_active: true },
+    let currentUser = user
+    if (profileNeedsSync(user, profileInput)) {
+      currentUser = await patientService.update(user.id, {
+        patient_profile: {
+          ...profileInput,
+          monitoring_active: user.patient_profile.monitoring_active,
+        },
       })
-      return { user: updated, session: existing }
     }
 
-    const external_session_id = crypto.randomUUID()
-    const nodeId = profileInput.node_id ?? clinical.node_id ?? undefined
-    const session = await monitoringSessionService.create({
-      patient_id: clinical.id,
-      node_id: nodeId,
-      external_session_id,
-    })
+    if (currentUser.patient_profile.monitoring_active && currentUser.patient_profile.active_session_id) {
+      try {
+        const session = await monitoringSessionService.get(currentUser.patient_profile.active_session_id)
+        if (session.status === 'active') {
+          return { user: currentUser, session }
+        }
+      } catch {
+        /* continuar con start */
+      }
+    }
 
-    const updated = await patientService.update(user.id, {
-      patient_profile: { ...profileInput, monitoring_active: true },
-    })
-
-    return { user: updated, session }
+    const { user: startedUser, session } = await patientService.monitoringStart(user.id)
+    return { user: startedUser, session }
   },
 
   async stop(
     user: PatientUser,
     profileInput: PatientProfileInput,
-    hints: { activeSessionId?: string | null } = {},
+    _hints: { activeSessionId?: string | null } = {},
   ): Promise<PatientUser> {
-    let sessionId = hints.activeSessionId ?? user.patient_profile.active_session_id ?? null
+    const stoppedUser = await patientService.monitoringStop(user.id)
 
-    if (sessionId) {
-      try {
-        await monitoringSessionService.end(sessionId)
-      } catch {
-        /* ya cerrada o inexistente */
-      }
-    } else {
-      const clinical = await clinicalPatientService.resolveByUserId(user.id)
-      if (clinical) {
-        const active = await findActiveSessionForClinicalPatient(clinical.id)
-        if (active) await monitoringSessionService.end(active.id)
-      }
+    if (!profileNeedsSync(stoppedUser, profileInput)) {
+      return stoppedUser
     }
 
     return patientService.update(user.id, {
-      patient_profile: { ...profileInput, monitoring_active: false },
+      patient_profile: {
+        ...profileInput,
+        monitoring_active: false,
+      },
     })
   },
 }

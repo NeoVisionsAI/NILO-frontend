@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { niloLogoUrl, NILO_LOGO_ALT } from '@/assets/brand/logo'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import { useAuth } from '@/hooks/useAuth'
 import { homePathForRole } from '@/router/paths'
@@ -47,7 +48,7 @@ export function LoginPage() {
           {/* Cabecera de marca */}
           <div className="nilo-login__brand">
             <div className="nilo-login__brand-icon">
-              <MaterialIcon name="clinical_notes" size={64} />
+              <img src={niloLogoUrl} alt={NILO_LOGO_ALT} className="nilo-login__brand-logo" width={128} height={128} />
             </div>
             <h1 className="nilo-login__title">NILO</h1>
             <p className="nilo-login__subtitle">Clinical Monitoring Ecosystem</p>

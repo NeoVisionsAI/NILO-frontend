@@ -5,6 +5,8 @@ import { buildQueryString } from '@/types/admin-common'
 
 export type LandmarkSource = 'mediapipe' | 'yolo' | 'other'
 
+export type LandmarksCaptureKind = 'face' | 'pose'
+
 export interface LandmarksUploadRequest {
   session_id: string
   patient_id: string
@@ -16,6 +18,8 @@ export interface LandmarksUploadRequest {
   end_ts?: string
   frame_count?: number
   file_extension?: string
+  /** Ruta MinIO: `face_landmarks` vs `pose` (default backend: face). */
+  capture_kind?: LandmarksCaptureKind
 }
 
 export interface LandmarksOut {
@@ -44,6 +48,7 @@ function appendLandmarksFormFields(form: FormData, body: LandmarksUploadRequest)
   if (body.end_ts) form.append('end_ts', body.end_ts)
   if (body.frame_count != null) form.append('frame_count', String(body.frame_count))
   form.append('file_extension', body.file_extension ?? 'json')
+  form.append('capture_kind', body.capture_kind ?? 'face')
 }
 
 export const landmarksService = {

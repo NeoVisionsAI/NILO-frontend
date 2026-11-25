@@ -31,10 +31,21 @@
 }
 
 .nilo-ctopbar__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
   font-size: 24px;
   font-weight: 700;
   letter-spacing: -0.01em;
   color: var(--m3-primary);
+}
+
+.nilo-ctopbar__brand-logo {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 .nilo-ctopbar__right {

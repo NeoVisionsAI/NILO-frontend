@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { niloLogoUrl } from '@/assets/brand/logo'
 import { Avatar } from '@/components/ui/Avatar'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import { isWifiProvisioning } from '@/features/doctor/cardmed/config/provisioning'
@@ -198,7 +199,10 @@ export function ClinicianTopBar({
             <MaterialIcon name="menu" size={22} />
           </button>
         )}
-        <h1 className="nilo-ctopbar__brand">NILO</h1>
+        <h1 className="nilo-ctopbar__brand">
+          <img src={niloLogoUrl} alt="" className="nilo-ctopbar__brand-logo" width={28} height={28} aria-hidden />
+          <span>NILO</span>
+        </h1>
       </div>
 
       <div className="nilo-ctopbar__right">
