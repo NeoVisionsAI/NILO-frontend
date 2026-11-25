@@ -1,7 +1,7 @@
 .nilo-explore-summary {
-  padding: 22px 24px;
-  margin-bottom: 4px;
-  border-radius: 18px;
+  padding: 16px 18px;
+  margin: 0;
+  border-radius: 16px;
   border: 1px solid var(--m3-outline-variant);
   background: linear-gradient(160deg, var(--m3-surface-container-low), var(--m3-surface-container));
 }
