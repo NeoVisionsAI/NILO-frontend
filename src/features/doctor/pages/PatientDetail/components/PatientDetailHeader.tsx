@@ -80,47 +80,47 @@ export function PatientDetailHeader({
             {profileChip('Tipo', profile.type_patient)}
           </div>
 
-          {monitoring && (
-            <div className="nilo-pdetail-hdr__session-inline" aria-label="Sesión activa">
-              {activeSession ? (
+        </div>
+
+        <div className="nilo-pdetail-hdr__controls">
+          <div className="nilo-pdetail-hdr__mon-strip" aria-label="Monitorización y sesión">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={monitoring}
+              disabled={togglingMonitor}
+              className={`nilo-pdetail-hdr__mon-pill${monitoring ? ' nilo-pdetail-hdr__mon-pill--on' : ''}`}
+              onClick={onMonitoringToggle}
+            >
+              <span className="nilo-pdetail-hdr__mon-pill-track" aria-hidden>
+                <span className="nilo-pdetail-hdr__mon-pill-thumb" />
+              </span>
+              <span className="nilo-pdetail-hdr__mon-pill-text">
+                {monitoring ? 'Monitorizando..' : 'Monitorización desactivada'}
+              </span>
+            </button>
+
+            {monitoring && activeSession?.status === 'active' && (
+              <SessionElapsedBadge startedAt={activeSession.started_at} />
+            )}
+
+            {monitoring &&
+              (activeSession ? (
                 <ActiveSessionInfo
                   session={activeSession}
                   profileActiveSessionId={p.patient_profile?.active_session_id}
                   loading={loadingSession}
                   onSessionUpdated={onSessionUpdated}
                   compact
+                  strip
                   hideElapsed
                 />
               ) : loadingSession ? (
                 <p className="nilo-pdetail-hdr__session-empty">Cargando sesión…</p>
               ) : (
                 <p className="nilo-pdetail-hdr__session-warn">Sin sesión abierta.</p>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="nilo-pdetail-hdr__controls">
-          <button
-            type="button"
-            role="switch"
-            aria-checked={monitoring}
-            disabled={togglingMonitor}
-            className={`nilo-pdetail-hdr__mon-pill${monitoring ? ' nilo-pdetail-hdr__mon-pill--on' : ''}`}
-            onClick={onMonitoringToggle}
-          >
-            <span className="nilo-pdetail-hdr__mon-pill-main">
-              <span className="nilo-pdetail-hdr__mon-pill-text">
-                {monitoring ? 'Monitorización activada' : 'Monitorización desactivada'}
-              </span>
-              {monitoring && activeSession?.status === 'active' && (
-                <SessionElapsedBadge startedAt={activeSession.started_at} />
-              )}
-            </span>
-            <span className="nilo-pdetail-hdr__mon-pill-track" aria-hidden>
-              <span className="nilo-pdetail-hdr__mon-pill-thumb" />
-            </span>
-          </button>
+              ))}
+          </div>
 
           <div className="nilo-pdetail-hdr__actions-row">
             <div className="nilo-pdetail-hdr__view-switch" role="group" aria-label="Vista de contenido">

@@ -15,6 +15,8 @@ interface ActiveSessionInfoProps {
   onSessionUpdated?: (session: MonitoringSession) => void
   /** Variante más pequeña para la cabecera del paciente */
   compact?: boolean
+  /** Fila junto al toggle: id al ancho del texto */
+  strip?: boolean
   /** Oculta el cronómetro (se muestra junto a monitorización) */
   hideElapsed?: boolean
 }
@@ -25,6 +27,7 @@ export function ActiveSessionInfo({
   loading,
   onSessionUpdated,
   compact,
+  strip,
   hideElapsed,
 }: ActiveSessionInfoProps) {
   const [elapsed, setElapsed] = useState(() => formatSessionElapsed(session.started_at))
@@ -103,7 +106,9 @@ export function ActiveSessionInfo({
   }
 
   return (
-    <div className={`nilo-session-card${compact ? ' nilo-session-card--compact' : ''}`}>
+    <div
+      className={`nilo-session-card${compact ? ' nilo-session-card--compact' : ''}${strip ? ' nilo-session-card--strip' : ''}`}
+    >
       <div className="nilo-session-card__row nilo-session-card__row--name">
         <div className="nilo-session-card__name-wrap">
           {editingName ? (
