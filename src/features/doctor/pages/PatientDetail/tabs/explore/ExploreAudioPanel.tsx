@@ -1,13 +1,18 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
+import { computeWaveformPeaks } from '@/lib/audio-waveform'
+import { parseApiDateMs } from '@/lib/parse-api-datetime'
 import { audioRecordingService } from '@/services/audio-recording.service'
 import { monitoringSessionService } from '@/services/monitoring-session.service'
 import type { AudioRecording } from '@/types/monitoring-session'
 import './ExploreAudioPanel.css'
 
+export type ExploreAudioVariant = 'ambient' | 'voice'
+
 interface ExploreAudioPanelProps {
   clips: AudioRecording[]
   sessionId: string
+  variant: ExploreAudioVariant
 }
 
 interface ClipEntry {
@@ -16,59 +21,172 @@ interface ClipEntry {
   loading: boolean
 }
 
-function AudioWaveBars({ active }: { active: boolean }) {
+function formatClipTime(iso: string): string {
+  const ms = parseApiDateMs(iso)
+  if (Number.isNaN(ms)) return iso
+  return new Date(ms).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })
+}
+
+function AudioWaveformCanvas({
+  peaks,
+  progress,
+  onSeek,
+}: {
+  peaks: number[]
+  progress: number
+  onSeek: (ratio: number) => void
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas || peaks.length === 0) return
+    const dpr = window.devicePixelRatio || 1
+    const w = canvas.clientWidth
+    const h = canvas.clientHeight
+    canvas.width = Math.floor(w * dpr)
+    canvas.height = Math.floor(h * dpr)
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    ctx.clearRect(0, 0, w, h)
+    const mid = h / 2
+    const barW = w / peaks.length
+    const playedBars = Math.floor(progress * peaks.length)
+    for (let i = 0; i < peaks.length; i += 1) {
+      const amp = peaks[i] * (h * 0.42)
+      const x = i * barW + barW * 0.15
+      const bw = Math.max(1.2, barW * 0.7)
+      ctx.fillStyle = i <= playedBars ? '#2563eb' : 'rgba(100, 116, 139, 0.55)'
+      if (typeof ctx.roundRect === 'function') {
+        ctx.beginPath()
+        ctx.roundRect(x, mid - amp, bw, amp * 2, 1)
+        ctx.fill()
+      } else {
+        ctx.fillRect(x, mid - amp, bw, amp * 2)
+      }
+    }
+  }, [peaks, progress])
+
   return (
-    <span className={`nilo-audio-wave${active ? ' nilo-audio-wave--live' : ''}`} aria-hidden>
-      {Array.from({ length: 12 }, (_, i) => (
-        <span key={i} className="nilo-audio-wave__bar" style={{ animationDelay: `${i * 0.07}s` }} />
-      ))}
-    </span>
+    <canvas
+      ref={canvasRef}
+      className="nilo-audio-clip__wave"
+      role="slider"
+      aria-label="Posición en el audio"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(progress * 100)}
+      onClick={(e) => {
+        const rect = e.currentTarget.getBoundingClientRect()
+        const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
+        onSeek(ratio)
+      }}
+    />
   )
 }
 
-function AudioClipPlayer({ clip, url }: { clip: AudioRecording; url: string | null }) {
+function AudioClipRow({ clip, url }: { clip: AudioRecording; url: string | null }) {
   const audioRef = useRef<HTMLAudioElement>(null)
   const [playing, setPlaying] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const [peaks, setPeaks] = useState<number[] | null>(null)
+  const [peaksLoading, setPeaksLoading] = useState(false)
+
+  useEffect(() => {
+    if (!url) {
+      setPeaks(null)
+      return
+    }
+    let cancelled = false
+    setPeaksLoading(true)
+    void computeWaveformPeaks(url)
+      .then((p) => {
+        if (!cancelled) setPeaks(p)
+      })
+      .catch(() => {
+        if (!cancelled) setPeaks(null)
+      })
+      .finally(() => {
+        if (!cancelled) setPeaksLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [url])
+
+  const togglePlay = useCallback(() => {
+    const el = audioRef.current
+    if (!el) return
+    if (el.paused) void el.play()
+    else el.pause()
+  }, [])
+
+  const seek = useCallback((ratio: number) => {
+    const el = audioRef.current
+    if (!el || !Number.isFinite(el.duration)) return
+    el.currentTime = ratio * el.duration
+    setProgress(ratio)
+  }, [])
 
   if (!url) {
     return (
       <article className="nilo-audio-clip nilo-audio-clip--error">
-        <MaterialIcon name="mic_off" size={22} />
-        <div>
-          <strong>{new Date(clip.start_ts).toLocaleString('es-ES')}</strong>
-          <p>Sin URL de reproducción</p>
-        </div>
+        <MaterialIcon name="mic_off" size={18} />
+        <span>{formatClipTime(clip.start_ts)} — sin URL</span>
       </article>
     )
   }
 
   return (
     <article className="nilo-audio-clip">
-      <div className="nilo-audio-clip__meta">
-        <strong>{new Date(clip.start_ts).toLocaleString('es-ES')}</strong>
-        <span>
-          {clip.duration_seconds != null ? `${Math.round(clip.duration_seconds)} s` : clip.status}
-        </span>
-        {clip.transcription && <p className="nilo-audio-clip__transcript">{clip.transcription}</p>}
+      <button type="button" className="nilo-audio-clip__play" onClick={togglePlay} aria-label={playing ? 'Pausar' : 'Reproducir'}>
+        <MaterialIcon name={playing ? 'pause' : 'play_arrow'} size={22} />
+      </button>
+      <div className="nilo-audio-clip__body">
+        <div className="nilo-audio-clip__head">
+          <time dateTime={clip.start_ts}>{formatClipTime(clip.start_ts)}</time>
+          <span>
+            {clip.duration_seconds != null ? `${Math.round(clip.duration_seconds)} s` : clip.status}
+          </span>
+        </div>
+        {peaksLoading && <div className="nilo-audio-clip__wave-skel" aria-hidden />}
+        {peaks && !peaksLoading && (
+          <AudioWaveformCanvas peaks={peaks} progress={progress} onSeek={seek} />
+        )}
+        {!peaks && !peaksLoading && (
+          <button type="button" className="nilo-audio-clip__fallback" onClick={togglePlay}>
+            Reproducir audio
+          </button>
+        )}
+        {clip.transcription && (
+          <p className="nilo-audio-clip__transcript" title={clip.transcription}>
+            {clip.transcription}
+          </p>
+        )}
       </div>
-      <AudioWaveBars active={playing} />
       <audio
         ref={audioRef}
-        className="nilo-audio-clip__player"
-        controls
+        className="nilo-audio-clip__audio-hidden"
         preload="metadata"
         src={url}
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
-        onEnded={() => setPlaying(false)}
-      >
-        Tu navegador no puede reproducir este audio.
-      </audio>
+        onEnded={() => {
+          setPlaying(false)
+          setProgress(0)
+        }}
+        onTimeUpdate={() => {
+          const el = audioRef.current
+          if (!el?.duration) return
+          setProgress(el.currentTime / el.duration)
+        }}
+      />
     </article>
   )
 }
 
-export function ExploreAudioPanel({ clips, sessionId }: ExploreAudioPanelProps) {
+export function ExploreAudioPanel({ clips, sessionId, variant }: ExploreAudioPanelProps) {
   const [entries, setEntries] = useState<ClipEntry[]>(() =>
     clips.map((clip) => ({ clip, url: null, loading: true })),
   )
@@ -103,16 +221,24 @@ export function ExploreAudioPanel({ clips, sessionId }: ExploreAudioPanelProps) 
   }, [clips, sessionId])
 
   if (clips.length === 0) {
-    return <p className="nilo-explore__placeholder">Sin notas de voz en este intervalo.</p>
+    return (
+      <p className="nilo-explore__placeholder">
+        {variant === 'voice'
+          ? 'Sin notas de voz en este intervalo.'
+          : 'Sin audio ambiente (micrófonos) en este intervalo.'}
+      </p>
+    )
   }
-
-  const anyLoading = entries.some((e) => e.loading)
 
   return (
     <div className="nilo-audio-panel">
-      {anyLoading && <p className="nilo-explore__placeholder">Preparando reproducción…</p>}
+      <p className="nilo-audio-panel__hint">
+        {variant === 'voice'
+          ? 'Notas de voz clínicas — pulsa la forma de onda para avanzar.'
+          : 'Audio captado por micrófonos del nodo — forma de onda real del fichero.'}
+      </p>
       {entries.map((entry) => (
-        <AudioClipPlayer key={entry.clip.id} clip={entry.clip} url={entry.url} />
+        <AudioClipRow key={entry.clip.id} clip={entry.clip} url={entry.url} />
       ))}
     </div>
   )

@@ -2,7 +2,17 @@ import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import type { SessionOverview } from '@/types/monitoring-session'
 import './ExploreSideNav.css'
 
-export type ExploreSection = 'summary' | 'session' | 'face' | 'pose' | 'audio' | 'video' | 'text' | 'physio' | 'pain'
+export type ExploreSection =
+  | 'summary'
+  | 'session'
+  | 'face'
+  | 'pose'
+  | 'voice'
+  | 'audio'
+  | 'video'
+  | 'text'
+  | 'physio'
+  | 'pain'
 
 interface NavCategory {
   id: ExploreSection
@@ -25,7 +35,8 @@ const PRIMARY: Array<{ id: ExploreSection; label: string; icon: string }> = [
 const DATA_CATEGORIES: NavCategory[] = [
   { id: 'face', label: 'Expresión facial', icon: 'face' },
   { id: 'pose', label: 'Postura', icon: 'accessibility_new' },
-  { id: 'audio', label: 'Audio', icon: 'mic', countKey: 'audio_clips' },
+  { id: 'voice', label: 'Notas de voz', icon: 'record_voice_over' },
+  { id: 'audio', label: 'Audio ambiente', icon: 'sensors' },
   { id: 'video', label: 'Vídeo', icon: 'videocam', countKey: 'video_segments' },
   { id: 'text', label: 'Notas texto', icon: 'edit_note', countKey: 'text_notes' },
   { id: 'physio', label: 'Fisiológicos', icon: 'monitor_heart', countKey: 'physiological_readings' },
@@ -37,6 +48,7 @@ interface ExploreSideNavProps {
   onSelect: (section: ExploreSection) => void
   overview: SessionOverview | null
   sessionSelected: boolean
+  audioClipCounts?: { voice: number | null; ambient: number | null }
 }
 
 function countFor(cat: NavCategory, overview: SessionOverview | null): string | number | null {
@@ -46,7 +58,23 @@ function countFor(cat: NavCategory, overview: SessionOverview | null): string | 
   return null
 }
 
-export function ExploreSideNav({ active, onSelect, overview, sessionSelected }: ExploreSideNavProps) {
+function categoryBadge(
+  cat: NavCategory,
+  overview: SessionOverview | null,
+  audioClipCounts?: { voice: number | null; ambient: number | null },
+): string | number | null {
+  if (cat.id === 'voice') return audioClipCounts?.voice ?? null
+  if (cat.id === 'audio') return audioClipCounts?.ambient ?? null
+  return countFor(cat, overview)
+}
+
+export function ExploreSideNav({
+  active,
+  onSelect,
+  overview,
+  sessionSelected,
+  audioClipCounts,
+}: ExploreSideNavProps) {
   return (
     <nav className="nilo-explore-nav" aria-label="Secciones de exploración">
       <p className="nilo-explore-nav__group">Paciente</p>
@@ -67,7 +95,7 @@ export function ExploreSideNav({ active, onSelect, overview, sessionSelected }: 
         <p className="nilo-explore-nav__hint">Elige una sesión en «Sesión y filtros».</p>
       )}
       {DATA_CATEGORIES.map((cat) => {
-        const count = countFor(cat, overview)
+        const count = categoryBadge(cat, overview, audioClipCounts)
         const disabled = !sessionSelected
         return (
           <button

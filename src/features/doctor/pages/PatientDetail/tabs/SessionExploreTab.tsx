@@ -8,6 +8,7 @@ import {
 } from '@/lib/explore-patient-stats'
 import { fetchLandmarksDocument } from '@/lib/fetch-landmarks-document'
 import { isoInRange, sessionBounds, sessionOverlapsInterval } from '@/lib/explore-time'
+import { isVoiceNoteClip } from '@/lib/audio-waveform'
 import { parseApiDateMs } from '@/lib/parse-api-datetime'
 import type { ParsedLandmarks } from '@/lib/landmarks-json'
 import { audioRecordingService } from '@/services/audio-recording.service'
@@ -39,14 +40,15 @@ const SECTION_TITLES: Record<ExploreSection, string> = {
   session: 'Sesión y filtros',
   face: 'Expresión facial',
   pose: 'Postura / esqueleto',
-  audio: 'Audio',
+  voice: 'Notas de voz',
+  audio: 'Audio ambiente',
   video: 'Vídeo',
   text: 'Notas de texto',
   physio: 'Datos fisiológicos',
   pain: 'Episodios de dolor',
 }
 
-type ExploreCategory = 'face' | 'pose' | 'audio' | 'video' | 'text' | 'physio' | 'pain'
+type ExploreCategory = 'face' | 'pose' | 'voice' | 'audio' | 'video' | 'text' | 'physio' | 'pain'
 
 interface SessionExploreTabProps {
   userPatientId: string
@@ -103,6 +105,10 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
   const [landmarkPreview, setLandmarkPreview] = useState<ParsedLandmarks | null>(null)
   const [landmarkPreviewTitle, setLandmarkPreviewTitle] = useState('')
   const [landmarkPreviewLoading, setLandmarkPreviewLoading] = useState(false)
+  const [audioClipCounts, setAudioClipCounts] = useState<{ voice: number | null; ambient: number | null }>({
+    voice: null,
+    ambient: null,
+  })
 
   const loadSessions = useCallback(async () => {
     if (!clinicalPatient?.id) {
@@ -209,6 +215,34 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
     }
   }, [selectedSessionId])
 
+  useEffect(() => {
+    if (!clinicalPatient?.id || !selectedSessionId) {
+      setAudioClipCounts({ voice: null, ambient: null })
+      return
+    }
+    let cancelled = false
+    void audioRecordingService
+      .list({
+        patient_id: clinicalPatient.id,
+        session_id: selectedSessionId,
+        node_id: nodeId || undefined,
+        limit: 500,
+      })
+      .then((list) => {
+        if (cancelled) return
+        setAudioClipCounts({
+          voice: list.filter((c) => isVoiceNoteClip(c.kind)).length,
+          ambient: list.filter((c) => !isVoiceNoteClip(c.kind)).length,
+        })
+      })
+      .catch(() => {
+        if (!cancelled) setAudioClipCounts({ voice: null, ambient: null })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [clinicalPatient?.id, nodeId, selectedSessionId])
+
   const loadCategory = useCallback(
     async (cat: ExploreCategory) => {
       if (!clinicalPatient?.id || !selectedSessionId) return
@@ -228,14 +262,19 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
           setTextNotes([])
           setMediaItems([])
           setPhysioReadings([])
-        } else if (cat === 'audio') {
+        } else if (cat === 'audio' || cat === 'voice') {
           setLandmarks([])
           const list = await audioRecordingService.list({
             patient_id: clinicalPatient.id,
             session_id: selectedSessionId,
             node_id: nodeId || undefined,
+            limit: 500,
           })
           setAudioClips(list)
+          setAudioClipCounts({
+            voice: list.filter((c) => isVoiceNoteClip(c.kind)).length,
+            ambient: list.filter((c) => !isVoiceNoteClip(c.kind)).length,
+          })
         } else if (cat === 'text') {
           setLandmarks([])
           const notes = await monitoringSessionService.listTextNotes(selectedSessionId, 0, 500)
@@ -315,6 +354,8 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
 
   const filteredLandmarks = landmarks
   const filteredAudio = audioClips.filter((c) => inSessionRange(c.start_ts))
+  const filteredVoiceNotes = filteredAudio.filter((c) => isVoiceNoteClip(c.kind))
+  const filteredAmbientAudio = filteredAudio.filter((c) => !isVoiceNoteClip(c.kind))
   const textQuery = textSearch.trim().toLowerCase()
   const filteredText = textNotes
     .filter((n) => inSessionRange(n.recorded_at))
@@ -331,6 +372,7 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
         onSelect={selectExploreSection}
         overview={overview}
         sessionSelected={Boolean(selectedSessionId)}
+        audioClipCounts={audioClipCounts}
       />
 
       <div className="nilo-explore__main">
@@ -503,8 +545,12 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
           </>
         ) : null}
 
+        {category === 'voice' && selectedSessionId ? (
+          <ExploreAudioPanel clips={filteredVoiceNotes} sessionId={selectedSessionId} variant="voice" />
+        ) : null}
+
         {category === 'audio' && selectedSessionId ? (
-          <ExploreAudioPanel clips={filteredAudio} sessionId={selectedSessionId} />
+          <ExploreAudioPanel clips={filteredAmbientAudio} sessionId={selectedSessionId} variant="ambient" />
         ) : null}
 
         {category === 'text' ? (
