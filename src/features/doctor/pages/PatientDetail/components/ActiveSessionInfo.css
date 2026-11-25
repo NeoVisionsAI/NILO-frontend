@@ -1,0 +1,120 @@
+.nilo-session-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.nilo-session-card__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.nilo-session-card__row--name {
+  justify-content: space-between;
+}
+
+.nilo-session-card__name-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+
+.nilo-session-card__name {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--m3-on-surface);
+  line-height: 1.25;
+}
+
+.nilo-session-card__name--muted {
+  font-weight: 600;
+  color: var(--m3-on-surface-variant);
+}
+
+.nilo-session-card__elapsed {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #059669;
+  padding: 6px 10px;
+  border-radius: 9999px;
+  background: color-mix(in srgb, #059669 12%, transparent);
+}
+
+.nilo-session-card__row--id {
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--m3-surface-container-high);
+  border: 1px solid var(--m3-outline-variant);
+}
+
+.nilo-session-card__id {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: ui-monospace, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+}
+
+.nilo-session-card__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  color: var(--m3-primary);
+  flex-shrink: 0;
+}
+
+.nilo-session-card__icon-btn:hover {
+  background: var(--m3-surface-container);
+}
+
+.nilo-session-card__rename {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.nilo-session-card__rename input {
+  flex: 1;
+  min-width: 120px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--m3-outline-variant);
+  font-size: 14px;
+}
+
+.nilo-session-card__rename button {
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--m3-primary);
+  color: var(--m3-on-primary);
+}
+
+.nilo-session-card__rename button[type='button'] {
+  background: var(--m3-surface-container-high);
+  color: var(--m3-on-surface);
+}
+
+.nilo-session-card__loading {
+  margin: 0;
+  font-size: 13px;
+  color: var(--m3-on-surface-variant);
+}

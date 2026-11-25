@@ -74,62 +74,81 @@ export function PatientDetailHeader({
             {profileChip('Tipo', profile.type_patient)}
           </div>
         </div>
-        <div className="nilo-pdetail-hdr__tools">
-          <label className="nilo-pdetail-hdr__node">
-            <MaterialIcon name="hub" size={20} />
-            <select value={assignedNodeId} disabled={assigningNode} onChange={onNodeChange} aria-label="Nodo">
-              <option value="">Sin nodo</option>
-              {nodes.map((n) => (
-                <option key={n.id} value={n.id}>
-                  {n.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          {devToolsSlot}
-          <button type="button" className="nilo-pdetail-hdr__icon-btn" onClick={onEdit} aria-label="Editar paciente">
-            <MaterialIcon name="edit" size={20} />
-          </button>
-          <button
-            type="button"
-            className="nilo-pdetail-hdr__icon-btn nilo-pdetail-hdr__icon-btn--danger"
-            onClick={onDelete}
-            aria-label="Eliminar paciente"
-          >
-            <MaterialIcon name="delete" size={20} />
-          </button>
-        </div>
-      </section>
 
-      <section className="nilo-pdetail-hdr__grid" aria-label="Monitorización y vistas">
-        <article className="nilo-pdetail-hdr__card">
-          <header className="nilo-pdetail-hdr__card-head">
-            <MaterialIcon name="sensors" size={20} />
-            <span>Monitorización</span>
-          </header>
-          <label className="nilo-pdetail-hdr__monitor">
+        <div className="nilo-pdetail-hdr__controls">
+          <div className="nilo-pdetail-hdr__controls-main">
             <button
               type="button"
               role="switch"
-              className={`nilo-pdetail-hdr__toggle${monitoring ? ' nilo-pdetail-hdr__toggle--on' : ''}`}
               aria-checked={monitoring}
               disabled={togglingMonitor}
+              className={`nilo-pdetail-hdr__mon-pill${monitoring ? ' nilo-pdetail-hdr__mon-pill--on' : ''}`}
               onClick={onMonitoringToggle}
             >
-              <span className="nilo-pdetail-hdr__toggle-thumb" />
+              <span className="nilo-pdetail-hdr__mon-pill-text">
+                {monitoring ? 'Monitorización activada' : 'Monitorización desactivada'}
+              </span>
+              <span className="nilo-pdetail-hdr__mon-pill-track" aria-hidden>
+                <span className="nilo-pdetail-hdr__mon-pill-thumb" />
+              </span>
             </button>
-            <span>{monitoring ? 'Activa — ingesta habilitada' : 'Inactiva'}</span>
-          </label>
-        </article>
 
-        <article className="nilo-pdetail-hdr__card nilo-pdetail-hdr__card--session">
-          <header className="nilo-pdetail-hdr__card-head">
-            <MaterialIcon name="event_available" size={20} />
-            <span>Sesión</span>
-          </header>
-          {!monitoring ? (
-            <p className="nilo-pdetail-hdr__muted">Activa monitorización para abrir sesión de captura.</p>
-          ) : activeSession ? (
+            <div className="nilo-pdetail-hdr__view-switch" role="group" aria-label="Vista de contenido">
+              {monitoring && (
+                <button
+                  type="button"
+                  className={`nilo-pdetail-hdr__view${viewMode === 'live' ? ' nilo-pdetail-hdr__view--on' : ''}`}
+                  aria-pressed={viewMode === 'live'}
+                  onClick={() => onViewModeChange('live')}
+                >
+                  <span className="nilo-pdetail-hdr__live-dot" aria-hidden />
+                  <MaterialIcon name="monitor_heart" size={18} />
+                  Live
+                </button>
+              )}
+              <button
+                type="button"
+                className={`nilo-pdetail-hdr__view${viewMode === 'explore' ? ' nilo-pdetail-hdr__view--on' : ''}`}
+                aria-pressed={viewMode === 'explore'}
+                onClick={() => onViewModeChange('explore')}
+              >
+                <MaterialIcon name="database_search" size={18} />
+                Explorar
+              </button>
+            </div>
+          </div>
+
+          <div className="nilo-pdetail-hdr__tools">
+            <label className="nilo-pdetail-hdr__node">
+              <MaterialIcon name="hub" size={20} />
+              <select value={assignedNodeId} disabled={assigningNode} onChange={onNodeChange} aria-label="Nodo">
+                <option value="">Sin nodo</option>
+                {nodes.map((n) => (
+                  <option key={n.id} value={n.id}>
+                    {n.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {devToolsSlot}
+            <button type="button" className="nilo-pdetail-hdr__icon-btn" onClick={onEdit} aria-label="Editar paciente">
+              <MaterialIcon name="edit" size={20} />
+            </button>
+            <button
+              type="button"
+              className="nilo-pdetail-hdr__icon-btn nilo-pdetail-hdr__icon-btn--danger"
+              onClick={onDelete}
+              aria-label="Eliminar paciente"
+            >
+              <MaterialIcon name="delete" size={20} />
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {monitoring && (
+        <section className="nilo-pdetail-hdr__session-strip" aria-label="Sesión activa">
+          {activeSession ? (
             <ActiveSessionInfo
               session={activeSession}
               profileActiveSessionId={p.patient_profile?.active_session_id}
@@ -137,45 +156,14 @@ export function PatientDetailHeader({
               onSessionUpdated={onSessionUpdated}
             />
           ) : loadingSession ? (
-            <p className="nilo-pdetail-hdr__muted">Cargando sesión…</p>
+            <p className="nilo-pdetail-hdr__session-empty">Cargando sesión…</p>
           ) : (
-            <p className="nilo-pdetail-hdr__warn">Sin sesión abierta — desactiva y reactiva monitorización.</p>
+            <p className="nilo-pdetail-hdr__session-warn">
+              Sin sesión abierta — desactiva y vuelve a activar monitorización.
+            </p>
           )}
-        </article>
-
-        <article className="nilo-pdetail-hdr__card nilo-pdetail-hdr__card--modes">
-          <header className="nilo-pdetail-hdr__card-head">
-            <MaterialIcon name="dashboard" size={20} />
-            <span>Vista principal</span>
-          </header>
-          <div className="nilo-pdetail-hdr__mode-switch" role="group" aria-label="Modo de contenido">
-            <button
-              type="button"
-              className={`nilo-pdetail-hdr__mode${viewMode === 'live' ? ' nilo-pdetail-hdr__mode--active' : ''}`}
-              aria-pressed={viewMode === 'live'}
-              onClick={() => onViewModeChange('live')}
-            >
-              <span className="nilo-pdetail-hdr__live-dot" aria-hidden />
-              <MaterialIcon name="monitor_heart" size={18} />
-              Live
-            </button>
-            <button
-              type="button"
-              className={`nilo-pdetail-hdr__mode${viewMode === 'explore' ? ' nilo-pdetail-hdr__mode--active' : ''}`}
-              aria-pressed={viewMode === 'explore'}
-              onClick={() => onViewModeChange('explore')}
-            >
-              <MaterialIcon name="database_search" size={18} />
-              Explorar
-            </button>
-          </div>
-          <p className="nilo-pdetail-hdr__mode-hint">
-            {viewMode === 'live'
-              ? 'Señales en tiempo real del nodo.'
-              : 'Busca audio, vídeo, landmarks y notas por sesión.'}
-          </p>
-        </article>
-      </section>
+        </section>
+      )}
     </header>
   )
 }

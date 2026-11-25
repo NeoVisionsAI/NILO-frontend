@@ -40,6 +40,7 @@ import { PatientDetailHeader, type PatientViewMode } from './components/PatientD
 import { SessionExploreTab } from './tabs/SessionExploreTab'
 import './PatientDetailPage.css'
 import './components/PatientDetailHeader.css'
+import './components/ActiveSessionInfo.css'
 import './tabs/SessionExploreTab.css'
 import './components/CondataPanel.css'
 import './components/dev/SessionIngestionDevPanel.css'
@@ -113,6 +114,12 @@ export function PatientDetailPage() {
       cancelled = true
     }
   }, [patient?.id, patient?.patient_profile?.monitoring_active, patient?.patient_profile?.active_session_id])
+
+  useEffect(() => {
+    if (!patient?.patient_profile?.monitoring_active && condataMode === 'live') {
+      setCondataMode('explore')
+    }
+  }, [condataMode, patient?.patient_profile?.monitoring_active])
 
   useEffect(() => {
     setCondataMode('live')
@@ -273,10 +280,13 @@ export function PatientDetailPage() {
         session && mongoSessionId ? { ...session, id: mongoSessionId } : session,
       )
       if (next && session) {
+        openLive()
         toast.success('Monitorización activa. Sesión iniciada.')
       } else if (next) {
+        openLive()
         toast.success('Monitorización activada.')
       } else {
+        openExplore()
         toast.success('Monitorización detenida. Sesión cerrada.')
         setActiveMonitoringSession(null)
       }
@@ -465,8 +475,7 @@ export function PatientDetailPage() {
     return null
   }
 
-  const headerViewMode: PatientViewMode =
-    condataMode === 'explore' && !activeModule ? 'explore' : 'live'
+  const headerViewMode: PatientViewMode = !monitoring || condataMode === 'explore' ? 'explore' : 'live'
 
   const avatarEl = p.photo ? (
     <img className="nilo-pdetail__avatar" src={p.photo} alt={fullName} />
@@ -492,7 +501,10 @@ export function PatientDetailPage() {
         loadingSession={loadingActiveSession}
         onSessionUpdated={setActiveMonitoringSession}
         viewMode={headerViewMode}
-        onViewModeChange={(mode) => (mode === 'live' ? openLive() : openExplore())}
+        onViewModeChange={(mode) => {
+          if (mode === 'live' && monitoring) openLive()
+          else openExplore()
+        }}
         assignedNodeId={assignedNodeId}
         nodes={nodes}
         assigningNode={assigningNode}
