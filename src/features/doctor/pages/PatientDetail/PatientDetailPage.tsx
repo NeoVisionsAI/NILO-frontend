@@ -495,6 +495,7 @@ export function PatientDetailPage() {
         fullName={fullName}
         avatar={avatarEl}
         monitoring={monitoring}
+        liveAvailable={monitoring && !!activeMonitoringSession}
         togglingMonitor={togglingMonitor}
         onMonitoringToggle={() => void handleMonitoringToggle()}
         activeSession={activeMonitoringSession}

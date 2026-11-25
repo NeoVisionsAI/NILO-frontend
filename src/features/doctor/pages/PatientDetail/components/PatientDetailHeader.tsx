@@ -14,6 +14,8 @@ interface PatientDetailHeaderProps {
   fullName: string
   avatar: ReactNode
   monitoring: boolean
+  /** Mostrar Live solo con monitorización y sesión activa resuelta */
+  liveAvailable: boolean
   togglingMonitor: boolean
   onMonitoringToggle: () => void
   activeSession: MonitoringSession | null
@@ -45,6 +47,7 @@ export function PatientDetailHeader({
   fullName,
   avatar,
   monitoring,
+  liveAvailable,
   togglingMonitor,
   onMonitoringToggle,
   activeSession,
@@ -124,7 +127,7 @@ export function PatientDetailHeader({
 
           <div className="nilo-pdetail-hdr__actions-row">
             <div className="nilo-pdetail-hdr__view-switch" role="group" aria-label="Vista de contenido">
-              {monitoring && (
+              {liveAvailable && (
                 <button
                   type="button"
                   className={`nilo-pdetail-hdr__view${viewMode === 'live' ? ' nilo-pdetail-hdr__view--on' : ''}`}
@@ -151,7 +154,13 @@ export function PatientDetailHeader({
               className={`nilo-pdetail-hdr__node${nodeSelected ? ' nilo-pdetail-hdr__node--selected' : ''}`}
             >
               <MaterialIcon name="hub" size={20} />
-              <select value={assignedNodeId} disabled={assigningNode} onChange={onNodeChange} aria-label="Nodo">
+              <select
+                value={assignedNodeId}
+                disabled={assigningNode || monitoring}
+                onChange={onNodeChange}
+                aria-label="Nodo"
+                title={monitoring ? 'No se puede cambiar el nodo mientras monitorizas' : undefined}
+              >
                 <option value="">Nodo</option>
                 {nodes.map((n) => (
                   <option key={n.id} value={n.id}>

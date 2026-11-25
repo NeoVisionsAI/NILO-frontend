@@ -1,0 +1,60 @@
+.nilo-lm-viewer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.nilo-lm-viewer__title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--m3-on-surface-variant);
+}
+
+.nilo-lm-viewer__canvas {
+  width: 100%;
+  max-width: 640px;
+  border-radius: 12px;
+  border: 1px solid var(--m3-outline-variant);
+  background: #0f172a;
+}
+
+.nilo-lm-viewer__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  max-width: 640px;
+}
+
+.nilo-lm-viewer__btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 9999px;
+  background: var(--m3-primary);
+  color: var(--m3-on-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nilo-lm-viewer__scrub {
+  flex: 1;
+  min-width: 120px;
+}
+
+.nilo-lm-viewer__fps {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.nilo-lm-viewer__fps input {
+  width: 52px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--m3-outline-variant);
+  padding: 0 6px;
+}

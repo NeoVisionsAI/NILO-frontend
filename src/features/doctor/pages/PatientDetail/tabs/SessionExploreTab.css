@@ -48,13 +48,33 @@
 }
 
 .nilo-explore__session-pick,
-.nilo-explore__search {
+.nilo-explore__session-dt {
   display: flex;
   flex-direction: column;
   gap: 4px;
   font-size: 12px;
   font-weight: 600;
   color: var(--m3-on-surface-variant);
+}
+
+.nilo-explore__session-dt input {
+  height: 40px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid var(--m3-outline-variant);
+  font-size: 13px;
+}
+
+.nilo-explore__filter-clear {
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--m3-primary);
+  border: 1px solid var(--m3-outline-variant);
+  background: var(--m3-surface);
+  align-self: flex-end;
 }
 
 .nilo-explore__session-pick select {
@@ -66,59 +86,105 @@
   font-size: 13px;
 }
 
-.nilo-explore__search {
-  flex: 1;
-  min-width: 200px;
-}
-
-.nilo-explore__search {
-  flex-direction: row;
-  align-items: center;
-  gap: 8px;
-  height: 40px;
-  padding: 0 12px;
-  border-radius: 10px;
-  border: 1px solid var(--m3-outline-variant);
-  background: var(--m3-surface);
-}
-
-.nilo-explore__search input {
-  flex: 1;
-  border: none;
-  background: transparent;
-  font-size: 14px;
-}
-
-.nilo-explore__session-meta {
+.nilo-explore__session-card {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
-  font-size: 12px;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--m3-outline-variant);
+  background: var(--m3-surface-container);
 }
 
-.nilo-explore__session-meta code {
-  font-family: ui-monospace, Menlo, Monaco, monospace;
-  padding: 4px 8px;
-  border-radius: 8px;
-  background: var(--m3-surface-container-high);
+.nilo-explore__session-title {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--m3-on-surface);
 }
 
-.nilo-explore__status {
-  padding: 2px 8px;
+.nilo-explore__session-dates {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--m3-on-surface-variant);
+}
+
+.nilo-explore__session-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.nilo-explore__status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
   border-radius: 9999px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 800;
   text-transform: uppercase;
-  font-size: 10px;
+  letter-spacing: 0.04em;
 }
 
-.nilo-explore__status--active {
-  background: color-mix(in srgb, #059669 15%, transparent);
-  color: #059669;
+.nilo-explore__status-pill--active {
+  background: linear-gradient(135deg, color-mix(in srgb, #059669 22%, #fff), color-mix(in srgb, #34d399 18%, #fff));
+  color: #047857;
+  border: 1px solid color-mix(in srgb, #059669 35%, transparent);
 }
 
-.nilo-explore__status--completed {
+.nilo-explore__status-pill--completed {
   background: var(--m3-surface-container-high);
+  color: var(--m3-on-surface-variant);
+}
+
+.nilo-explore__status-pill--cancelled {
+  background: color-mix(in srgb, #dc2626 12%, transparent);
+  color: #b91c1c;
+}
+
+.nilo-explore__pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: #22c55e;
+  box-shadow: 0 0 0 3px color-mix(in srgb, #22c55e 30%, transparent);
+}
+
+.nilo-explore__id-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(320px, 70vw);
+  padding: 6px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--m3-outline-variant);
+  background: var(--m3-surface);
+  color: var(--m3-on-surface-variant);
+}
+
+.nilo-explore__id-pill code {
+  font-family: ui-monospace, Menlo, Monaco, monospace;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nilo-explore__loading {
+  font-size: 12px;
+  color: var(--m3-on-surface-variant);
+}
+
+.nilo-explore__pain-hint {
+  margin: 0 0 10px;
+  font-size: 13px;
   color: var(--m3-on-surface-variant);
 }
 

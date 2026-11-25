@@ -1,0 +1,69 @@
+.nilo-explore-range {
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--m3-outline-variant);
+  background: var(--m3-surface-container-low);
+}
+
+.nilo-explore-range--off {
+  opacity: 0.92;
+}
+
+.nilo-explore-range__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--m3-on-surface);
+}
+
+.nilo-explore-range__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--m3-on-surface-variant);
+}
+
+.nilo-explore-range__clear {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--m3-primary);
+  text-decoration: underline;
+}
+
+.nilo-explore-range__body {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nilo-explore-range__labels {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--m3-on-surface-variant);
+}
+
+.nilo-explore-range__sliders {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.nilo-explore-range__sliders input[type='range'] {
+  width: 100%;
+}
+
+.nilo-explore-range__hint {
+  margin: 0;
+  font-size: 11px;
+  color: var(--m3-on-surface-variant);
+}

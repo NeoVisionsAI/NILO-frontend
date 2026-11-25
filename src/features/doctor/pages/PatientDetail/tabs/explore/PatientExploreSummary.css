@@ -1,0 +1,80 @@
+.nilo-explore-summary {
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid var(--m3-outline-variant);
+  background: linear-gradient(160deg, var(--m3-surface-container-low), var(--m3-surface-container));
+}
+
+.nilo-explore-summary--loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--m3-on-surface-variant);
+}
+
+.nilo-explore-summary__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.nilo-explore-summary__head h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--m3-on-surface);
+}
+
+.nilo-explore-summary__live {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #047857;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  background: color-mix(in srgb, #059669 12%, transparent);
+}
+
+.nilo-explore-summary__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: #22c55e;
+}
+
+.nilo-explore-summary__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.nilo-explore-summary__tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--m3-surface);
+  border: 1px solid var(--m3-outline-variant);
+  color: var(--m3-primary);
+}
+
+.nilo-explore-summary__val {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--m3-on-surface);
+  font-variant-numeric: tabular-nums;
+}
+
+.nilo-explore-summary__lbl {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--m3-on-surface-variant);
+  line-height: 1.25;
+}

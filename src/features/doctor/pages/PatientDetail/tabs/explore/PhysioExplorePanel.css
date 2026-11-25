@@ -1,0 +1,93 @@
+.nilo-physio-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.nilo-physio-panel__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.nilo-physio-panel__toolbar label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--m3-on-surface-variant);
+}
+
+.nilo-physio-panel__toolbar select {
+  min-width: 140px;
+  height: 36px;
+  padding: 0 8px;
+  border-radius: 8px;
+  border: 1px solid var(--m3-outline-variant);
+}
+
+.nilo-physio-panel__views {
+  display: flex;
+  gap: 6px;
+}
+
+.nilo-physio-panel__view {
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 9999px;
+  border: 1px solid var(--m3-outline-variant);
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--m3-surface);
+  color: var(--m3-on-surface-variant);
+}
+
+.nilo-physio-panel__view--on {
+  background: var(--m3-primary-fixed);
+  color: var(--m3-primary);
+  border-color: var(--m3-primary);
+}
+
+.nilo-physio-panel__svg {
+  width: 100%;
+  max-width: 560px;
+  height: auto;
+  border-radius: 12px;
+  background: var(--m3-surface-container);
+  border: 1px solid var(--m3-outline-variant);
+}
+
+.nilo-physio-panel__table-wrap {
+  overflow: auto;
+  max-height: 320px;
+  border-radius: 12px;
+  border: 1px solid var(--m3-outline-variant);
+}
+
+.nilo-physio-panel__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.nilo-physio-panel__table th,
+.nilo-physio-panel__table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--m3-outline-variant);
+  text-align: left;
+}
+
+.nilo-physio-panel__table th {
+  position: sticky;
+  top: 0;
+  background: var(--m3-surface-container-high);
+  font-weight: 700;
+}
+
+.nilo-physio-panel__meta {
+  margin: 0;
+  font-size: 12px;
+  color: var(--m3-on-surface-variant);
+}

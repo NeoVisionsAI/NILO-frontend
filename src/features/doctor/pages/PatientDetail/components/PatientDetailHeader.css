@@ -244,6 +244,11 @@
   min-width: 0;
 }
 
+.nilo-pdetail-hdr__node select:disabled {
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
 .nilo-pdetail-hdr__session-empty {
   margin: 0;
   font-size: 13px;
