@@ -44,10 +44,14 @@ export function SessionTimeRangeBar({
       <div className="nilo-explore-range__head">
         <MaterialIcon name="filter_alt" size={18} />
         <span>Filtro temporal en sesión</span>
-        <label className="nilo-explore-range__toggle">
-          <input type="checkbox" checked={enabled} onChange={(e) => onEnabledChange(e.target.checked)} />
-          Activar
-        </label>
+        <button
+          type="button"
+          className={`nilo-explore-range__activate${enabled ? ' nilo-explore-range__activate--on' : ''}`}
+          aria-pressed={enabled}
+          onClick={() => onEnabledChange(!enabled)}
+        >
+          {enabled ? 'Filtro activo' : 'Activar'}
+        </button>
         {enabled && (
           <button type="button" className="nilo-explore-range__clear" onClick={() => onEnabledChange(false)}>
             Quitar filtro

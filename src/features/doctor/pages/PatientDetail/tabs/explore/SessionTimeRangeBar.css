@@ -1,6 +1,6 @@
 .nilo-explore-range {
-  padding: 12px 14px;
-  border-radius: 14px;
+  padding: 16px 18px;
+  border-radius: 16px;
   border: 1px solid var(--m3-outline-variant);
   background: var(--m3-surface-container-low);
 }
@@ -19,14 +19,26 @@
   color: var(--m3-on-surface);
 }
 
-.nilo-explore-range__toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+.nilo-explore-range__activate {
   margin-left: auto;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 9999px;
   font-size: 12px;
-  font-weight: 600;
-  color: var(--m3-on-surface-variant);
+  font-weight: 700;
+  border: 1px solid var(--m3-outline-variant);
+  background: var(--m3-surface);
+  color: var(--m3-on-surface);
+  cursor: pointer;
+  pointer-events: auto;
+  position: relative;
+  z-index: 1;
+}
+
+.nilo-explore-range__activate--on {
+  background: var(--m3-primary);
+  color: var(--m3-on-primary);
+  border-color: var(--m3-primary);
 }
 
 .nilo-explore-range__clear {

@@ -1,6 +1,8 @@
+import { parseApiDateMs } from './parse-api-datetime'
+
 /** Tiempo transcurrido desde `startedAt` en días, horas y minutos (UTC/ISO del servidor). */
 export function formatSessionElapsed(startedAtIso: string, nowMs: number = Date.now()): string {
-  const start = new Date(startedAtIso).getTime()
+  const start = parseApiDateMs(startedAtIso)
   if (Number.isNaN(start)) return '—'
   const ms = Math.max(0, nowMs - start)
   const days = Math.floor(ms / 86_400_000)

@@ -1,8 +1,9 @@
 import type { MonitoringSession } from '@/types/monitoring-session'
+import { parseApiDateMs } from './parse-api-datetime'
 
 export function sessionBounds(session: MonitoringSession): { startMs: number; endMs: number } {
-  const startMs = new Date(session.started_at).getTime()
-  const endMs = session.ended_at ? new Date(session.ended_at).getTime() : Date.now()
+  const startMs = parseApiDateMs(session.started_at)
+  const endMs = session.ended_at ? parseApiDateMs(session.ended_at) : Date.now()
   return { startMs, endMs: Math.max(startMs, endMs) }
 }
 
@@ -11,16 +12,24 @@ export function sessionDurationHours(session: MonitoringSession): number {
   return Math.max(0, (endMs - startMs) / 3_600_000)
 }
 
-/** La sesión contiene el instante indicado por el filtro. */
-export function sessionContainsDateTime(session: MonitoringSession, filterIso: string): boolean {
-  const t = new Date(filterIso).getTime()
-  if (Number.isNaN(t)) return true
+/** Sesiones que solapan el intervalo [filterStart, filterEnd] (datetime-local o ISO). */
+export function sessionOverlapsInterval(
+  session: MonitoringSession,
+  filterStart: string,
+  filterEnd: string,
+): boolean {
+  const a = new Date(filterStart).getTime()
+  const b = new Date(filterEnd).getTime()
+  if (Number.isNaN(a) || Number.isNaN(b)) return true
+  const from = Math.min(a, b)
+  const to = Math.max(a, b)
   const { startMs, endMs } = sessionBounds(session)
-  return t >= startMs && t <= endMs
+  if (Number.isNaN(startMs)) return false
+  return startMs <= to && endMs >= from
 }
 
 export function isoInRange(ts: string, fromMs: number, toMs: number): boolean {
-  const t = new Date(ts).getTime()
+  const t = parseApiDateMs(ts)
   if (Number.isNaN(t)) return true
   return t >= fromMs && t <= toMs
 }
