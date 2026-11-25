@@ -36,14 +36,17 @@ import {
   setIngestionDevPanelVisible,
 } from '@/dev/ingestion-dev-panel'
 import { SessionIngestionDevPanel } from './components/dev/SessionIngestionDevPanel'
-import { ActiveSessionInfo } from './components/ActiveSessionInfo'
+import { PatientDetailHeader, type PatientViewMode } from './components/PatientDetailHeader'
+import { SessionExploreTab } from './tabs/SessionExploreTab'
 import './PatientDetailPage.css'
+import './components/PatientDetailHeader.css'
+import './tabs/SessionExploreTab.css'
 import './components/CondataPanel.css'
 import './components/dev/SessionIngestionDevPanel.css'
 
 const AVATAR_COLORS = ['#0369a1', '#0f766e', '#7c3aed', '#be123c', '#b45309', '#4338ca', '#0891b2']
 
-type CondataMode = 'live' | 'section' | 'module'
+type CondataMode = 'live' | 'explore' | 'section' | 'module'
 
 function colorForName(name: string): string {
   let hash = 0
@@ -151,6 +154,16 @@ export function PatientDetailPage() {
 
   function openLive() {
     setCondataMode('live')
+    setActiveModule(null)
+    setModuleView('list')
+    setSelectedEpisodeId(null)
+    setSelectedModuleRecordId(null)
+    setSectionViewMode('browse')
+    resetPainCaptureState()
+  }
+
+  function openExplore() {
+    setCondataMode('explore')
     setActiveModule(null)
     setModuleView('list')
     setSelectedEpisodeId(null)
@@ -291,6 +304,16 @@ export function PatientDetailPage() {
   }
 
   function renderCondataBody() {
+    if (condataMode === 'explore') {
+      return (
+        <SessionExploreTab
+          userPatientId={p.id}
+          nodeId={p.patient_profile?.node_id}
+          preferredSessionId={ingestionSessionId}
+        />
+      )
+    }
+
     if (condataMode === 'live') {
       return <LiveTab embedded />
     }
@@ -302,7 +325,7 @@ export function PatientDetailPage() {
           nodeId={p.patient_profile?.node_id}
           view={moduleView}
           selectedNoteId={selectedModuleRecordId}
-          preferredSessionId={activeMonitoringSession?.id ?? p.patient_profile?.active_session_id}
+          preferredSessionId={ingestionSessionId}
           onViewChange={handleSessionNotesViewChange}
         />
       )
@@ -315,7 +338,7 @@ export function PatientDetailPage() {
           nodeId={p.patient_profile?.node_id}
           view={moduleView}
           selectedAudioId={selectedModuleRecordId}
-          preferredSessionId={activeMonitoringSession?.id ?? p.patient_profile?.active_session_id}
+          preferredSessionId={ingestionSessionId}
           onViewChange={handleSessionNotesViewChange}
         />
       )
@@ -349,6 +372,7 @@ export function PatientDetailPage() {
 
   function condataTitle() {
     if (condataMode === 'live') return 'Live'
+    if (condataMode === 'explore') return 'Explorar datos'
     if (activeModule) return activeModule.label
     if (condataMode === 'section' && activeSection) return activeSection.label
     return 'Live'
@@ -356,6 +380,7 @@ export function PatientDetailPage() {
 
   function condataIcon() {
     if (condataMode === 'live') return 'monitor_heart'
+    if (condataMode === 'explore') return 'database_search'
     if (activeModule) return activeModule.icon
     if (condataMode === 'section' && activeSection) return activeSection.icon
     return 'monitor_heart'
@@ -363,6 +388,7 @@ export function PatientDetailPage() {
 
   function condataSubtitle() {
     if (condataMode === 'live') return 'Monitorización en tiempo real'
+    if (condataMode === 'explore') return 'Audio, vídeo, landmarks y notas por sesión'
     if (condataMode === 'module' && activeModule?.actionKey === 'pain-episode') {
       if (moduleView === 'add' && painCapturePhase === 'summary') return 'Escalas de dolor y confirmación'
       if (moduleView === 'add') return 'Captura de landmarks faciales'
@@ -439,127 +465,57 @@ export function PatientDetailPage() {
     return null
   }
 
+  const headerViewMode: PatientViewMode =
+    condataMode === 'explore' && !activeModule ? 'explore' : 'live'
+
+  const avatarEl = p.photo ? (
+    <img className="nilo-pdetail__avatar" src={p.photo} alt={fullName} />
+  ) : (
+    <span
+      className="nilo-pdetail__avatar nilo-pdetail__avatar--initials"
+      style={{ backgroundColor: colorForName(fullName) }}
+    >
+      {getInitials(fullName)}
+    </span>
+  )
+
   return (
     <div className="nilo-pdetail">
-      <header className="nilo-pdetail__header">
-        <div className="nilo-pdetail__identity">
-          {p.photo ? (
-            <img className="nilo-pdetail__avatar" src={p.photo} alt={fullName} />
-          ) : (
-            <span
-              className="nilo-pdetail__avatar nilo-pdetail__avatar--initials"
-              style={{ backgroundColor: colorForName(fullName) }}
+      <PatientDetailHeader
+        patient={p}
+        fullName={fullName}
+        avatar={avatarEl}
+        monitoring={monitoring}
+        togglingMonitor={togglingMonitor}
+        onMonitoringToggle={() => void handleMonitoringToggle()}
+        activeSession={activeMonitoringSession}
+        loadingSession={loadingActiveSession}
+        onSessionUpdated={setActiveMonitoringSession}
+        viewMode={headerViewMode}
+        onViewModeChange={(mode) => (mode === 'live' ? openLive() : openExplore())}
+        assignedNodeId={assignedNodeId}
+        nodes={nodes}
+        assigningNode={assigningNode}
+        onNodeChange={handleNodeChange}
+        devToolsSlot={
+          ingestionDevPanelBuildEnabled() ? (
+            <button
+              type="button"
+              className={`nilo-pdetail__dev-toggle${showIngestionDev ? ' nilo-pdetail__dev-toggle--on' : ''}`}
+              onClick={() => {
+                const next = !showIngestionDev
+                setShowIngestionDev(next)
+                setIngestionDevPanelVisible(next)
+              }}
             >
-              {getInitials(fullName)}
-            </span>
-          )}
-
-          <div className="nilo-pdetail__info">
-            <h1 className="nilo-pdetail__name">{fullName}</h1>
-            <div className="nilo-pdetail__meta-row">
-              <label className="nilo-pdetail__monitor">
-                <button
-                  type="button"
-                  role="switch"
-                  className={`nilo-pdetail__toggle${monitoring ? ' nilo-pdetail__toggle--on' : ''}`}
-                  aria-checked={monitoring}
-                  disabled={togglingMonitor}
-                  onClick={handleMonitoringToggle}
-                >
-                  <span className="nilo-pdetail__toggle-thumb" />
-                </button>
-                <span className="nilo-pdetail__monitor-label">
-                  {monitoring ? 'Monitorización activa' : 'Monitorización inactiva'}
-                </span>
-              </label>
-
-              {monitoring && (
-                <div className="nilo-pdetail__session" aria-live="polite">
-                  {activeMonitoringSession ? (
-                    <ActiveSessionInfo
-                      session={activeMonitoringSession}
-                      profileActiveSessionId={p.patient_profile?.active_session_id}
-                      loading={loadingActiveSession}
-                      onSessionUpdated={setActiveMonitoringSession}
-                    />
-                  ) : loadingActiveSession ? (
-                    <span className="nilo-pdetail__session-loading">Cargando sesión…</span>
-                  ) : (
-                    <span className="nilo-pdetail__session-missing">
-                      Monitorización activa sin sesión abierta — desactiva y vuelve a activar.
-                    </span>
-                  )}
-                </div>
-              )}
-
-              <button
-                type="button"
-                className={`nilo-pdetail__live-btn${condataMode === 'live' ? ' nilo-pdetail__live-btn--active' : ''}`}
-                onClick={openLive}
-                aria-pressed={condataMode === 'live'}
-              >
-                <span className="nilo-pdetail__live-dot" aria-hidden="true" />
-                <MaterialIcon name="monitor_heart" size={18} />
-                <span>Live</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="nilo-pdetail__actions">
-          <div className="nilo-pdetail__node-select">
-            <MaterialIcon name="hub" size={20} className="nilo-pdetail__node-icon" />
-            <select
-              value={assignedNodeId}
-              onChange={handleNodeChange}
-              disabled={assigningNode}
-              aria-label="Select node"
-            >
-              <option value="">Select node</option>
-              {nodes.map((n) => (
-                <option key={n.id} value={n.id}>
-                  {n.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {ingestionDevPanelBuildEnabled() && (
-            <div className="nilo-pdetail__dev-tools">
-              <button
-                type="button"
-                className={`nilo-pdetail__dev-toggle${showIngestionDev ? ' nilo-pdetail__dev-toggle--on' : ''}`}
-                onClick={() => {
-                  const next = !showIngestionDev
-                  setShowIngestionDev(next)
-                  setIngestionDevPanelVisible(next)
-                }}
-              >
-                <MaterialIcon name="science" size={18} />
-                <span>{showIngestionDev ? 'Ocultar simulador' : 'Simulador ingestión'}</span>
-              </button>
-            </div>
-          )}
-
-          <button
-            type="button"
-            className="nilo-pdetail__btn nilo-pdetail__btn--outlined"
-            onClick={() => toast.info('Patient edit view coming soon.')}
-          >
-            <MaterialIcon name="edit" size={18} />
-            <span>Edit</span>
-          </button>
-
-          <button
-            type="button"
-            className="nilo-pdetail__btn nilo-pdetail__btn--danger"
-            onClick={() => setConfirmDelete(true)}
-          >
-            <MaterialIcon name="delete" size={18} />
-            <span>Delete</span>
-          </button>
-        </div>
-      </header>
+              <MaterialIcon name="science" size={18} />
+              <span>{showIngestionDev ? 'Ocultar sim.' : 'Simulador'}</span>
+            </button>
+          ) : null
+        }
+        onEdit={() => toast.info('Edición de paciente próximamente.')}
+        onDelete={() => setConfirmDelete(true)}
+      />
 
       {showIngestionDev && ingestionDevPanelBuildEnabled() && (
         <SessionIngestionDevPanel
