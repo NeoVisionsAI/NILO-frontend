@@ -148,8 +148,41 @@ async function request<T>(path: string, options: RequestOptions = {}, isRetry = 
   return (await res.json()) as T
 }
 
+async function requestBlob(path: string, options: RequestOptions = {}, isRetry = false): Promise<Blob> {
+  const { auth = true, silent = false, ...init } = options
+  const headers = new Headers(init.headers)
+  if (auth && accessToken) headers.set('Authorization', `Bearer ${accessToken}`)
+
+  startActivity()
+  let res: Response
+  try {
+    res = await fetchWithTimeout(`${env.apiBaseUrl}${path}`, { ...init, headers })
+  } catch {
+    endActivity()
+    if (!silent) toast.error('No se pudo conectar con el servidor.')
+    throw new ApiError(0, 'No se pudo conectar con el servidor.')
+  }
+  endActivity()
+
+  if (res.status === 401 && auth && !isRetry) {
+    const ok = await refreshTokens()
+    if (ok) return requestBlob(path, options, true)
+    clearTokens()
+    throw new ApiError(401, 'Sesión expirada')
+  }
+
+  if (!res.ok) {
+    const message = await parseError(res)
+    if (!silent) toast.error(message)
+    throw new ApiError(res.status, message)
+  }
+
+  return res.blob()
+}
+
 export const api = {
   get: <T>(path: string, options?: RequestOptions) => request<T>(path, options),
+  getBlob: (path: string, options?: RequestOptions) => requestBlob(path, options),
   post: <T>(path: string, body?: unknown, options?: RequestOptions) =>
     request<T>(path, { ...options, method: 'POST', body: JSON.stringify(body ?? {}) }),
   patch: <T>(path: string, body?: unknown, options?: RequestOptions) =>

@@ -1,5 +1,6 @@
 import { buildLandmarksZip } from '@/lib/landmarks-zip'
 import { api, ApiError } from './api'
+import type { PresignedDownload } from '@/types/monitoring-session'
 import { putPresignedObject } from '@/lib/presigned-upload'
 import { buildQueryString } from '@/types/admin-common'
 
@@ -88,5 +89,22 @@ export const landmarksService = {
 
   list(params: { patient_id: string; session_id?: string; node_id?: string }): Promise<LandmarksOut[]> {
     return api.get<LandmarksOut[]>(`/landmarks${buildQueryString(params)}`)
+  },
+
+  /** Igual que audio: presign HTTPS cuando el backend lo expone. */
+  getDownloadUrl(landmarksId: string): Promise<PresignedDownload> {
+    return api.get<PresignedDownload>(`/landmarks/${landmarksId}/download`)
+  },
+
+  /** Descarga binaria vía API (evita Mixed Content / CORS a MinIO). */
+  async downloadBlob(landmarksId: string): Promise<Blob> {
+    try {
+      return await api.getBlob(`/landmarks/${landmarksId}/download`, { silent: true })
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) {
+        return api.getBlob(`/landmarks/${landmarksId}/file`, { silent: true })
+      }
+      throw err
+    }
   },
 }

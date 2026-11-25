@@ -26,9 +26,11 @@ import { ExploreSideNav, type ExploreSection } from './explore/ExploreSideNav'
 import { LandmarksMeshViewer } from './explore/LandmarksMeshViewer'
 import { PatientExploreSummary } from './explore/PatientExploreSummary'
 import { PhysioExplorePanel } from './explore/PhysioExplorePanel'
+import { ExploreAudioPanel } from './explore/ExploreAudioPanel'
 import { SessionTimeRangeBar } from './explore/SessionTimeRangeBar'
 import './SessionExploreTab.css'
 import './explore/ExploreSideNav.css'
+import './explore/ExploreAudioPanel.css'
 import './explore/PatientExploreSummary.css'
 import './explore/SessionTimeRangeBar.css'
 
@@ -95,7 +97,7 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
   const [mediaItems, setMediaItems] = useState<SessionMediaAccessItem[]>([])
   const [physioReadings, setPhysioReadings] = useState<PhysiologicalReading[]>([])
   const [detailLoading, setDetailLoading] = useState(false)
-  const [playUrl, setPlayUrl] = useState<string | null>(null)
+  const [textSearch, setTextSearch] = useState('')
   const [timeFilterOn, setTimeFilterOn] = useState(false)
   const [timeRangePct, setTimeRangePct] = useState<[number, number]>([0, 100])
   const [landmarkPreview, setLandmarkPreview] = useState<ParsedLandmarks | null>(null)
@@ -212,7 +214,6 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
       if (!clinicalPatient?.id || !selectedSessionId) return
       setCategory(cat)
       setDetailLoading(true)
-      setPlayUrl(null)
       setLandmarkPreview(null)
       try {
         if (cat === 'face' || cat === 'pose' || cat === 'pain') {
@@ -264,7 +265,6 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
   )
 
   useEffect(() => {
-    setPlayUrl(null)
     setLandmarkPreview(null)
     setTimeFilterOn(false)
     setTimeRangePct([0, 100])
@@ -279,23 +279,6 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
   const selectExploreSection = useCallback((section: ExploreSection) => {
     setExploreSection(section)
   }, [])
-
-  async function playAudio(clip: AudioRecording) {
-    if (!selectedSessionId) return
-    try {
-      const res = await audioRecordingService.getDownloadUrl(clip.id)
-      setPlayUrl(res.download_url)
-    } catch {
-      try {
-        const access = await monitoringSessionService.mediaAccess(selectedSessionId, 86_400, { silent: true })
-        const item = access.items.find((i) => i.kind === 'audio' && i.id === clip.id)
-        if (item?.download_url) setPlayUrl(item.download_url)
-        else toast.error('No hay URL de reproducción.')
-      } catch {
-        toast.error('No hay URL de reproducción.')
-      }
-    }
-  }
 
   async function openLandmarkViewer(row: LandmarksOut) {
     if (!selectedSessionId) return
@@ -332,7 +315,10 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
 
   const filteredLandmarks = landmarks
   const filteredAudio = audioClips.filter((c) => inSessionRange(c.start_ts))
-  const filteredText = textNotes.filter((n) => inSessionRange(n.recorded_at))
+  const textQuery = textSearch.trim().toLowerCase()
+  const filteredText = textNotes
+    .filter((n) => inSessionRange(n.recorded_at))
+    .filter((n) => !textQuery || n.body.toLowerCase().includes(textQuery))
   const filteredPhysio = physioReadings.filter((r) => inSessionRange(r.timestamp))
 
   const showDataPane =
@@ -350,10 +336,21 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
       <div className="nilo-explore__main">
         <header className="nilo-explore__pane-head">
           <h2 className="nilo-explore__pane-title">{SECTION_TITLES[exploreSection]}</h2>
-          {selectedSession && exploreSection !== 'summary' && (
-            <span className="nilo-explore__pane-session" title={selectedSession.id}>
-              {selectedSession.display_name?.trim() || formatDt(selectedSession.started_at)}
-            </span>
+          {selectedSession && (
+            <button
+              type="button"
+              className="nilo-explore__pane-session"
+              title={`Copiar id: ${selectedSession.id}`}
+              onClick={() => {
+                void navigator.clipboard.writeText(selectedSession.id).then(() => toast.success('Id de sesión copiado.'))
+              }}
+            >
+              {selectedSession.status === 'active' && <span className="nilo-explore__pane-session-dot" aria-hidden />}
+              <span className="nilo-explore__pane-session-label">
+                {selectedSession.display_name?.trim() || formatDt(selectedSession.started_at)}
+              </span>
+              <code className="nilo-explore__pane-session-id">{selectedSession.id.slice(-10)}</code>
+            </button>
           )}
         </header>
 
@@ -506,32 +503,21 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
           </>
         ) : null}
 
-        {category === 'audio' ? (
-          <>
-            {playUrl && (
-              <audio controls className="nilo-explore__audio" src={playUrl}>
-                Tu navegador no puede reproducir este audio.
-              </audio>
-            )}
-            <ul className="nilo-explore__list">
-              {filteredAudio.map((clip) => (
-                <li key={clip.id} className="nilo-explore__row nilo-explore__row--action">
-                  <MaterialIcon name="mic" size={22} />
-                  <div className="nilo-explore__row-text">
-                    <strong>{new Date(clip.start_ts).toLocaleString('es-ES')}</strong>
-                    <span>{clip.duration_seconds != null ? `${Math.round(clip.duration_seconds)} s` : clip.status}</span>
-                    {clip.transcription && <span>{clip.transcription.slice(0, 120)}</span>}
-                  </div>
-                  <button type="button" className="nilo-explore__play" onClick={() => void playAudio(clip)}>
-                    Reproducir
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </>
+        {category === 'audio' && selectedSessionId ? (
+          <ExploreAudioPanel clips={filteredAudio} sessionId={selectedSessionId} />
         ) : null}
 
         {category === 'text' ? (
+          <>
+            <label className="nilo-explore__text-search">
+              <MaterialIcon name="search" size={18} />
+              <input
+                type="search"
+                placeholder="Buscar en notas (p. ej. llorar)…"
+                value={textSearch}
+                onChange={(e) => setTextSearch(e.target.value)}
+              />
+            </label>
           <ul className="nilo-explore__list">
             {filteredText.map((note) => (
               <li key={note.id} className="nilo-explore__row">
@@ -543,6 +529,7 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
               </li>
             ))}
           </ul>
+          </>
         ) : null}
 
         {category === 'video' ? (

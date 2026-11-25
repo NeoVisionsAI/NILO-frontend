@@ -52,13 +52,13 @@
   border-color: var(--m3-primary);
 }
 
-.nilo-physio-panel__svg {
+.nilo-physio-panel__plot {
   width: 100%;
-  max-width: 560px;
-  height: auto;
-  border-radius: 12px;
-  background: var(--m3-surface-container);
+  min-height: 380px;
+  border-radius: 14px;
   border: 1px solid var(--m3-outline-variant);
+  background: var(--m3-surface-container-low);
+  overflow: hidden;
 }
 
 .nilo-physio-panel__table-wrap {

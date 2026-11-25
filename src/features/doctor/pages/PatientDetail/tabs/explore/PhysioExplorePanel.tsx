@@ -1,6 +1,11 @@
 import { useMemo, useState } from 'react'
+import Plotly from 'plotly.js-dist-min'
+import createPlotlyComponent from 'react-plotly.js/factory'
 import type { PhysiologicalReading } from '@/services/physiological.service'
+import { parseApiDateMs } from '@/lib/parse-api-datetime'
 import './PhysioExplorePanel.css'
+
+const Plot = createPlotlyComponent(Plotly)
 
 type ViewMode = 'chart' | 'bar' | 'table'
 
@@ -25,11 +30,11 @@ export function PhysioExplorePanel({ readings }: PhysioExplorePanelProps) {
     if (!metric) return []
     return readings
       .map((r) => ({
-        t: new Date(r.timestamp).getTime(),
+        t: parseApiDateMs(r.timestamp),
         v: r.metrics[metric],
         unit: r.units[metric] ?? '',
       }))
-      .filter((p) => typeof p.v === 'number' && !Number.isNaN(p.v))
+      .filter((p) => !Number.isNaN(p.t) && typeof p.v === 'number' && !Number.isNaN(p.v))
       .sort((a, b) => a.t - b.t)
   }, [readings, metric])
 
@@ -37,24 +42,9 @@ export function PhysioExplorePanel({ readings }: PhysioExplorePanelProps) {
     return <p className="nilo-explore__placeholder">Sin lecturas fisiológicas en el intervalo seleccionado.</p>
   }
 
-  const minV = series.reduce((m, p) => Math.min(m, p.v), series[0]?.v ?? 0)
-  const maxV = series.reduce((m, p) => Math.max(m, p.v), series[0]?.v ?? 1)
-  const span = Math.max(maxV - minV, 1e-6)
-
-  const w = 520
-  const h = 180
-  const pad = 24
-
-  const pointsAttr =
-    series.length > 1
-      ? series
-          .map((p, i) => {
-            const x = pad + (i / (series.length - 1)) * (w - pad * 2)
-            const y = pad + (1 - (p.v - minV) / span) * (h - pad * 2)
-            return `${x},${y}`
-          })
-          .join(' ')
-      : ''
+  const unit = series[0]?.unit ?? readings[0]?.units[metric] ?? ''
+  const x = series.map((p) => new Date(p.t))
+  const y = series.map((p) => p.v)
 
   return (
     <div className="nilo-physio-panel">
@@ -112,24 +102,66 @@ export function PhysioExplorePanel({ readings }: PhysioExplorePanelProps) {
           </table>
         </div>
       ) : (
-        <svg className="nilo-physio-panel__svg" viewBox={`0 0 ${w} ${h}`} role="img" aria-label={`Serie ${metric}`}>
-          {view === 'chart' && pointsAttr && (
-            <polyline fill="none" stroke="var(--m3-primary)" strokeWidth="2" points={pointsAttr} />
-          )}
-          {view === 'bar' &&
-            series.map((p, i) => {
-              const barW = Math.max(2, (w - pad * 2) / series.length - 2)
-              const x = pad + i * ((w - pad * 2) / series.length)
-              const barH = ((p.v - minV) / span) * (h - pad * 2)
-              const y = h - pad - barH
-              return <rect key={i} x={x} y={y} width={barW} height={barH} fill="var(--m3-primary)" opacity={0.85} />
-            })}
-        </svg>
+        <div className="nilo-physio-panel__plot">
+          <Plot
+            data={
+              view === 'chart'
+                ? [
+                    {
+                      type: 'scatter',
+                      mode: 'lines+markers',
+                      x,
+                      y,
+                      line: { color: '#2563eb', width: 2.5, shape: 'spline' },
+                      marker: { size: 6, color: '#1d4ed8' },
+                      name: metric,
+                    },
+                  ]
+                : [
+                    {
+                      type: 'bar',
+                      x,
+                      y,
+                      marker: { color: '#059669', opacity: 0.85 },
+                      name: metric,
+                    },
+                  ]
+            }
+            layout={{
+              autosize: true,
+              height: 380,
+              margin: { l: 56, r: 24, t: 36, b: 56 },
+              paper_bgcolor: 'rgba(0,0,0,0)',
+              plot_bgcolor: 'rgba(248,250,252,0.6)',
+              title: { text: `${metric}${unit ? ` (${unit})` : ''}`, font: { size: 14 } },
+              xaxis: {
+                title: 'Tiempo',
+                type: 'date',
+                gridcolor: 'rgba(15,23,42,0.08)',
+                zeroline: false,
+              },
+              yaxis: {
+                title: unit ? `${metric} (${unit})` : metric,
+                gridcolor: 'rgba(15,23,42,0.08)',
+                zeroline: false,
+              },
+              hovermode: 'x unified',
+            }}
+            config={{
+              responsive: true,
+              scrollZoom: true,
+              displayModeBar: true,
+              modeBarButtonsToRemove: ['lasso2d', 'select2d'],
+              displaylogo: false,
+            }}
+            style={{ width: '100%', minHeight: 380 }}
+            useResizeHandler
+          />
+        </div>
       )}
 
       <p className="nilo-physio-panel__meta">
-        {series.length} muestras · {metric}{' '}
-        {series[0]?.unit ? `(${series[0].unit})` : ''}
+        {series.length} muestras · {metric} {unit ? `(${unit})` : ''}
       </p>
     </div>
   )
