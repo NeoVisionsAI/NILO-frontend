@@ -161,6 +161,20 @@ function AudioClipRow({ clip, url }: { clip: AudioRecording; url: string | null 
     setProgress(ratio)
   }, [])
 
+  useEffect(() => {
+    if (!playing) return
+    let raf = 0
+    const tick = () => {
+      const el = audioRef.current
+      if (el && Number.isFinite(el.duration) && el.duration > 0) {
+        setProgress(el.currentTime / el.duration)
+      }
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [playing])
+
   if (!url) {
     return (
       <article className="nilo-audio-clip nilo-audio-clip--error">
@@ -207,11 +221,6 @@ function AudioClipRow({ clip, url }: { clip: AudioRecording; url: string | null 
         onEnded={() => {
           setPlaying(false)
           setProgress(0)
-        }}
-        onTimeUpdate={() => {
-          const el = audioRef.current
-          if (!el?.duration) return
-          setProgress(el.currentTime / el.duration)
         }}
       />
     </article>
