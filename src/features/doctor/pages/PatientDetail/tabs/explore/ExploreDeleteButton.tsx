@@ -4,15 +4,14 @@ import './ExploreDeleteButton.css'
 interface ExploreDeleteButtonProps {
   entityLabel: string
   onDelete: () => void
-  compact?: boolean
 }
 
 /** Disparador de borrado (confirmación en el padre, p. ej. SessionExploreTab). */
-export function ExploreDeleteButton({ entityLabel, onDelete, compact }: ExploreDeleteButtonProps) {
+export function ExploreDeleteButton({ entityLabel, onDelete }: ExploreDeleteButtonProps) {
   return (
     <button
       type="button"
-      className={`nilo-explore-del${compact ? ' nilo-explore-del--compact' : ''}`}
+      className="nilo-explore-round-btn nilo-explore-round-btn--del"
       aria-label={`Eliminar ${entityLabel}`}
       title="Eliminar"
       onClick={(e) => {
@@ -21,7 +20,7 @@ export function ExploreDeleteButton({ entityLabel, onDelete, compact }: ExploreD
         onDelete()
       }}
     >
-      <MaterialIcon name="delete" size={compact ? 18 : 20} />
+      <MaterialIcon name="delete" size={18} />
     </button>
   )
 }

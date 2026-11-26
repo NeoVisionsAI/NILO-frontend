@@ -100,7 +100,6 @@ export function PhysioExplorePanel({ readings, onDeleteReading }: PhysioExploreP
                   {onDeleteReading ? (
                     <td>
                       <ExploreDeleteButton
-                        compact
                         entityLabel="lectura fisiológica"
                         onDelete={() => onDeleteReading(r)}
                       />

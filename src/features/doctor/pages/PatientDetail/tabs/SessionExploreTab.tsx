@@ -415,7 +415,22 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
           <ul className="nilo-explore__list">
             {painEvents.map((ev) => (
               <li key={ev.id} className="nilo-explore__row nilo-explore__row--action">
-                <MaterialIcon name="healing" size={22} />
+                <div className="nilo-explore__row-leading">
+                  <MaterialIcon name="healing" size={22} />
+                  <ExploreDeleteButton
+                    entityLabel="episodio de dolor"
+                    onDelete={() =>
+                      promptDelete({
+                        itemLabel: new Date(ev.start_ts).toLocaleString('es-ES'),
+                        entityLabel: 'episodio de dolor',
+                        run: async () => {
+                          await painEventService.remove(ev.id)
+                          await refreshAfterDelete()
+                        },
+                      })
+                    }
+                  />
+                </div>
                 <div className="nilo-explore__row-text">
                   <strong>{new Date(ev.start_ts).toLocaleString('es-ES')}</strong>
                   <span>
@@ -423,20 +438,6 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
                     {ev.notes ? ` · ${ev.notes}` : ''}
                   </span>
                 </div>
-                <ExploreDeleteButton
-                  compact
-                  entityLabel="episodio de dolor"
-                  onDelete={() =>
-                    promptDelete({
-                      itemLabel: new Date(ev.start_ts).toLocaleString('es-ES'),
-                      entityLabel: 'episodio de dolor',
-                      run: async () => {
-                        await painEventService.remove(ev.id)
-                        await refreshAfterDelete()
-                      },
-                    })
-                  }
-                />
               </li>
             ))}
             {!detailLoading && painEvents.length === 0 && (
@@ -503,27 +504,28 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
           <ul className="nilo-explore__list">
             {filteredText.map((note) => (
               <li key={note.id} className="nilo-explore__row nilo-explore__row--action">
-                <MaterialIcon name="edit_note" size={22} />
+                <div className="nilo-explore__row-leading">
+                  <MaterialIcon name="edit_note" size={22} />
+                  {selectedSessionId ? (
+                    <ExploreDeleteButton
+                      entityLabel="nota de texto"
+                      onDelete={() =>
+                        promptDelete({
+                          itemLabel: note.body.slice(0, 48) + (note.body.length > 48 ? '…' : ''),
+                          entityLabel: 'nota de texto',
+                          run: async () => {
+                            await monitoringSessionService.deleteTextNote(selectedSessionId, note.id)
+                            await refreshAfterDelete()
+                          },
+                        })
+                      }
+                    />
+                  ) : null}
+                </div>
                 <div className="nilo-explore__row-text">
                   <strong>{new Date(note.recorded_at).toLocaleString('es-ES')}</strong>
                   <p>{note.body}</p>
                 </div>
-                {selectedSessionId ? (
-                  <ExploreDeleteButton
-                    compact
-                    entityLabel="nota de texto"
-                    onDelete={() =>
-                      promptDelete({
-                        itemLabel: note.body.slice(0, 48) + (note.body.length > 48 ? '…' : ''),
-                        entityLabel: 'nota de texto',
-                        run: async () => {
-                          await monitoringSessionService.deleteTextNote(selectedSessionId, note.id)
-                          await refreshAfterDelete()
-                        },
-                      })
-                    }
-                  />
-                ) : null}
               </li>
             ))}
           </ul>
@@ -534,19 +536,9 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
           <ul className="nilo-explore__list">
             {mediaItems.map((item) => (
               <li key={item.id} className="nilo-explore__row nilo-explore__row--action">
-                <MaterialIcon name="videocam" size={22} />
-                <div className="nilo-explore__row-text">
-                  <strong>{item.id.slice(-8)}</strong>
-                  <span>{item.object_key ?? 'segmento de vídeo'}</span>
-                </div>
-                <div className="nilo-explore__row-actions">
-                  {item.download_url && (
-                    <a className="nilo-explore__play" href={item.download_url} target="_blank" rel="noreferrer">
-                      Abrir
-                    </a>
-                  )}
+                <div className="nilo-explore__row-leading">
+                  <MaterialIcon name="videocam" size={22} />
                   <ExploreDeleteButton
-                    compact
                     entityLabel="segmento de vídeo"
                     onDelete={() =>
                       promptDelete({
@@ -559,6 +551,17 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
                       })
                     }
                   />
+                </div>
+                <div className="nilo-explore__row-text">
+                  <strong>{item.id.slice(-8)}</strong>
+                  <span>{item.object_key ?? 'segmento de vídeo'}</span>
+                </div>
+                <div className="nilo-explore__row-actions">
+                  {item.download_url && (
+                    <a className="nilo-explore__play" href={item.download_url} target="_blank" rel="noreferrer">
+                      Abrir
+                    </a>
+                  )}
                 </div>
               </li>
             ))}

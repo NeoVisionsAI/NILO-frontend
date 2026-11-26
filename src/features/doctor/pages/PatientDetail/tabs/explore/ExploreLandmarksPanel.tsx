@@ -102,7 +102,6 @@ export function ExploreLandmarksPanel({
       </div>
         {activeRow && onDeleteLandmark && (
           <ExploreDeleteButton
-            compact
             entityLabel="lote de landmarks"
             onDelete={() => onDeleteLandmark(activeRow)}
           />

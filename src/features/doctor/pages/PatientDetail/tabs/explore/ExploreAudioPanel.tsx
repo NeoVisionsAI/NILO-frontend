@@ -219,10 +219,20 @@ function AudioClipRow({
   }
 
   return (
-    <article className="nilo-audio-clip nilo-audio-clip--with-del">
-      <button type="button" className="nilo-audio-clip__play" onClick={togglePlay} aria-label={playing ? 'Pausar' : 'Reproducir'}>
-        <MaterialIcon name={playing ? 'pause' : 'play_arrow'} size={22} />
-      </button>
+    <article className={`nilo-audio-clip${onDelete ? ' nilo-audio-clip--with-del' : ''}`}>
+      <div className="nilo-audio-clip__leading">
+        <button
+          type="button"
+          className="nilo-explore-round-btn nilo-explore-round-btn--play"
+          onClick={togglePlay}
+          aria-label={playing ? 'Pausar' : 'Reproducir'}
+        >
+          <MaterialIcon name={playing ? 'pause' : 'play_arrow'} size={22} />
+        </button>
+        {onDelete ? (
+          <ExploreDeleteButton entityLabel="clip de audio" onDelete={() => onDelete(clip)} />
+        ) : null}
+      </div>
       <div className="nilo-audio-clip__body">
         <div className="nilo-audio-clip__head">
           <time dateTime={clip.start_ts}>{formatClipTime(clip.start_ts)}</time>
@@ -266,15 +276,6 @@ function AudioClipRow({
           }}
         />
       </div>
-      {onDelete ? (
-        <div className="nilo-audio-clip__actions">
-          <ExploreDeleteButton
-            compact
-            entityLabel="clip de audio"
-            onDelete={() => onDelete(clip)}
-          />
-        </div>
-      ) : null}
     </article>
   )
 }

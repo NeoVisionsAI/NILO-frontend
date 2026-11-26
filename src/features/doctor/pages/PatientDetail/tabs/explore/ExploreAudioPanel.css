@@ -13,7 +13,7 @@
 .nilo-audio-clip {
   position: relative;
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 10px;
   align-items: center;
   padding: 8px 10px;
@@ -23,25 +23,13 @@
 }
 
 .nilo-audio-clip--with-del {
-  grid-template-columns: 40px minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
 }
 
-.nilo-audio-clip--with-del .nilo-audio-clip__play {
-  grid-column: 1;
-  grid-row: 1;
-}
-
-.nilo-audio-clip--with-del .nilo-audio-clip__body {
-  grid-column: 2;
-  grid-row: 1;
-  min-width: 0;
-}
-
-.nilo-audio-clip__actions {
-  grid-column: 3;
-  grid-row: 1;
+.nilo-audio-clip__leading {
   display: flex;
   align-items: center;
+  gap: 8px;
   flex-shrink: 0;
 }
 
@@ -50,18 +38,6 @@
   font-size: 12px;
   color: var(--m3-on-surface-variant);
   min-height: 40px;
-}
-
-.nilo-audio-clip__play {
-  width: 40px;
-  height: 40px;
-  border-radius: 9999px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--m3-primary);
-  color: var(--m3-on-primary);
-  flex-shrink: 0;
 }
 
 .nilo-audio-clip__body {
