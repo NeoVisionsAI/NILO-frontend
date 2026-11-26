@@ -3,14 +3,12 @@ import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import { formatSessionElapsed } from '@/lib/format-session-elapsed'
 import { resolveSessionDisplayName, sessionDisplayNameCache } from '@/lib/session-display-name-cache'
 import { toast } from '@/lib/toast'
-import { canonicalSessionId } from '@/lib/session-id'
 import { monitoringSessionService } from '@/services/monitoring-session.service'
 import type { MonitoringSession } from '@/types/monitoring-session'
 import './ActiveSessionInfo.css'
 
 interface ActiveSessionInfoProps {
   session: MonitoringSession
-  profileActiveSessionId?: string | null
   loading?: boolean
   onSessionUpdated?: (session: MonitoringSession) => void
   /** Variante más pequeña para la cabecera del paciente */
@@ -23,7 +21,6 @@ interface ActiveSessionInfoProps {
 
 export function ActiveSessionInfo({
   session,
-  profileActiveSessionId,
   loading,
   onSessionUpdated,
   compact,
@@ -44,8 +41,9 @@ export function ActiveSessionInfo({
     resolveSessionDisplayName(session) ||
     null
 
-  const sessionId = canonicalSessionId(session, profileActiveSessionId) ?? session.id
-  const sessionIdForApi = sessionId
+  /** Mismo id que `sessions/<id>/` en MinIO (Mongo ObjectId). */
+  const sessionId = session.id
+  const sessionIdForApi = session.id
 
   useEffect(() => {
     if (session.status !== 'active') return

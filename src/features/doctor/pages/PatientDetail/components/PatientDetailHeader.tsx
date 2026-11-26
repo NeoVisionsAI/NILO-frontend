@@ -111,7 +111,6 @@ export function PatientDetailHeader({
               (activeSession ? (
                 <ActiveSessionInfo
                   session={activeSession}
-                  profileActiveSessionId={p.patient_profile?.active_session_id}
                   loading={loadingSession}
                   onSessionUpdated={onSessionUpdated}
                   compact

@@ -151,7 +151,7 @@ export function PatientDetailPage() {
   const fullName = patientDisplayName(p)
   const monitoring = p.patient_profile?.monitoring_active ?? false
   const ingestionSessionId =
-    canonicalSessionId(activeMonitoringSession, p.patient_profile?.active_session_id) ?? null
+    activeMonitoringSession?.id ?? p.patient_profile?.active_session_id ?? null
   const assignedNodeId = p.patient_profile?.node_id ?? ''
 
   function resetPainCaptureState() {

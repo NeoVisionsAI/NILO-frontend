@@ -30,6 +30,8 @@ export interface LandmarksOut {
   object_key: string
   status: string
   size_bytes?: number | null
+  /** face → face_landmarks/; pose → pose/ (API puede omitir en registros legacy). */
+  capture_kind?: LandmarksCaptureKind | null
 }
 
 /** Respuesta del flujo presignado (nilo-node). */
@@ -87,8 +89,17 @@ export const landmarksService = {
     }
   },
 
-  list(params: { patient_id: string; session_id?: string; node_id?: string }): Promise<LandmarksOut[]> {
-    return api.get<LandmarksOut[]>(`/landmarks${buildQueryString(params)}`)
+  list(params: {
+    patient_id: string
+    session_id?: string
+    node_id?: string
+    capture_kind?: LandmarksCaptureKind
+    /** Default recomendado: solo lotes con objeto en MinIO */
+    storage_ready?: boolean
+  }): Promise<LandmarksOut[]> {
+    return api.get<LandmarksOut[]>(
+      `/landmarks${buildQueryString({ storage_ready: true, ...params })}`,
+    )
   },
 
   /**

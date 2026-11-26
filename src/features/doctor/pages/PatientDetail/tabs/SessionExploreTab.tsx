@@ -7,11 +7,12 @@ import {
   type PatientExploreStats,
 } from '@/lib/explore-patient-stats'
 import { isoInRange, sessionBounds, sessionOverlapsInterval } from '@/lib/explore-time'
+import { matchesLandmarkCaptureKind } from '@/lib/landmark-capture-kind'
 import { landmarkRecordedAtMs } from '@/lib/landmark-object-key-datetime'
 import { isVoiceNoteClip } from '@/lib/audio-waveform'
 import { parseApiDateMs } from '@/lib/parse-api-datetime'
 import { audioRecordingService } from '@/services/audio-recording.service'
-import { landmarksService, type LandmarksOut } from '@/services/landmarks.service'
+import { landmarksService, type LandmarksCaptureKind, type LandmarksOut } from '@/services/landmarks.service'
 import { monitoringSessionService } from '@/services/monitoring-session.service'
 import { physiologicalService, type PhysiologicalReading } from '@/services/physiological.service'
 import type {
@@ -71,13 +72,6 @@ function formatSessionOption(session: MonitoringSession): string {
   const end = session.ended_at ? formatDt(session.ended_at) : 'sin cierre'
   const base = name ? `${name}` : 'Sesión'
   return `${base} · ${start} → ${end}`
-}
-
-function landmarkKind(key: string): 'face' | 'pose' | 'other' {
-  const k = key.toLowerCase()
-  if (k.includes('face_landmark')) return 'face'
-  if (k.includes('/pose/') || k.includes('pose_land')) return 'pose'
-  return 'other'
 }
 
 export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }: SessionExploreTabProps) {
@@ -246,13 +240,14 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
       setDetailLoading(true)
       try {
         if (cat === 'face' || cat === 'pose' || cat === 'pain') {
+          const captureKind: LandmarksCaptureKind = cat === 'pose' ? 'pose' : 'face'
           const all = await landmarksService.list({
             patient_id: clinicalPatient.id,
             session_id: selectedSessionId,
+            capture_kind: captureKind,
+            storage_ready: true,
           })
-          let kind: 'face' | 'pose' = cat === 'pose' ? 'pose' : 'face'
-          if (cat === 'pain') kind = 'face'
-          setLandmarks(all.filter((row) => landmarkKind(row.object_key) === kind))
+          setLandmarks(all.filter((row) => matchesLandmarkCaptureKind(row, captureKind)))
           setAudioClips([])
           setTextNotes([])
           setMediaItems([])

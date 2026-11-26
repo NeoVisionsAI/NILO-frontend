@@ -2,8 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import { computeWaveformPeaks } from '@/lib/audio-waveform'
 import { parseApiDateMs } from '@/lib/parse-api-datetime'
-import { audioRecordingService } from '@/services/audio-recording.service'
-import { monitoringSessionService } from '@/services/monitoring-session.service'
+import {
+  fetchClinicalAudioPlaybackUrl,
+  revokeClinicalAudioPlaybackUrl,
+} from '@/lib/fetch-clinical-audio-url'
 import type { AudioRecording } from '@/types/monitoring-session'
 import './ExploreAudioPanel.css'
 
@@ -198,18 +200,8 @@ export function ExploreAudioPanel({ clips, sessionId, variant }: ExploreAudioPan
     void (async () => {
       const resolved = await Promise.all(
         clips.map(async (clip) => {
-          try {
-            const res = await audioRecordingService.getDownloadUrl(clip.id)
-            return { clip, url: res.download_url, loading: false }
-          } catch {
-            try {
-              const access = await monitoringSessionService.mediaAccess(sessionId, 86_400, { silent: true })
-              const item = access.items.find((i) => i.kind === 'audio' && i.id === clip.id)
-              return { clip, url: item?.download_url ?? null, loading: false }
-            } catch {
-              return { clip, url: null, loading: false }
-            }
-          }
+          const url = await fetchClinicalAudioPlaybackUrl(clip.id, sessionId)
+          return { clip, url, loading: false }
         }),
       )
       if (!cancelled) setEntries(resolved)
@@ -217,6 +209,10 @@ export function ExploreAudioPanel({ clips, sessionId, variant }: ExploreAudioPan
 
     return () => {
       cancelled = true
+      setEntries((prev) => {
+        for (const e of prev) revokeClinicalAudioPlaybackUrl(e.url)
+        return prev
+      })
     }
   }, [clips, sessionId])
 

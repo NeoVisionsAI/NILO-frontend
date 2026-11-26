@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import { toast } from '@/lib/toast'
+import {
+  fetchClinicalAudioPlaybackUrl,
+  revokeClinicalAudioPlaybackUrl,
+} from '@/lib/fetch-clinical-audio-url'
 import { audioRecordingService } from '@/services/audio-recording.service'
-import { monitoringSessionService } from '@/services/monitoring-session.service'
 import type { AudioRecording } from '@/types/monitoring-session'
 import { CondataModuleLayout, type CondataModuleView } from './CondataModuleLayout'
 import { SessionPickerBar } from './SessionPickerBar'
@@ -128,35 +131,27 @@ export function AudioNoteCondata({
 
   useEffect(() => {
     if (view !== 'detail' || !selectedClip) {
-      setPlayUrl(null)
+      setPlayUrl((prev) => {
+        revokeClinicalAudioPlaybackUrl(prev)
+        return null
+      })
       return
     }
     setTranscriptionDraft(selectedClip.transcription ?? '')
     let cancelled = false
     void (async () => {
-      try {
-        const access = await monitoringSessionService.mediaAccess(selectedClip.session_id, 86_400, {
-          silent: true,
-        })
-        const fromBundle = access.items.find(
-          (item) => item.kind === 'audio' && item.id === selectedClip.id,
-        )
-        if (!cancelled && fromBundle?.download_url) {
-          setPlayUrl(fromBundle.download_url)
-          return
-        }
-      } catch {
-        /* media-access opcional */
-      }
-      try {
-        const res = await audioRecordingService.getDownloadUrl(selectedClip.id)
-        if (!cancelled) setPlayUrl(res.download_url)
-      } catch {
-        if (!cancelled) toast.error('No se pudo obtener la URL de reproducción.')
+      const url = await fetchClinicalAudioPlaybackUrl(selectedClip.id, selectedClip.session_id)
+      if (!cancelled) {
+        if (url) setPlayUrl(url)
+        else toast.error('No se pudo obtener la URL de reproducción.')
       }
     })()
     return () => {
       cancelled = true
+      setPlayUrl((prev) => {
+        revokeClinicalAudioPlaybackUrl(prev)
+        return null
+      })
     }
   }, [view, selectedClip])
 

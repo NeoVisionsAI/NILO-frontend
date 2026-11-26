@@ -41,6 +41,11 @@ export const audioRecordingService = {
     return api.get<PresignedDownload>(`/audio/${audioId}/download?${q}`)
   },
 
+  /** Stream vía API + JWT (nilomed.eu si presign HTTP). */
+  downloadFile(audioId: string): Promise<Blob> {
+    return api.getBlob(`/audio/${audioId}/file`, { silent: true })
+  },
+
   /** Multipart vía API (navegador HTTPS). */
   uploadMultipart(params: {
     session_id: string
