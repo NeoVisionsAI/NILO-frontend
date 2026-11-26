@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type MouseEvent, type PointerEvent } from 'react'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { toast } from '@/lib/toast'
@@ -20,18 +20,20 @@ export function ExploreDeleteButton({
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
 
+  const openConfirm = (e: MouseEvent | PointerEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setOpen(true)
+  }
+
   return (
-    <>
+  <div className="nilo-explore-del-host">
       <button
         type="button"
         className={`nilo-explore-del${compact ? ' nilo-explore-del--compact' : ''}`}
         aria-label={`Eliminar ${entityLabel}`}
         title="Eliminar"
-        onClick={(e) => {
-          e.preventDefault()
-          e.stopPropagation()
-          setOpen(true)
-        }}
+        onClick={openConfirm}
       >
         <MaterialIcon name="delete" size={compact ? 18 : 20} />
       </button>
@@ -56,6 +58,6 @@ export function ExploreDeleteButton({
             .finally(() => setBusy(false))
         }}
       />
-    </>
+    </div>
   )
 }

@@ -364,7 +364,7 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
           />
         </header>
 
-        <div className="nilo-explore__pane-scroll" aria-live="polite">
+        <div className="nilo-explore__pane-scroll">
           {exploreSection === 'summary' && <PatientExploreSummary stats={patientStats} />}
 
           {showSessionTimeBar && selectedSession && (

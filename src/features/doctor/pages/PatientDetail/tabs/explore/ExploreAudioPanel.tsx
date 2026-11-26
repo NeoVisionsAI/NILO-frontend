@@ -241,39 +241,41 @@ function AudioClipRow({
             {clip.transcription}
           </p>
         )}
+        <audio
+          ref={audioRef}
+          className="nilo-audio-clip__audio-hidden"
+          preload="auto"
+          src={url}
+          onLoadedMetadata={() => {
+            const el = audioRef.current
+            if (!el || !playing) return
+            const dur = audioDurationSeconds(el, clip)
+            if (dur > 0) setProgress(Math.min(1, el.currentTime / dur))
+          }}
+          onPlay={() => {
+            setPlaying(true)
+            const el = audioRef.current
+            if (!el) return
+            const dur = audioDurationSeconds(el, clip)
+            if (dur > 0) setProgress(Math.min(1, el.currentTime / dur))
+          }}
+          onPause={() => setPlaying(false)}
+          onEnded={() => {
+            setPlaying(false)
+            setProgress(0)
+          }}
+        />
       </div>
       {onDelete ? (
-        <ExploreDeleteButton
-          compact
-          itemLabel={formatClipTime(clip.start_ts)}
-          entityLabel="clip de audio"
-          onConfirmDelete={() => onDelete(clip)}
-        />
+        <div className="nilo-audio-clip__actions">
+          <ExploreDeleteButton
+            compact
+            itemLabel={formatClipTime(clip.start_ts)}
+            entityLabel="clip de audio"
+            onConfirmDelete={() => onDelete(clip)}
+          />
+        </div>
       ) : null}
-      <audio
-        ref={audioRef}
-        className="nilo-audio-clip__audio-hidden"
-        preload="auto"
-        src={url}
-        onLoadedMetadata={() => {
-          const el = audioRef.current
-          if (!el || !playing) return
-          const dur = audioDurationSeconds(el, clip)
-          if (dur > 0) setProgress(Math.min(1, el.currentTime / dur))
-        }}
-        onPlay={() => {
-          setPlaying(true)
-          const el = audioRef.current
-          if (!el) return
-          const dur = audioDurationSeconds(el, clip)
-          if (dur > 0) setProgress(Math.min(1, el.currentTime / dur))
-        }}
-        onPause={() => setPlaying(false)}
-        onEnded={() => {
-          setPlaying(false)
-          setProgress(0)
-        }}
-      />
     </article>
   )
 }

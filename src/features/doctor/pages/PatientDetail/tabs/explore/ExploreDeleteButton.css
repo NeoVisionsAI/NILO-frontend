@@ -1,4 +1,13 @@
+.nilo-explore-del-host {
+  position: relative;
+  z-index: 4;
+  flex-shrink: 0;
+  pointer-events: auto;
+}
+
 .nilo-explore-del {
+  position: relative;
+  z-index: 1;
   flex-shrink: 0;
   width: 36px;
   height: 36px;
@@ -9,7 +18,18 @@
   color: var(--m3-error, #b91c1c);
   border: 1px solid color-mix(in srgb, var(--m3-error, #b91c1c) 35%, var(--m3-outline-variant));
   background: color-mix(in srgb, var(--m3-error, #b91c1c) 6%, var(--m3-surface));
-  transition: background 0.15s ease, border-color 0.15s ease;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.1s ease;
+}
+
+.nilo-explore-del .material-symbols-outlined,
+.nilo-explore-del .nilo-micon {
+  pointer-events: none;
 }
 
 .nilo-explore-del--compact {
@@ -20,4 +40,13 @@
 .nilo-explore-del:hover {
   background: color-mix(in srgb, var(--m3-error, #b91c1c) 14%, var(--m3-surface));
   border-color: var(--m3-error, #b91c1c);
+}
+
+.nilo-explore-del:active {
+  transform: scale(0.94);
+}
+
+.nilo-explore-del:focus-visible {
+  outline: 2px solid var(--m3-error, #b91c1c);
+  outline-offset: 2px;
 }
