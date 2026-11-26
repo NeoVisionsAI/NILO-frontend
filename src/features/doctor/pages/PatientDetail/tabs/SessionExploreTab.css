@@ -42,6 +42,8 @@
   padding: 14px 18px 10px;
   border-bottom: 1px solid var(--m3-outline-variant);
   background: var(--m3-surface-container-lowest, var(--m3-surface));
+  position: relative;
+  z-index: 3;
 }
 
 .nilo-explore__pane-title {

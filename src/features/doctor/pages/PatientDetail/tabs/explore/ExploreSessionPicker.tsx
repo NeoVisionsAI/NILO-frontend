@@ -28,12 +28,25 @@ export function formatExploreSessionLabel(session: MonitoringSession): string {
 
 export function ExploreSessionPicker({ sessions, value, onChange, loading }: ExploreSessionPickerProps) {
   const selected = sessions.find((s) => s.id === value) ?? null
+  const displayText = selected
+    ? formatExploreSessionLabel(selected)
+    : loading
+      ? 'Cargando sesiones…'
+      : sessions.length === 0
+        ? 'Sin sesiones'
+        : 'Elige sesión…'
 
   return (
     <div className="nilo-explore-sess">
       <label className="nilo-explore-sess__field">
         <span className="nilo-explore-sess__icon" aria-hidden>
           <MaterialIcon name="history" size={20} />
+        </span>
+        <span className="nilo-explore-sess__value" title={displayText}>
+          {displayText}
+        </span>
+        <span className="nilo-explore-sess__chev" aria-hidden>
+          <MaterialIcon name="expand_more" size={22} />
         </span>
         <select
           className="nilo-explore-sess__select"
@@ -52,15 +65,7 @@ export function ExploreSessionPicker({ sessions, value, onChange, loading }: Exp
             ))
           )}
         </select>
-        <span className="nilo-explore-sess__chev" aria-hidden>
-          <MaterialIcon name="expand_more" size={22} />
-        </span>
       </label>
-      {selected?.status === 'active' && (
-        <span className="nilo-explore-sess__live" title="Sesión activa">
-          <span className="nilo-explore-sess__live-dot" aria-hidden />
-        </span>
-      )}
     </div>
   )
 }
