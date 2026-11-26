@@ -12,7 +12,6 @@ import {
   PainEpisodeCondata,
   type PainEpisodeCapturePhase,
 } from './components/condata/PainEpisodeCondata'
-import { TextNoteCondata } from './components/condata/TextNoteCondata'
 import { AudioNoteCondata } from './components/condata/AudioNoteCondata'
 import type { CondataModuleView } from './components/condata/CondataModuleLayout'
 import {
@@ -124,6 +123,16 @@ export function PatientDetailPage() {
     }
   }, [condataMode, patient?.patient_profile?.monitoring_active])
 
+  /** Estado obsoleto: el FAB ya no abre módulo «Nota de texto». */
+  useEffect(() => {
+    if (condataMode !== 'module' || activeModule?.actionKey !== 'text-note') return
+    const mon = patient?.patient_profile?.monitoring_active ?? false
+    setActiveModule(null)
+    setModuleView('list')
+    setSelectedModuleRecordId(null)
+    setCondataMode(mon && activeMonitoringSession ? 'live' : 'explore')
+  }, [condataMode, activeModule, patient?.patient_profile?.monitoring_active, activeMonitoringSession])
+
   useEffect(() => {
     setCondataMode('live')
     setActiveSectionId(recordSections[0]?.id ?? 'clinical-results')
@@ -212,7 +221,16 @@ export function PatientDetailPage() {
     resetPainCaptureState()
   }
 
+  function openTextNoteQuickModal() {
+    setTextNoteModalOpen(true)
+  }
+
   function openModule(action: PatientQuickAction) {
+    if (action.actionKey === 'text-note') {
+      openTextNoteQuickModal()
+      return
+    }
+
     const section = findPatientSection(recordSections, action.actionKey)
     if (section) {
       openSection(section.id, action)
@@ -221,11 +239,6 @@ export function PatientDetailPage() {
 
     if (action.actionKey === 'pain-episode') {
       openPainEpisodeModule(action)
-      return
-    }
-
-    if (action.actionKey === 'text-note') {
-      setTextNoteModalOpen(true)
       return
     }
 
@@ -337,14 +350,14 @@ export function PatientDetailPage() {
     }
 
     if (condataMode === 'module' && activeModule?.actionKey === 'text-note') {
+      if (monitoring && activeMonitoringSession) {
+        return <LiveTab embedded />
+      }
       return (
-        <TextNoteCondata
+        <SessionExploreTab
           userPatientId={p.id}
           nodeId={p.patient_profile?.node_id}
-          view={moduleView}
-          selectedNoteId={selectedModuleRecordId}
           preferredSessionId={ingestionSessionId}
-          onViewChange={handleSessionNotesViewChange}
         />
       )
     }
@@ -413,11 +426,6 @@ export function PatientDetailPage() {
       if (moduleView === 'detail') return 'Revisión del episodio'
       return 'Buscar y registrar episodios'
     }
-    if (condataMode === 'module' && activeModule?.actionKey === 'text-note') {
-      if (moduleView === 'add') return 'Nueva nota de texto'
-      if (moduleView === 'detail') return 'Detalle de la nota'
-      return 'Notas por sesión de monitorización'
-    }
     if (condataMode === 'module' && activeModule?.actionKey === 'audio-note') {
       if (moduleView === 'add') return 'Grabar nota de voz'
       if (moduleView === 'detail') return 'Reproducción y transcripción'
@@ -442,7 +450,7 @@ export function PatientDetailPage() {
     }
     if (
       condataMode === 'module' &&
-      (activeModule?.actionKey === 'text-note' || activeModule?.actionKey === 'audio-note') &&
+      activeModule?.actionKey === 'audio-note' &&
       (moduleView === 'add' || moduleView === 'detail')
     ) {
       return () => handleSessionNotesViewChange('list')

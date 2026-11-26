@@ -41,36 +41,41 @@ export function PatientAvatarMenu({ children, patientName, onEdit, onDelete }: P
         aria-haspopup="menu"
         onClick={() => setOpen((v) => !v)}
       >
-        {children}
-        {open && (
-          <span className="nilo-pdetail-avatar-menu__overlay" role="menu" onClick={(e) => e.stopPropagation()}>
-            <button
-              type="button"
-              role="menuitem"
-              className="nilo-pdetail-avatar-menu__action"
-              onClick={() => {
-                setOpen(false)
-                onEdit()
-              }}
-            >
-              <MaterialIcon name="edit" size={22} />
-              <span>Editar</span>
-            </button>
-            <button
-              type="button"
-              role="menuitem"
-              className="nilo-pdetail-avatar-menu__action nilo-pdetail-avatar-menu__action--danger"
-              onClick={() => {
-                setOpen(false)
-                onDelete()
-              }}
-            >
-              <MaterialIcon name="delete" size={22} />
-              <span>Borrar</span>
-            </button>
-          </span>
-        )}
+        <span className="nilo-pdetail-avatar-menu__avatar">{children}</span>
+        <span className="nilo-pdetail-avatar-menu__chev" aria-hidden>
+          <MaterialIcon name={open ? 'expand_less' : 'expand_more'} size={16} />
+        </span>
       </button>
+
+      {open ? (
+        <div className="nilo-pdetail-avatar-menu__dropdown" role="menu">
+          <p className="nilo-pdetail-avatar-menu__dropdown-title">{patientName}</p>
+          <button
+            type="button"
+            role="menuitem"
+            className="nilo-pdetail-avatar-menu__item"
+            onClick={() => {
+              setOpen(false)
+              onEdit()
+            }}
+          >
+            <MaterialIcon name="edit" size={20} />
+            <span>Editar</span>
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="nilo-pdetail-avatar-menu__item nilo-pdetail-avatar-menu__item--danger"
+            onClick={() => {
+              setOpen(false)
+              onDelete()
+            }}
+          >
+            <MaterialIcon name="delete" size={20} />
+            <span>Borrar</span>
+          </button>
+        </div>
+      ) : null}
     </div>
   )
 }
