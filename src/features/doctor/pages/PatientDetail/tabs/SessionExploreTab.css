@@ -286,6 +286,16 @@
   border-radius: 12px;
   background: var(--m3-surface-container);
   border: 1px solid var(--m3-outline-variant);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.nilo-explore__row--delete-leading {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.nilo-explore__row--with-actions {
+  grid-template-columns: auto minmax(0, 1fr) auto;
 }
 
 .nilo-explore__row-text {
@@ -294,6 +304,9 @@
   gap: 2px;
   min-width: 0;
   font-size: 13px;
+  overflow: hidden;
+  position: relative;
+  z-index: 0;
 }
 
 .nilo-explore__row-text strong {
@@ -306,6 +319,15 @@
   color: var(--m3-on-surface-variant);
   overflow: hidden;
   text-overflow: ellipsis;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.nilo-explore__row-text p {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 6;
+  line-clamp: 6;
 }
 
 .nilo-explore__row-leading {
@@ -313,6 +335,8 @@
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+  position: relative;
+  z-index: 2;
 }
 
 .nilo-explore__row-trailing {
