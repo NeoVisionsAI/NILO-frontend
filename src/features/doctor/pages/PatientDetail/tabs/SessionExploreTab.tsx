@@ -451,6 +451,7 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
             clips={filteredVoiceNotes}
             sessionId={selectedSessionId}
             variant="voice"
+            onClipUpdate={(clip) => setAudioClips((prev) => prev.map((c) => (c.id === clip.id ? clip : c)))}
             onDeleteClip={(clip) => {
               const label = new Date(clip.start_ts).toLocaleString('es-ES', {
                 dateStyle: 'short',

@@ -1,0 +1,156 @@
+.nilo-vtrans {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.nilo-vtrans--compact {
+  margin: 4px 0 0;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--m3-on-surface-variant);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nilo-vtrans--row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: normal;
+}
+
+.nilo-vtrans--fail {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+.nilo-vtrans__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.nilo-vtrans__label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--m3-on-surface);
+}
+
+.nilo-vtrans__badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: var(--m3-surface-container-high);
+  color: var(--m3-on-surface-variant);
+}
+
+.nilo-vtrans__badge--ok {
+  background: color-mix(in srgb, #16a34a 18%, var(--m3-surface-container-high));
+  color: #15803d;
+}
+
+.nilo-vtrans__badge--fail {
+  background: color-mix(in srgb, #dc2626 14%, var(--m3-surface-container-high));
+  color: #b91c1c;
+}
+
+.nilo-vtrans__pending {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--m3-on-surface-variant);
+}
+
+.nilo-vtrans__spin {
+  animation: nilo-vtrans-spin 0.9s linear infinite;
+}
+
+@keyframes nilo-vtrans-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.nilo-vtrans__text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--m3-on-surface);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.nilo-vtrans__empty {
+  margin: 0;
+  font-size: 12px;
+  color: var(--m3-on-surface-variant);
+}
+
+.nilo-vtrans__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nilo-vtrans__textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--m3-outline-variant);
+  font-size: 14px;
+  line-height: 1.45;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.nilo-vtrans__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.nilo-vtrans__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 9999px;
+  border: 1px solid var(--m3-outline-variant);
+  background: var(--m3-surface);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--m3-on-surface);
+}
+
+.nilo-vtrans__btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.nilo-vtrans__btn--primary {
+  border-color: transparent;
+  background: var(--m3-primary);
+  color: var(--m3-on-primary);
+}
+
+.nilo-vtrans__link {
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: inherit;
+  font-weight: 700;
+  color: var(--m3-primary);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

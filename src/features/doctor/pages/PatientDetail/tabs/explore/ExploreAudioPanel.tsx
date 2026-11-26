@@ -12,6 +12,8 @@ import {
 } from '@/lib/fetch-clinical-audio-url'
 import type { AudioRecording } from '@/types/monitoring-session'
 import { ExploreDeleteButton } from './ExploreDeleteButton'
+import { VoiceNoteTranscriptBlock } from '../../components/VoiceNoteTranscriptBlock'
+import '../../components/VoiceNoteTranscriptBlock.css'
 import './ExploreAudioPanel.css'
 import './ExploreDeleteButton.css'
 
@@ -22,6 +24,7 @@ interface ExploreAudioPanelProps {
   sessionId: string
   variant: ExploreAudioVariant
   onDeleteClip?: (clip: AudioRecording) => void
+  onClipUpdate?: (clip: AudioRecording) => void
 }
 
 interface ClipEntry {
@@ -156,11 +159,15 @@ function AudioWaveformCanvas({
 function AudioClipRow({
   clip,
   url,
+  variant,
   onDelete,
+  onClipChange,
 }: {
   clip: AudioRecording
   url: string | null
+  variant: ExploreAudioVariant
   onDelete?: (clip: AudioRecording) => void
+  onClipChange?: (clip: AudioRecording) => void
 }) {
   const audioRef = useRef<HTMLAudioElement>(null)
   const [playing, setPlaying] = useState(false)
@@ -266,11 +273,17 @@ function AudioClipRow({
           onSeek={seek}
           pending={peaksLoading || peaks == null}
         />
-        {clip.transcription && (
+        {variant === 'voice' ? (
+          <VoiceNoteTranscriptBlock
+            clip={clip}
+            compact
+            onClipChange={onClipChange}
+          />
+        ) : clip.transcription ? (
           <p className="nilo-audio-clip__transcript" title={clip.transcription}>
             {clip.transcription}
           </p>
-        )}
+        ) : null}
         <audio
           ref={audioRef}
           className="nilo-audio-clip__audio-hidden"
@@ -300,7 +313,7 @@ function AudioClipRow({
   )
 }
 
-export function ExploreAudioPanel({ clips, sessionId, variant, onDeleteClip }: ExploreAudioPanelProps) {
+export function ExploreAudioPanel({ clips, sessionId, variant, onDeleteClip, onClipUpdate }: ExploreAudioPanelProps) {
   const [entries, setEntries] = useState<ClipEntry[]>(() =>
     clips.map((clip) => ({ clip, url: null, loading: true })),
   )
@@ -328,6 +341,16 @@ export function ExploreAudioPanel({ clips, sessionId, variant, onDeleteClip }: E
     }
   }, [clips, sessionId])
 
+  const handleClipChange = useCallback(
+    (updated: AudioRecording) => {
+      setEntries((prev) =>
+        prev.map((entry) => (entry.clip.id === updated.id ? { ...entry, clip: updated } : entry)),
+      )
+      onClipUpdate?.(updated)
+    },
+    [onClipUpdate],
+  )
+
   if (clips.length === 0) {
     return (
       <p className="nilo-explore__placeholder">
@@ -350,7 +373,9 @@ export function ExploreAudioPanel({ clips, sessionId, variant, onDeleteClip }: E
           key={entry.clip.id}
           clip={entry.clip}
           url={entry.url}
+          variant={variant}
           onDelete={onDeleteClip}
+          onClipChange={variant === 'voice' ? handleClipChange : undefined}
         />
       ))}
     </div>

@@ -185,6 +185,9 @@ export const api = {
   getBlob: (path: string, options?: RequestOptions) => requestBlob(path, options),
   post: <T>(path: string, body?: unknown, options?: RequestOptions) =>
     request<T>(path, { ...options, method: 'POST', body: JSON.stringify(body ?? {}) }),
+  /** POST application/x-www-form-urlencoded con auth (p. ej. transcribir audio). */
+  postUrlEncoded: <T>(path: string, form?: URLSearchParams, options?: RequestOptions) =>
+    request<T>(path, { ...options, method: 'POST', body: form }),
   patch: <T>(path: string, body?: unknown, options?: RequestOptions) =>
     request<T>(path, { ...options, method: 'PATCH', body: JSON.stringify(body ?? {}) }),
   delete: <T>(path: string, options?: RequestOptions) =>

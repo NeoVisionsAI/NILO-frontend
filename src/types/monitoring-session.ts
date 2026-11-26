@@ -78,7 +78,7 @@ export interface AudioUploadResponse {
 
 export type AudioKind = 'voice_note' | 'ambient'
 export type ProcessingStatus = 'pending_upload' | 'uploaded' | 'processing' | 'ready' | 'failed' | string
-export type TranscriptionStatus = 'pending' | 'done' | 'failed' | string
+export type TranscriptionStatus = 'none' | 'pending' | 'done' | 'failed' | string
 
 export interface AudioRecording {
   id: string

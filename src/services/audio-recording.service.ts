@@ -36,6 +36,20 @@ export const audioRecordingService = {
     })
   },
 
+  transcribe(
+    audioId: string,
+    opts?: { force?: boolean; language?: string },
+  ): Promise<AudioRecording> {
+    const body = new URLSearchParams()
+    if (opts?.force) body.set('force', 'true')
+    if (opts?.language) body.set('language', opts.language)
+    return api.postUrlEncoded<AudioRecording>(
+      `/audio/${audioId}/transcribe`,
+      body.size > 0 ? body : undefined,
+      { silent: true },
+    )
+  },
+
   getDownloadUrl(audioId: string, expiresIn = 3600): Promise<PresignedDownload> {
     const q = new URLSearchParams({ expires_in: String(expiresIn) })
     return api.get<PresignedDownload>(`/audio/${audioId}/download?${q}`)

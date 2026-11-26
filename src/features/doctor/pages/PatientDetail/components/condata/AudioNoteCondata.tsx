@@ -16,6 +16,13 @@ import {
 } from '@/lib/media-devices'
 import { useClinicalPatientResolution } from './useClinicalPatientResolution'
 import { useMonitoringSessions } from './useMonitoringSessions'
+import { VoiceNoteTranscriptBlock } from '../VoiceNoteTranscriptBlock'
+import '../VoiceNoteTranscriptBlock.css'
+import {
+  normalizeTranscriptionStatus,
+  requestVoiceTranscription,
+  transcriptionStatusLabel,
+} from '@/lib/voice-note-transcription'
 
 interface AudioNoteCondataProps {
   userPatientId: string
@@ -61,8 +68,7 @@ export function AudioNoteCondata({
   const [recording, setRecording] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [playUrl, setPlayUrl] = useState<string | null>(null)
-  const [transcriptionDraft, setTranscriptionDraft] = useState('')
-  const [savingTranscription, setSavingTranscription] = useState(false)
+  const [transcribingAudioId, setTranscribingAudioId] = useState<string | null>(null)
   const [micDevices, setMicDevices] = useState<MediaDeviceInfo[]>([])
   const [micDeviceId, setMicDeviceId] = useState('')
   const [micsLoading, setMicsLoading] = useState(false)
@@ -137,7 +143,6 @@ export function AudioNoteCondata({
       })
       return
     }
-    setTranscriptionDraft(selectedClip.transcription ?? '')
     let cancelled = false
     void (async () => {
       const url = await fetchClinicalAudioPlaybackUrl(selectedClip.id, selectedClip.session_id)
@@ -203,6 +208,22 @@ export function AudioNoteCondata({
     }
   }
 
+  function patchClip(updated: AudioRecording) {
+    setClips((prev) => prev.map((c) => (c.id === updated.id ? updated : c)))
+  }
+
+  async function transcribeAfterUpload(audioId: string) {
+    setTranscribingAudioId(audioId)
+    try {
+      const updated = await requestVoiceTranscription(audioId)
+      patchClip(updated)
+    } catch {
+      toast.error('No se pudo transcribir la nota recién subida.')
+    } finally {
+      setTranscribingAudioId(null)
+    }
+  }
+
   async function stopAndUpload() {
     const recorder = mediaRecorderRef.current
     const startedAt = startedAtRef.current
@@ -233,7 +254,7 @@ export function AudioNoteCondata({
     const format = fileExtension
 
     try {
-      await audioRecordingService.uploadVoiceNote({
+      const created = await audioRecordingService.uploadVoiceNote({
         session_id: selectedSessionId,
         patient_id: clinicalPatient.id,
         node_id: nodeId || undefined,
@@ -244,9 +265,18 @@ export function AudioNoteCondata({
         fileExtension,
         contentType: blob.type || 'audio/webm',
       })
+      patchClip(created)
+      setClips((prev) => {
+        if (prev.some((c) => c.id === created.id)) {
+          return prev.map((c) => (c.id === created.id ? created : c))
+        }
+        return [created, ...prev]
+      })
       toast.success('Nota de audio subida.')
-      await loadClips()
-      onViewChange('list')
+      onViewChange('detail', created.id)
+      if (normalizeTranscriptionStatus(created.transcription_status) !== 'done') {
+        void transcribeAfterUpload(created.id)
+      }
     } catch {
       toast.error('Error al subir la nota de audio.')
     } finally {
@@ -254,24 +284,6 @@ export function AudioNoteCondata({
       mediaRecorderRef.current = null
       chunksRef.current = []
       startedAtRef.current = null
-    }
-  }
-
-  async function saveTranscription() {
-    if (!selectedClip) return
-    setSavingTranscription(true)
-    try {
-      const updated = await audioRecordingService.updateTranscription(
-        selectedClip.id,
-        transcriptionDraft.trim(),
-        'done',
-      )
-      setClips((prev) => prev.map((c) => (c.id === updated.id ? updated : c)))
-      toast.success('Transcripción guardada.')
-    } catch {
-      toast.error('No se pudo guardar la transcripción.')
-    } finally {
-      setSavingTranscription(false)
     }
   }
 
@@ -343,7 +355,13 @@ export function AudioNoteCondata({
             <strong>{recordingLabel(clip)}</strong>
             <span>
               {clip.status}
-              {clip.transcription ? ` · ${clip.transcription.slice(0, 80)}${clip.transcription.length > 80 ? '…' : ''}` : ''}
+              {transcribingAudioId === clip.id || normalizeTranscriptionStatus(clip.transcription_status) === 'pending'
+                ? ` · ${transcriptionStatusLabel('pending')}`
+                : clip.transcription
+                  ? ` · ${clip.transcription.slice(0, 80)}${clip.transcription.length > 80 ? '…' : ''}`
+                  : normalizeTranscriptionStatus(clip.transcription_status) === 'failed'
+                    ? ' · Transcripción fallida'
+                    : ''}
             </span>
           </span>
           <MaterialIcon name="chevron_right" size={22} className="nilo-cmodule__item-chevron" />
@@ -412,28 +430,13 @@ export function AudioNoteCondata({
       ) : (
         <p className="nilo-cmodule__hint">Preparando reproducción…</p>
       )}
-      <label className="nilo-cmodule__textarea-label">
-        <span>Transcripción (opcional)</span>
-        <textarea
-          value={transcriptionDraft}
-          onChange={(e) => setTranscriptionDraft(e.target.value)}
-          rows={6}
-          placeholder="Texto transcrito o resumen clínico…"
-        />
-      </label>
+      <VoiceNoteTranscriptBlock
+        clip={selectedClip}
+        editable
+        busy={transcribingAudioId === selectedClip.id}
+        onClipChange={patchClip}
+      />
     </>
-  ) : null
-
-  const detailFooter = selectedClip ? (
-    <button
-      type="button"
-      className="nilo-cmodule__action-btn"
-      onClick={saveTranscription}
-      disabled={savingTranscription}
-    >
-      <MaterialIcon name="save" size={18} />
-      {savingTranscription ? 'Guardando…' : 'Guardar transcripción'}
-    </button>
   ) : null
 
   return (
@@ -458,7 +461,6 @@ export function AudioNoteCondata({
       }
       addContent={addContent}
       detailContent={detailContent}
-      detailFooter={detailFooter}
     />
   )
 }
