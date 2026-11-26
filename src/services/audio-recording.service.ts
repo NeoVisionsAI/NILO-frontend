@@ -36,8 +36,9 @@ export const audioRecordingService = {
     })
   },
 
-  getDownloadUrl(audioId: string): Promise<PresignedDownload> {
-    return api.get<PresignedDownload>(`/audio/${audioId}/download`)
+  getDownloadUrl(audioId: string, expiresIn = 3600): Promise<PresignedDownload> {
+    const q = new URLSearchParams({ expires_in: String(expiresIn) })
+    return api.get<PresignedDownload>(`/audio/${audioId}/download?${q}`)
   },
 
   /** Multipart vía API (navegador HTTPS). */

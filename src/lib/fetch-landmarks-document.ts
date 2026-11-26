@@ -1,9 +1,12 @@
 import { unzipSync } from 'fflate'
 import { landmarksService } from '@/services/landmarks.service'
+import { storageAccessService } from '@/services/storage-access.service'
 import { monitoringSessionService } from '@/services/monitoring-session.service'
 import type { LandmarksOut } from '@/services/landmarks.service'
 import { ApiError } from '@/services/api'
 import { parseLandmarksJson, type ParsedLandmarks } from './landmarks-json'
+
+const PRESIGN_EXPIRES_SEC = 3600
 
 async function bytesToJson(bytes: Uint8Array): Promise<unknown> {
   if (bytes[0] === 0x50 && bytes[1] === 0x4b) {
@@ -21,6 +24,16 @@ async function fetchPresignedBytes(url: string): Promise<Uint8Array> {
   const res = await fetch(url)
   if (!res.ok) throw new Error(`Descarga fallida (${res.status}).`)
   return new Uint8Array(await res.arrayBuffer())
+}
+
+async function presignThenFetch(getPresign: () => Promise<{ download_url: string }>): Promise<Uint8Array | null> {
+  try {
+    const presign = await getPresign()
+    if (!presign.download_url) return null
+    return await fetchPresignedBytes(presign.download_url)
+  } catch {
+    return null
+  }
 }
 
 function normalizeKey(key: string | null | undefined): string {
@@ -44,56 +57,40 @@ function mediaItemMatches(landmark: LandmarksOut, item: { id: string; kind: stri
   return false
 }
 
-export async function resolveLandmarkDownloadUrl(
-  sessionId: string,
-  landmark: LandmarksOut,
-): Promise<string | null> {
-  try {
-    const presign = await landmarksService.getDownloadUrl(landmark.id)
-    if (presign.download_url?.startsWith('https://')) return presign.download_url
-    if (presign.download_url) return presign.download_url
-  } catch (err) {
-    if (!(err instanceof ApiError) || err.status !== 404) {
-      /* seguir con media-access */
-    }
-  }
-
-  const access = await monitoringSessionService.mediaAccess(sessionId, 7200, { silent: true })
-  const match = access.items.find((item) => mediaItemMatches(landmark, item))
-  return match?.download_url ?? null
-}
-
 async function downloadLandmarkBytes(landmark: LandmarksOut, sessionId: string): Promise<Uint8Array> {
+  // 1) GET /landmarks/{id}/download?expires_in=… → JSON → fetch(download_url)
+  const fromLandmarkPresign = await presignThenFetch(() =>
+    landmarksService.getDownloadUrl(landmark.id, PRESIGN_EXPIRES_SEC),
+  )
+  if (fromLandmarkPresign) return fromLandmarkPresign
+
+  // 2) GET /landmarks/{id}/file (stream API, JWT)
   try {
-    const presign = await landmarksService.getDownloadUrl(landmark.id)
-    if (presign.download_url) return await fetchPresignedBytes(presign.download_url)
+    const blob = await landmarksService.downloadFile(landmark.id)
+    return new Uint8Array(await blob.arrayBuffer())
   } catch (err) {
     if (!(err instanceof ApiError) || err.status !== 404) {
-      /* intentar proxy o media-access */
+      /* seguir */
     }
   }
 
+  // 3) GET /storage/access?kind=landmarks&resource_id=…
+  const fromStorage = await presignThenFetch(() =>
+    storageAccessService.getDownloadUrl('landmarks', landmark.id, PRESIGN_EXPIRES_SEC),
+  )
+  if (fromStorage) return fromStorage
+
+  // 4) GET /sessions/{id}/media-access (legado)
   try {
-    const blob = await landmarksService.downloadBlob(landmark.id)
-    const head = new Uint8Array(await blob.slice(0, 4).arrayBuffer())
-    if (head[0] === 0x7b || head[0] === 0x50 || head[0] === 0x5b) {
-      return new Uint8Array(await blob.arrayBuffer())
-    }
+    const access = await monitoringSessionService.mediaAccess(sessionId, PRESIGN_EXPIRES_SEC, { silent: true })
+    const match = access.items.find((item) => mediaItemMatches(landmark, item))
+    if (match?.download_url) return await fetchPresignedBytes(match.download_url)
   } catch {
-    /* media-access */
-  }
-
-  const url = await resolveLandmarkDownloadUrl(sessionId, landmark)
-  if (url) {
-    try {
-      return await fetchPresignedBytes(url)
-    } catch {
-      throw new Error('No se pudo descargar el fichero (revisa CORS/HTTPS de MinIO).')
-    }
+    /* fallthrough */
   }
 
   throw new Error(
-    'No hay URL de descarga para este lote. ¿El backend expone GET /landmarks/{id}/download o media-access?',
+    'No se pudo descargar el lote de landmarks. Comprueba GET /landmarks/{id}/download (JSON) y /landmarks/{id}/file.',
   )
 }
 

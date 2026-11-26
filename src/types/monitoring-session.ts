@@ -110,4 +110,5 @@ export interface AudioUploadRequest {
 export interface PresignedDownload {
   download_url: string
   expires_in: number
+  expires_at?: string
 }

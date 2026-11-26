@@ -91,20 +91,17 @@ export const landmarksService = {
     return api.get<LandmarksOut[]>(`/landmarks${buildQueryString(params)}`)
   },
 
-  /** Igual que audio: presign HTTPS cuando el backend lo expone. */
-  getDownloadUrl(landmarksId: string): Promise<PresignedDownload> {
-    return api.get<PresignedDownload>(`/landmarks/${landmarksId}/download`)
+  /**
+   * Presign JSON (no binario): luego `fetch(download_url)` en el navegador.
+   * @see docs/17.mensaje_frontend_media_download.md
+   */
+  getDownloadUrl(landmarksId: string, expiresIn = 3600): Promise<PresignedDownload> {
+    const q = new URLSearchParams({ expires_in: String(expiresIn) })
+    return api.get<PresignedDownload>(`/landmarks/${landmarksId}/download?${q}`)
   },
 
-  /** Descarga binaria vía API (evita Mixed Content / CORS a MinIO). */
-  async downloadBlob(landmarksId: string): Promise<Blob> {
-    try {
-      return await api.getBlob(`/landmarks/${landmarksId}/download`, { silent: true })
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 404) {
-        return api.getBlob(`/landmarks/${landmarksId}/file`, { silent: true })
-      }
-      throw err
-    }
+  /** Stream del fichero vía API + JWT (fallback si presign/CORS falla). */
+  downloadFile(landmarksId: string): Promise<Blob> {
+    return api.getBlob(`/landmarks/${landmarksId}/file`, { silent: true })
   },
 }
