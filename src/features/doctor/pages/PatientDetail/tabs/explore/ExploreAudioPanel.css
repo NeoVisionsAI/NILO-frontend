@@ -23,14 +23,38 @@
 }
 
 .nilo-audio-clip--with-del {
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.nilo-audio-clip--with-del .nilo-audio-clip__leading {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.nilo-audio-clip--with-del .nilo-audio-clip__body {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+}
+
+.nilo-audio-clip--with-del .nilo-audio-clip__trailing {
+  grid-column: 3;
+  grid-row: 1;
 }
 
 .nilo-audio-clip__leading {
   display: flex;
   align-items: center;
-  gap: 8px;
   flex-shrink: 0;
+}
+
+.nilo-audio-clip__trailing {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
 }
 
 .nilo-audio-clip--error {

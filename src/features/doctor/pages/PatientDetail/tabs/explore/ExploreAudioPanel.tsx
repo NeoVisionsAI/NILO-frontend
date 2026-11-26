@@ -229,9 +229,6 @@ function AudioClipRow({
         >
           <MaterialIcon name={playing ? 'pause' : 'play_arrow'} size={22} />
         </button>
-        {onDelete ? (
-          <ExploreDeleteButton entityLabel="clip de audio" onDelete={() => onDelete(clip)} />
-        ) : null}
       </div>
       <div className="nilo-audio-clip__body">
         <div className="nilo-audio-clip__head">
@@ -276,6 +273,11 @@ function AudioClipRow({
           }}
         />
       </div>
+      {onDelete ? (
+        <div className="nilo-audio-clip__trailing">
+          <ExploreDeleteButton entityLabel="clip de audio" onDelete={() => onDelete(clip)} />
+        </div>
+      ) : null}
     </article>
   )
 }

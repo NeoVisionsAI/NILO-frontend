@@ -315,6 +315,15 @@
   flex-shrink: 0;
 }
 
+.nilo-explore__row-trailing {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+}
+
 .nilo-explore__row-actions {
   display: inline-flex;
   align-items: center;

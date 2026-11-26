@@ -415,8 +415,15 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
           <ul className="nilo-explore__list">
             {painEvents.map((ev) => (
               <li key={ev.id} className="nilo-explore__row nilo-explore__row--action">
-                <div className="nilo-explore__row-leading">
-                  <MaterialIcon name="healing" size={22} />
+                <MaterialIcon name="healing" size={22} />
+                <div className="nilo-explore__row-text">
+                  <strong>{new Date(ev.start_ts).toLocaleString('es-ES')}</strong>
+                  <span>
+                    {ev.severity != null ? `Intensidad ${ev.severity}` : 'Episodio'}
+                    {ev.notes ? ` · ${ev.notes}` : ''}
+                  </span>
+                </div>
+                <div className="nilo-explore__row-trailing">
                   <ExploreDeleteButton
                     entityLabel="episodio de dolor"
                     onDelete={() =>
@@ -430,13 +437,6 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
                       })
                     }
                   />
-                </div>
-                <div className="nilo-explore__row-text">
-                  <strong>{new Date(ev.start_ts).toLocaleString('es-ES')}</strong>
-                  <span>
-                    {ev.severity != null ? `Intensidad ${ev.severity}` : 'Episodio'}
-                    {ev.notes ? ` · ${ev.notes}` : ''}
-                  </span>
                 </div>
               </li>
             ))}
@@ -504,9 +504,13 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
           <ul className="nilo-explore__list">
             {filteredText.map((note) => (
               <li key={note.id} className="nilo-explore__row nilo-explore__row--action">
-                <div className="nilo-explore__row-leading">
-                  <MaterialIcon name="edit_note" size={22} />
-                  {selectedSessionId ? (
+                <MaterialIcon name="edit_note" size={22} />
+                <div className="nilo-explore__row-text">
+                  <strong>{new Date(note.recorded_at).toLocaleString('es-ES')}</strong>
+                  <p>{note.body}</p>
+                </div>
+                {selectedSessionId ? (
+                  <div className="nilo-explore__row-trailing">
                     <ExploreDeleteButton
                       entityLabel="nota de texto"
                       onDelete={() =>
@@ -520,12 +524,10 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
                         })
                       }
                     />
-                  ) : null}
-                </div>
-                <div className="nilo-explore__row-text">
-                  <strong>{new Date(note.recorded_at).toLocaleString('es-ES')}</strong>
-                  <p>{note.body}</p>
-                </div>
+                  </div>
+                ) : (
+                  <span aria-hidden />
+                )}
               </li>
             ))}
           </ul>
@@ -536,8 +538,17 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
           <ul className="nilo-explore__list">
             {mediaItems.map((item) => (
               <li key={item.id} className="nilo-explore__row nilo-explore__row--action">
-                <div className="nilo-explore__row-leading">
-                  <MaterialIcon name="videocam" size={22} />
+                <MaterialIcon name="videocam" size={22} />
+                <div className="nilo-explore__row-text">
+                  <strong>{item.id.slice(-8)}</strong>
+                  <span>{item.object_key ?? 'segmento de vídeo'}</span>
+                </div>
+                <div className="nilo-explore__row-actions">
+                  {item.download_url && (
+                    <a className="nilo-explore__play" href={item.download_url} target="_blank" rel="noreferrer">
+                      Abrir
+                    </a>
+                  )}
                   <ExploreDeleteButton
                     entityLabel="segmento de vídeo"
                     onDelete={() =>
@@ -551,17 +562,6 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
                       })
                     }
                   />
-                </div>
-                <div className="nilo-explore__row-text">
-                  <strong>{item.id.slice(-8)}</strong>
-                  <span>{item.object_key ?? 'segmento de vídeo'}</span>
-                </div>
-                <div className="nilo-explore__row-actions">
-                  {item.download_url && (
-                    <a className="nilo-explore__play" href={item.download_url} target="_blank" rel="noreferrer">
-                      Abrir
-                    </a>
-                  )}
                 </div>
               </li>
             ))}
