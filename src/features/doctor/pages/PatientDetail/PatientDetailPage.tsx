@@ -37,6 +37,8 @@ import {
 import { SessionIngestionDevPanel } from './components/dev/SessionIngestionDevPanel'
 import { TextNoteQuickModal } from './components/TextNoteQuickModal'
 import './components/TextNoteQuickModal.css'
+import { AudioNoteQuickModal } from './components/AudioNoteQuickModal'
+import './components/AudioNoteQuickModal.css'
 import { PatientDetailHeader, type PatientViewMode } from './components/PatientDetailHeader'
 import { SessionExploreTab } from './tabs/SessionExploreTab'
 import './PatientDetailPage.css'
@@ -91,6 +93,7 @@ export function PatientDetailPage() {
   const [loadingActiveSession, setLoadingActiveSession] = useState(false)
   const [showIngestionDev, setShowIngestionDev] = useState(() => isIngestionDevPanelVisible())
   const [textNoteModalOpen, setTextNoteModalOpen] = useState(false)
+  const [audioNoteModalOpen, setAudioNoteModalOpen] = useState(false)
 
   const activeSection = findPatientSection(recordSections, activeSectionId) ?? recordSections[0]
 
@@ -126,6 +129,16 @@ export function PatientDetailPage() {
   /** Estado obsoleto: el FAB ya no abre módulo «Nota de texto». */
   useEffect(() => {
     if (condataMode !== 'module' || activeModule?.actionKey !== 'text-note') return
+    const mon = patient?.patient_profile?.monitoring_active ?? false
+    setActiveModule(null)
+    setModuleView('list')
+    setSelectedModuleRecordId(null)
+    setCondataMode(mon && activeMonitoringSession ? 'live' : 'explore')
+  }, [condataMode, activeModule, patient?.patient_profile?.monitoring_active, activeMonitoringSession])
+
+  /** FAB nota de audio → modal rápido, no módulo condata. */
+  useEffect(() => {
+    if (condataMode !== 'module' || activeModule?.actionKey !== 'audio-note') return
     const mon = patient?.patient_profile?.monitoring_active ?? false
     setActiveModule(null)
     setModuleView('list')
@@ -211,23 +224,22 @@ export function PatientDetailPage() {
     resetPainCaptureState()
   }
 
-  function openSessionNotesModule(action: PatientQuickAction) {
-    setCondataMode('module')
-    setActiveModule(action)
-    setModuleView('list')
-    setSelectedEpisodeId(null)
-    setSelectedModuleRecordId(null)
-    setSectionViewMode('browse')
-    resetPainCaptureState()
-  }
-
   function openTextNoteQuickModal() {
     setTextNoteModalOpen(true)
+  }
+
+  function openAudioNoteQuickModal() {
+    setAudioNoteModalOpen(true)
   }
 
   function openModule(action: PatientQuickAction) {
     if (action.actionKey === 'text-note') {
       openTextNoteQuickModal()
+      return
+    }
+
+    if (action.actionKey === 'audio-note') {
+      openAudioNoteQuickModal()
       return
     }
 
@@ -239,11 +251,6 @@ export function PatientDetailPage() {
 
     if (action.actionKey === 'pain-episode') {
       openPainEpisodeModule(action)
-      return
-    }
-
-    if (action.actionKey === 'audio-note') {
-      openSessionNotesModule(action)
       return
     }
 
@@ -596,6 +603,18 @@ export function PatientDetailPage() {
         sessionIdFallback={ingestionSessionId}
         sessionLoading={loadingActiveSession}
         onClose={() => setTextNoteModalOpen(false)}
+      />
+
+      <AudioNoteQuickModal
+        open={audioNoteModalOpen}
+        patientName={fullName}
+        userPatientId={p.id}
+        nodeId={assignedNodeId || undefined}
+        session={activeMonitoringSession}
+        sessionIdFallback={ingestionSessionId}
+        sessionLoading={loadingActiveSession}
+        monitoringActive={monitoring}
+        onClose={() => setAudioNoteModalOpen(false)}
       />
 
       <ConfirmDialog

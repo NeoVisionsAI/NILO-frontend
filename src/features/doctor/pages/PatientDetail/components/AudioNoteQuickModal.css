@@ -1,0 +1,258 @@
+.nilo-anote-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.nilo-anote-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(2px);
+}
+
+.nilo-anote-modal__panel {
+  position: relative;
+  width: min(540px, 100%);
+  max-height: min(92vh, 720px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px 22px 18px;
+  border-radius: 20px;
+  background: var(--m3-surface-container-lowest, #fff);
+  border: 1px solid var(--m3-outline-variant);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
+}
+
+.nilo-anote-modal__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.nilo-anote-modal__head-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--m3-primary-fixed, rgba(0, 97, 148, 0.12));
+  color: var(--m3-primary);
+  flex-shrink: 0;
+}
+
+.nilo-anote-modal__head > div:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+
+.nilo-anote-modal__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.nilo-anote-modal__subtitle {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--m3-on-surface-variant);
+}
+
+.nilo-anote-modal__close {
+  border: none;
+  background: transparent;
+  padding: 4px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--m3-on-surface-variant);
+}
+
+.nilo-anote-modal__close:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.nilo-anote-modal__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--m3-surface-container);
+  border: 1px solid var(--m3-outline-variant);
+}
+
+.nilo-anote-modal__meta-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.nilo-anote-modal__meta-k {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--m3-on-surface-variant);
+}
+
+.nilo-anote-modal__meta-v {
+  display: block;
+  font-weight: 600;
+  color: var(--m3-on-surface);
+}
+
+.nilo-anote-modal__warn {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, #f59e0b 12%, var(--m3-surface));
+  border: 1px solid color-mix(in srgb, #f59e0b 35%, var(--m3-outline-variant));
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--m3-on-surface);
+}
+
+.nilo-anote-modal__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.nilo-anote-modal__field-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--m3-on-surface);
+}
+
+.nilo-anote-modal__select {
+  height: 42px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid var(--m3-outline-variant);
+  background: var(--m3-surface);
+  font-size: 14px;
+}
+
+.nilo-anote-modal__hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--m3-on-surface-variant);
+}
+
+.nilo-anote-modal__rec {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.nilo-anote-modal__rec-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 9999px;
+  border: none;
+  background: var(--m3-primary);
+  color: var(--m3-on-primary);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.nilo-anote-modal__rec-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.nilo-anote-modal__rec-btn--stop {
+  background: #dc2626;
+  color: #fff;
+}
+
+.nilo-anote-modal__rec-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #dc2626;
+}
+
+.nilo-anote-modal__rec-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  background: #dc2626;
+  animation: nilo-anote-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes nilo-anote-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.85);
+  }
+}
+
+.nilo-anote-modal__review {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.nilo-anote-modal__player {
+  width: 100%;
+  border-radius: 12px;
+}
+
+.nilo-anote-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.nilo-anote-modal__btn {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 9999px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.nilo-anote-modal__btn--ghost {
+  border: 1px solid var(--m3-outline-variant);
+  background: var(--m3-surface);
+  color: var(--m3-on-surface);
+}
+
+.nilo-anote-modal__btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.nilo-anote-modal .nilo-vtrans {
+  margin-top: 0;
+  padding-top: 4px;
+  border-top: 1px solid var(--m3-outline-variant);
+}
