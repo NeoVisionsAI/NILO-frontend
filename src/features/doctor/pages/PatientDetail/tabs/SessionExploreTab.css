@@ -251,6 +251,11 @@
   padding: 4px 2px;
 }
 
+.nilo-explore__detail--landmarks {
+  min-height: min(520px, 70vh);
+  gap: 8px;
+}
+
 .nilo-explore__placeholder {
   margin: 0;
   font-size: 14px;

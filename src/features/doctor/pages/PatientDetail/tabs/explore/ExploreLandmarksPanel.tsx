@@ -29,7 +29,6 @@ export function ExploreLandmarksPanel({ sessionId, rows, loading, painHint }: Ex
       const seq = ++loadSeq.current
       setActiveId(row.id)
       setMeshLoading(true)
-      setMeshData(null)
       try {
         const doc = await fetchLandmarksDocument(sessionId, row)
         if (seq !== loadSeq.current) return
@@ -37,7 +36,6 @@ export function ExploreLandmarksPanel({ sessionId, rows, loading, painHint }: Ex
       } catch (e) {
         if (seq !== loadSeq.current) return
         toast.error(e instanceof Error ? e.message : 'No se pudo cargar la malla.')
-        setMeshData(null)
       } finally {
         if (seq === loadSeq.current) setMeshLoading(false)
       }
@@ -57,47 +55,57 @@ export function ExploreLandmarksPanel({ sessionId, rows, loading, painHint }: Ex
     void loadLandmark(sortedRows[0]!)
   }, [activeId, loadLandmark, loading, sortedRows])
 
+  const listReady = !loading && sortedRows.length > 0
+
   return (
     <div className="nilo-explore-lm">
       {painHint ? <p className="nilo-explore__pain-hint">{painHint}</p> : null}
 
-      {loading ? (
-        <p className="nilo-explore__placeholder">Cargando registros…</p>
-      ) : sortedRows.length === 0 ? (
-        <p className="nilo-explore__placeholder">Sin lotes en esta sesión.</p>
-      ) : (
-        <>
-          <div className="nilo-explore-lm__strip" role="tablist" aria-label="Registros por fecha">
-            {sortedRows.map((row) => {
-              const label = formatLandmarkChipLabel(row.object_key)
-              const selected = row.id === activeId
-              return (
-                <button
-                  key={row.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={selected}
-                  className={`nilo-explore-lm__chip${selected ? ' nilo-explore-lm__chip--active' : ''}`}
-                  title={row.object_key}
-                  onClick={() => void loadLandmark(row)}
-                >
-                  {label}
-                </button>
-              )
-            })}
-          </div>
+      <div className="nilo-explore-lm__strip" role="tablist" aria-label="Registros por fecha">
+        {loading && (
+          <span className="nilo-explore-lm__strip-hint" aria-hidden>
+            Cargando registros…
+          </span>
+        )}
+        {!loading && sortedRows.length === 0 && (
+          <span className="nilo-explore-lm__strip-hint">Sin lotes en esta sesión.</span>
+        )}
+        {listReady &&
+          sortedRows.map((row) => {
+            const label = formatLandmarkChipLabel(row.object_key)
+            const selected = row.id === activeId
+            return (
+              <button
+                key={row.id}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                className={`nilo-explore-lm__chip${selected ? ' nilo-explore-lm__chip--active' : ''}`}
+                title={row.object_key}
+                onClick={() => void loadLandmark(row)}
+              >
+                {label}
+              </button>
+            )
+          })}
+      </div>
 
-          <div className="nilo-explore-lm__stage" aria-busy={meshLoading}>
-            {meshLoading && <p className="nilo-explore-lm__stage-msg">Descargando malla…</p>}
-            {!meshLoading && meshData && (
-              <LandmarksMeshViewer data={meshData} layout="stage" />
-            )}
-            {!meshLoading && !meshData && (
-              <p className="nilo-explore-lm__stage-msg">Selecciona un registro de la franja superior.</p>
+      <div className="nilo-explore-lm__stage" aria-busy={meshLoading}>
+        {meshData ? (
+          <div className="nilo-explore-lm__stage-inner">
+            <LandmarksMeshViewer data={meshData} layout="stage" />
+            {meshLoading && (
+              <div className="nilo-explore-lm__stage-overlay" aria-live="polite">
+                Cargando…
+              </div>
             )}
           </div>
-        </>
-      )}
+        ) : (
+          <p className="nilo-explore-lm__stage-msg">
+            {meshLoading ? 'Descargando malla…' : listReady ? 'Elige un instante arriba.' : 'Esperando registros…'}
+          </p>
+        )}
+      </div>
     </div>
   )
 }

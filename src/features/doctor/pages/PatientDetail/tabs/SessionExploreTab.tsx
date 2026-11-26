@@ -351,6 +351,12 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
   const showDataPane =
     exploreSection !== 'summary' && exploreSection !== 'session' && Boolean(selectedSessionId)
 
+  const isLandmarkSection =
+    exploreSection === 'face' || exploreSection === 'pose' || exploreSection === 'pain'
+  const landmarkSectionReady = category === exploreSection
+  const landmarkPanelRows = landmarkSectionReady ? filteredLandmarks : []
+  const landmarkPanelLoading = !landmarkSectionReady || detailLoading
+
   return (
     <div className="nilo-explore nilo-explore--shell">
       <ExploreSideNav
@@ -491,16 +497,18 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
           )}
 
           {showDataPane && (
-            <section className="nilo-explore__detail">
-              {detailLoading && <p className="nilo-explore__placeholder">Cargando…</p>}
+            <section
+              className={`nilo-explore__detail${isLandmarkSection ? ' nilo-explore__detail--landmarks' : ''}`}
+            >
+              {detailLoading && !isLandmarkSection && <p className="nilo-explore__placeholder">Cargando…</p>}
 
-        {(category === 'face' || category === 'pose' || category === 'pain') && selectedSessionId ? (
+        {isLandmarkSection && selectedSessionId ? (
           <ExploreLandmarksPanel
             sessionId={selectedSessionId}
-            rows={filteredLandmarks}
-            loading={detailLoading}
+            rows={landmarkPanelRows}
+            loading={landmarkPanelLoading}
             painHint={
-              category === 'pain'
+              exploreSection === 'pain'
                 ? `${overview?.pain_events ?? 0} episodios de dolor en resumen · misma señal que expresión facial.`
                 : undefined
             }

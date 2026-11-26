@@ -41,6 +41,14 @@
   background: var(--m3-primary);
   color: var(--m3-on-primary);
   border-color: transparent;
+  box-shadow: 0 0 0 2px var(--m3-surface), 0 0 0 4px var(--m3-primary);
+}
+
+.nilo-explore-lm__strip-hint {
+  font-size: 13px;
+  color: var(--m3-on-surface-variant);
+  padding: 8px 4px;
+  white-space: nowrap;
 }
 
 .nilo-explore-lm__stage {
@@ -60,4 +68,25 @@
   font-size: 14px;
   color: rgba(248, 250, 252, 0.72);
   text-align: center;
+}
+
+.nilo-explore-lm__stage-inner {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.nilo-explore-lm__stage-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  color: #f8fafc;
+  font-size: 14px;
+  font-weight: 600;
+  pointer-events: none;
 }
