@@ -115,4 +115,8 @@ export const landmarksService = {
   downloadFile(landmarksId: string): Promise<Blob> {
     return api.getBlob(`/landmarks/${landmarksId}/file`, { silent: true })
   },
+
+  remove(landmarksId: string): Promise<void> {
+    return api.delete<void>(`/landmarks/${landmarksId}`)
+  },
 }

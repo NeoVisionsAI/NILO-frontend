@@ -13,7 +13,9 @@ import { isVoiceNoteClip } from '@/lib/audio-waveform'
 import { audioRecordingService } from '@/services/audio-recording.service'
 import { landmarksService, type LandmarksCaptureKind, type LandmarksOut } from '@/services/landmarks.service'
 import { monitoringSessionService } from '@/services/monitoring-session.service'
+import { painEventService, type PainEventOut } from '@/services/pain-event.service'
 import { physiologicalService, type PhysiologicalReading } from '@/services/physiological.service'
+import { videoSegmentService } from '@/services/video-segment.service'
 import type {
   AudioRecording,
   MonitoringSession,
@@ -28,12 +30,14 @@ import { PatientExploreSummary } from './explore/PatientExploreSummary'
 import { PhysioExplorePanel } from './explore/PhysioExplorePanel'
 import { ExploreAudioPanel } from './explore/ExploreAudioPanel'
 import { ExploreSessionHeaderActions } from './explore/ExploreSessionPicker'
+import { ExploreDeleteButton } from './explore/ExploreDeleteButton'
 import { SessionTimeRangeBar } from './explore/SessionTimeRangeBar'
 import './SessionExploreTab.css'
 import './explore/ExploreSideNav.css'
 import './explore/ExploreAudioPanel.css'
 import './explore/PatientExploreSummary.css'
 import './explore/ExploreSessionPicker.css'
+import './explore/ExploreDeleteButton.css'
 import './explore/SessionTimeRangeBar.css'
 
 const SECTION_TITLES: Record<ExploreSection, string> = {
@@ -70,6 +74,7 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
   const [textNotes, setTextNotes] = useState<SessionTextNote[]>([])
   const [mediaItems, setMediaItems] = useState<SessionMediaAccessItem[]>([])
   const [physioReadings, setPhysioReadings] = useState<PhysiologicalReading[]>([])
+  const [painEvents, setPainEvents] = useState<PainEventOut[]>([])
   const [detailLoading, setDetailLoading] = useState(false)
   const [textSearch, setTextSearch] = useState('')
   const [timeFilterOn, setTimeFilterOn] = useState(false)
@@ -201,7 +206,7 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
       setCategory(cat)
       setDetailLoading(true)
       try {
-        if (cat === 'face' || cat === 'pose' || cat === 'pain') {
+        if (cat === 'face' || cat === 'pose') {
           const captureKind: LandmarksCaptureKind = cat === 'pose' ? 'pose' : 'face'
           const all = await landmarksService.list({
             patient_id: clinicalPatient.id,
@@ -210,6 +215,19 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
             storage_ready: true,
           })
           setLandmarks(all.filter((row) => matchesLandmarkCaptureKind(row, captureKind)))
+          setPainEvents([])
+          setAudioClips([])
+          setTextNotes([])
+          setMediaItems([])
+          setPhysioReadings([])
+        } else if (cat === 'pain') {
+          setLandmarks([])
+          const events = await painEventService.list({
+            patient_id: clinicalPatient.id,
+            session_id: selectedSessionId,
+            limit: 500,
+          })
+          setPainEvents(events)
           setAudioClips([])
           setTextNotes([])
           setMediaItems([])
@@ -254,6 +272,17 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
     },
     [clinicalPatient?.id, nodeId, selectedSessionId],
   )
+
+  const refreshAfterDelete = useCallback(async () => {
+    if (!selectedSessionId || exploreSection === 'summary') return
+    await loadCategory(exploreSection as ExploreCategory)
+    try {
+      const o = await monitoringSessionService.overview(selectedSessionId, { silent: true })
+      setOverview(o)
+    } catch {
+      /* overview opcional */
+    }
+  }, [exploreSection, loadCategory, selectedSessionId])
 
   useEffect(() => {
     setTimeFilterOn(false)
@@ -308,8 +337,7 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
   const showDataPane = exploreSection !== 'summary' && Boolean(selectedSessionId)
   const showSessionTimeBar = exploreSection !== 'summary' && Boolean(selectedSession)
 
-  const isLandmarkSection =
-    exploreSection === 'face' || exploreSection === 'pose' || exploreSection === 'pain'
+  const isLandmarkSection = exploreSection === 'face' || exploreSection === 'pose'
   const landmarkSectionReady = category === exploreSection
   const landmarkPanelRows = landmarkSectionReady ? filteredLandmarks : []
   const landmarkPanelLoading = !landmarkSectionReady || detailLoading
@@ -362,20 +390,64 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
             sessionId={selectedSessionId}
             rows={landmarkPanelRows}
             loading={landmarkPanelLoading}
-            painHint={
-              exploreSection === 'pain'
-                ? `${overview?.pain_events ?? 0} episodios de dolor en resumen · misma señal que expresión facial.`
-                : undefined
-            }
+            onDeleteLandmark={async (row) => {
+              await landmarksService.remove(row.id)
+              await refreshAfterDelete()
+            }}
           />
         ) : null}
 
+        {category === 'pain' ? (
+          <ul className="nilo-explore__list">
+            {painEvents.map((ev) => (
+              <li key={ev.id} className="nilo-explore__row nilo-explore__row--action">
+                <MaterialIcon name="healing" size={22} />
+                <div className="nilo-explore__row-text">
+                  <strong>{new Date(ev.start_ts).toLocaleString('es-ES')}</strong>
+                  <span>
+                    {ev.severity != null ? `Intensidad ${ev.severity}` : 'Episodio'}
+                    {ev.notes ? ` · ${ev.notes}` : ''}
+                  </span>
+                </div>
+                <ExploreDeleteButton
+                  compact
+                  itemLabel={new Date(ev.start_ts).toLocaleString('es-ES')}
+                  entityLabel="episodio de dolor"
+                  onConfirmDelete={async () => {
+                    await painEventService.remove(ev.id)
+                    await refreshAfterDelete()
+                  }}
+                />
+              </li>
+            ))}
+            {!detailLoading && painEvents.length === 0 && (
+              <p className="nilo-explore__placeholder">Sin episodios de dolor en esta sesión.</p>
+            )}
+          </ul>
+        ) : null}
+
         {category === 'voice' && selectedSessionId ? (
-          <ExploreAudioPanel clips={filteredVoiceNotes} sessionId={selectedSessionId} variant="voice" />
+          <ExploreAudioPanel
+            clips={filteredVoiceNotes}
+            sessionId={selectedSessionId}
+            variant="voice"
+            onDeleteClip={async (clip) => {
+              await audioRecordingService.remove(clip.id)
+              await refreshAfterDelete()
+            }}
+          />
         ) : null}
 
         {category === 'audio' && selectedSessionId ? (
-          <ExploreAudioPanel clips={filteredAmbientAudio} sessionId={selectedSessionId} variant="ambient" />
+          <ExploreAudioPanel
+            clips={filteredAmbientAudio}
+            sessionId={selectedSessionId}
+            variant="ambient"
+            onDeleteClip={async (clip) => {
+              await audioRecordingService.remove(clip.id)
+              await refreshAfterDelete()
+            }}
+          />
         ) : null}
 
         {category === 'text' ? (
@@ -391,12 +463,23 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
             </label>
           <ul className="nilo-explore__list">
             {filteredText.map((note) => (
-              <li key={note.id} className="nilo-explore__row">
+              <li key={note.id} className="nilo-explore__row nilo-explore__row--action">
                 <MaterialIcon name="edit_note" size={22} />
                 <div className="nilo-explore__row-text">
                   <strong>{new Date(note.recorded_at).toLocaleString('es-ES')}</strong>
                   <p>{note.body}</p>
                 </div>
+                {selectedSessionId ? (
+                  <ExploreDeleteButton
+                    compact
+                    itemLabel={note.body.slice(0, 48) + (note.body.length > 48 ? '…' : '')}
+                    entityLabel="nota de texto"
+                    onConfirmDelete={async () => {
+                      await monitoringSessionService.deleteTextNote(selectedSessionId, note.id)
+                      await refreshAfterDelete()
+                    }}
+                  />
+                ) : null}
               </li>
             ))}
           </ul>
@@ -412,11 +495,22 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
                   <strong>{item.id.slice(-8)}</strong>
                   <span>{item.object_key ?? 'segmento de vídeo'}</span>
                 </div>
-                {item.download_url && (
-                  <a className="nilo-explore__play" href={item.download_url} target="_blank" rel="noreferrer">
-                    Abrir
-                  </a>
-                )}
+                <div className="nilo-explore__row-actions">
+                  {item.download_url && (
+                    <a className="nilo-explore__play" href={item.download_url} target="_blank" rel="noreferrer">
+                      Abrir
+                    </a>
+                  )}
+                  <ExploreDeleteButton
+                    compact
+                    itemLabel={item.object_key?.split('/').pop() ?? item.id.slice(-8)}
+                    entityLabel="segmento de vídeo"
+                    onConfirmDelete={async () => {
+                      await videoSegmentService.remove(item.id)
+                      await refreshAfterDelete()
+                    }}
+                  />
+                </div>
               </li>
             ))}
             {!detailLoading && mediaItems.length === 0 && (
@@ -426,7 +520,13 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
         ) : null}
 
               {category === 'physio' && !detailLoading ? (
-                <PhysioExplorePanel readings={filteredPhysio} />
+                <PhysioExplorePanel
+                  readings={filteredPhysio}
+                  onDeleteReading={async (r) => {
+                    await physiologicalService.remove(r.id)
+                    await refreshAfterDelete()
+                  }}
+                />
               ) : null}
             </section>
           )}

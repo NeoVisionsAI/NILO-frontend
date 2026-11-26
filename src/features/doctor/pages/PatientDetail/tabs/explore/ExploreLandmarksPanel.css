@@ -6,6 +6,18 @@
   min-height: min(440px, 58vh);
 }
 
+.nilo-explore-lm__strip-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.nilo-explore-lm__strip-row .nilo-explore-lm__strip {
+  flex: 1;
+  min-width: 0;
+}
+
 .nilo-explore-lm__strip {
   display: flex;
   flex-wrap: nowrap;

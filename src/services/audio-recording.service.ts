@@ -46,6 +46,10 @@ export const audioRecordingService = {
     return api.getBlob(`/audio/${audioId}/file`, { silent: true })
   },
 
+  remove(audioId: string): Promise<void> {
+    return api.delete<void>(`/audio/${audioId}`)
+  },
+
   /** Multipart vía API (navegador HTTPS). */
   uploadMultipart(params: {
     session_id: string

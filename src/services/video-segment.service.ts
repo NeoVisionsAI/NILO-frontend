@@ -36,4 +36,8 @@ export const videoSegmentService = {
     await this.confirm(segment.id)
     return segment.id
   },
+
+  remove(segmentId: string): Promise<void> {
+    return api.delete<void>(`/sessions/video-segments/${segmentId}`)
+  },
 }

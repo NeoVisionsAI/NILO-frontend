@@ -8,16 +8,25 @@ import type { ParsedLandmarks } from '@/lib/landmarks-json'
 import { toast } from '@/lib/toast'
 import type { LandmarksOut } from '@/services/landmarks.service'
 import { LandmarksMeshViewer } from './LandmarksMeshViewer'
+import { ExploreDeleteButton } from './ExploreDeleteButton'
 import './ExploreLandmarksPanel.css'
+import './ExploreDeleteButton.css'
 
 interface ExploreLandmarksPanelProps {
   sessionId: string
   rows: LandmarksOut[]
   loading: boolean
   painHint?: string
+  onDeleteLandmark?: (row: LandmarksOut) => Promise<void>
 }
 
-export function ExploreLandmarksPanel({ sessionId, rows, loading, painHint }: ExploreLandmarksPanelProps) {
+export function ExploreLandmarksPanel({
+  sessionId,
+  rows,
+  loading,
+  painHint,
+  onDeleteLandmark,
+}: ExploreLandmarksPanelProps) {
   const sortedRows = useMemo(() => sortLandmarksByRecordedAt(rows), [rows])
   const [activeId, setActiveId] = useState<string | null>(null)
   const [meshData, setMeshData] = useState<ParsedLandmarks | null>(null)
@@ -56,11 +65,13 @@ export function ExploreLandmarksPanel({ sessionId, rows, loading, painHint }: Ex
   }, [activeId, loadLandmark, loading, sortedRows])
 
   const listReady = !loading && sortedRows.length > 0
+  const activeRow = activeId ? sortedRows.find((r) => r.id === activeId) ?? null : null
 
   return (
     <div className="nilo-explore-lm">
       {painHint ? <p className="nilo-explore__pain-hint">{painHint}</p> : null}
 
+      <div className="nilo-explore-lm__strip-row">
       <div className="nilo-explore-lm__strip" role="tablist" aria-label="Registros por fecha">
         {loading && (
           <span className="nilo-explore-lm__strip-hint" aria-hidden>
@@ -88,6 +99,15 @@ export function ExploreLandmarksPanel({ sessionId, rows, loading, painHint }: Ex
               </button>
             )
           })}
+      </div>
+        {activeRow && onDeleteLandmark && (
+          <ExploreDeleteButton
+            compact
+            itemLabel={formatLandmarkChipLabel(activeRow.object_key)}
+            entityLabel="lote de landmarks"
+            onConfirmDelete={() => onDeleteLandmark(activeRow)}
+          />
+        )}
       </div>
 
       <div className="nilo-explore-lm__stage" aria-busy={meshLoading}>

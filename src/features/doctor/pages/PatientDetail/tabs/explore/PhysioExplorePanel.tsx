@@ -3,7 +3,9 @@ import Plotly from 'plotly.js-dist-min'
 import createPlotlyComponent from 'react-plotly.js/factory'
 import type { PhysiologicalReading } from '@/services/physiological.service'
 import { parseApiDateMs } from '@/lib/parse-api-datetime'
+import { ExploreDeleteButton } from './ExploreDeleteButton'
 import './PhysioExplorePanel.css'
+import './ExploreDeleteButton.css'
 
 const Plot = createPlotlyComponent(Plotly)
 
@@ -11,6 +13,7 @@ type ViewMode = 'chart' | 'bar' | 'table'
 
 interface PhysioExplorePanelProps {
   readings: PhysiologicalReading[]
+  onDeleteReading?: (reading: PhysiologicalReading) => Promise<void>
 }
 
 function metricKeys(readings: PhysiologicalReading[]): string[] {
@@ -21,7 +24,7 @@ function metricKeys(readings: PhysiologicalReading[]): string[] {
   return [...set].sort()
 }
 
-export function PhysioExplorePanel({ readings }: PhysioExplorePanelProps) {
+export function PhysioExplorePanel({ readings, onDeleteReading }: PhysioExplorePanelProps) {
   const keys = useMemo(() => metricKeys(readings), [readings])
   const [metric, setMetric] = useState(keys[0] ?? '')
   const [view, setView] = useState<ViewMode>('chart')
@@ -80,6 +83,7 @@ export function PhysioExplorePanel({ readings }: PhysioExplorePanelProps) {
               <tr>
                 <th>Fecha</th>
                 <th>Dispositivo</th>
+                {onDeleteReading ? <th aria-label="Acciones" /> : null}
                 {keys.map((k) => (
                   <th key={k}>
                     {k}
@@ -93,6 +97,16 @@ export function PhysioExplorePanel({ readings }: PhysioExplorePanelProps) {
                 <tr key={r.id}>
                   <td>{new Date(r.timestamp).toLocaleString('es-ES')}</td>
                   <td>{r.device_id}</td>
+                  {onDeleteReading ? (
+                    <td>
+                      <ExploreDeleteButton
+                        compact
+                        itemLabel={new Date(r.timestamp).toLocaleString('es-ES')}
+                        entityLabel="lectura fisiológica"
+                        onConfirmDelete={() => onDeleteReading(r)}
+                      />
+                    </td>
+                  ) : null}
                   {keys.map((k) => (
                     <td key={k}>{r.metrics[k] ?? '—'}</td>
                   ))}
@@ -162,6 +176,7 @@ export function PhysioExplorePanel({ readings }: PhysioExplorePanelProps) {
 
       <p className="nilo-physio-panel__meta">
         {series.length} muestras · {metric} {unit ? `(${unit})` : ''}
+        {onDeleteReading && view !== 'table' ? ' · Usa vista «Tabla» para eliminar lecturas.' : ''}
       </p>
     </div>
   )

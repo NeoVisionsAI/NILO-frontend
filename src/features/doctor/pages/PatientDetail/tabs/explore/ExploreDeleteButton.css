@@ -1,0 +1,23 @@
+.nilo-explore-del {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--m3-error, #b91c1c);
+  border: 1px solid color-mix(in srgb, var(--m3-error, #b91c1c) 35%, var(--m3-outline-variant));
+  background: color-mix(in srgb, var(--m3-error, #b91c1c) 6%, var(--m3-surface));
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.nilo-explore-del--compact {
+  width: 32px;
+  height: 32px;
+}
+
+.nilo-explore-del:hover {
+  background: color-mix(in srgb, var(--m3-error, #b91c1c) 14%, var(--m3-surface));
+  border-color: var(--m3-error, #b91c1c);
+}

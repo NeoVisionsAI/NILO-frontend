@@ -73,4 +73,8 @@ export const monitoringSessionService = {
   updateTextNote(sessionId: string, noteId: string, body: string): Promise<SessionTextNote> {
     return api.patch<SessionTextNote>(`/sessions/${sessionId}/text-notes/${noteId}`, { body })
   },
+
+  deleteTextNote(sessionId: string, noteId: string): Promise<void> {
+    return api.delete<void>(`/sessions/${sessionId}/text-notes/${noteId}`)
+  },
 }

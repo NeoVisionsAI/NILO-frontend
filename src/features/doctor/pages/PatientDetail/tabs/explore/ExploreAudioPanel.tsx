@@ -11,7 +11,9 @@ import {
   revokeClinicalAudioPlaybackUrl,
 } from '@/lib/fetch-clinical-audio-url'
 import type { AudioRecording } from '@/types/monitoring-session'
+import { ExploreDeleteButton } from './ExploreDeleteButton'
 import './ExploreAudioPanel.css'
+import './ExploreDeleteButton.css'
 
 export type ExploreAudioVariant = 'ambient' | 'voice'
 
@@ -19,6 +21,7 @@ interface ExploreAudioPanelProps {
   clips: AudioRecording[]
   sessionId: string
   variant: ExploreAudioVariant
+  onDeleteClip?: (clip: AudioRecording) => Promise<void>
 }
 
 interface ClipEntry {
@@ -130,7 +133,15 @@ function AudioWaveformCanvas({
   )
 }
 
-function AudioClipRow({ clip, url }: { clip: AudioRecording; url: string | null }) {
+function AudioClipRow({
+  clip,
+  url,
+  onDelete,
+}: {
+  clip: AudioRecording
+  url: string | null
+  onDelete?: (clip: AudioRecording) => Promise<void>
+}) {
   const audioRef = useRef<HTMLAudioElement>(null)
   const [playing, setPlaying] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -208,7 +219,7 @@ function AudioClipRow({ clip, url }: { clip: AudioRecording; url: string | null 
   }
 
   return (
-    <article className="nilo-audio-clip">
+    <article className="nilo-audio-clip nilo-audio-clip--with-del">
       <button type="button" className="nilo-audio-clip__play" onClick={togglePlay} aria-label={playing ? 'Pausar' : 'Reproducir'}>
         <MaterialIcon name={playing ? 'pause' : 'play_arrow'} size={22} />
       </button>
@@ -231,6 +242,14 @@ function AudioClipRow({ clip, url }: { clip: AudioRecording; url: string | null 
           </p>
         )}
       </div>
+      {onDelete ? (
+        <ExploreDeleteButton
+          compact
+          itemLabel={formatClipTime(clip.start_ts)}
+          entityLabel="clip de audio"
+          onConfirmDelete={() => onDelete(clip)}
+        />
+      ) : null}
       <audio
         ref={audioRef}
         className="nilo-audio-clip__audio-hidden"
@@ -259,7 +278,7 @@ function AudioClipRow({ clip, url }: { clip: AudioRecording; url: string | null 
   )
 }
 
-export function ExploreAudioPanel({ clips, sessionId, variant }: ExploreAudioPanelProps) {
+export function ExploreAudioPanel({ clips, sessionId, variant, onDeleteClip }: ExploreAudioPanelProps) {
   const [entries, setEntries] = useState<ClipEntry[]>(() =>
     clips.map((clip) => ({ clip, url: null, loading: true })),
   )
@@ -305,7 +324,12 @@ export function ExploreAudioPanel({ clips, sessionId, variant }: ExploreAudioPan
           : 'Audio captado por micrófonos del nodo — forma de onda real del fichero.'}
       </p>
       {entries.map((entry) => (
-        <AudioClipRow key={entry.clip.id} clip={entry.clip} url={entry.url} />
+        <AudioClipRow
+          key={entry.clip.id}
+          clip={entry.clip}
+          url={entry.url}
+          onDelete={onDeleteClip}
+        />
       ))}
     </div>
   )

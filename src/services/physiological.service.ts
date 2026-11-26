@@ -24,4 +24,8 @@ export const physiologicalService = {
   }): Promise<PhysiologicalReading[]> {
     return api.get<PhysiologicalReading[]>(`/physiological${buildQueryString(params)}`)
   },
+
+  remove(readingId: string): Promise<void> {
+    return api.delete<void>(`/physiological/${readingId}`)
+  },
 }

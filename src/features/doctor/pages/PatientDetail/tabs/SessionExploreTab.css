@@ -304,6 +304,13 @@
   text-overflow: ellipsis;
 }
 
+.nilo-explore__row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 .nilo-explore__play {
   height: 34px;
   padding: 0 12px;

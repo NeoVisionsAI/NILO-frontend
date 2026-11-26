@@ -21,6 +21,10 @@
   background: var(--m3-surface-container-low);
 }
 
+.nilo-audio-clip--with-del {
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+}
+
 .nilo-audio-clip--error {
   grid-template-columns: auto 1fr;
   font-size: 12px;
