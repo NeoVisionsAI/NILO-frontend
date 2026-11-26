@@ -58,3 +58,38 @@
   border: 1px solid var(--m3-outline-variant);
   padding: 0 6px;
 }
+
+.nilo-lm-viewer--stage {
+  flex: 1;
+  justify-content: stretch;
+  background: #000;
+  gap: 0;
+}
+
+.nilo-lm-viewer__canvas--stage {
+  flex: 1;
+  width: 100%;
+  max-width: none;
+  border: none;
+  border-radius: 0;
+  aspect-ratio: 16 / 10;
+  object-fit: contain;
+}
+
+.nilo-lm-viewer--stage .nilo-lm-viewer__controls {
+  max-width: none;
+  width: 100%;
+  padding: 10px 14px;
+  background: #0a0a0a;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.nilo-lm-viewer--stage .nilo-lm-viewer__fps {
+  color: rgba(248, 250, 252, 0.88);
+}
+
+.nilo-lm-viewer--stage .nilo-lm-viewer__fps input {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #f8fafc;
+}

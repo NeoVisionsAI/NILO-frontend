@@ -6,11 +6,10 @@ import {
   emptyPatientStats,
   type PatientExploreStats,
 } from '@/lib/explore-patient-stats'
-import { fetchLandmarksDocument } from '@/lib/fetch-landmarks-document'
 import { isoInRange, sessionBounds, sessionOverlapsInterval } from '@/lib/explore-time'
+import { landmarkRecordedAtMs } from '@/lib/landmark-object-key-datetime'
 import { isVoiceNoteClip } from '@/lib/audio-waveform'
 import { parseApiDateMs } from '@/lib/parse-api-datetime'
-import type { ParsedLandmarks } from '@/lib/landmarks-json'
 import { audioRecordingService } from '@/services/audio-recording.service'
 import { landmarksService, type LandmarksOut } from '@/services/landmarks.service'
 import { monitoringSessionService } from '@/services/monitoring-session.service'
@@ -24,7 +23,7 @@ import type {
 } from '@/types/monitoring-session'
 import { useClinicalPatientResolution } from '../components/condata/useClinicalPatientResolution'
 import { ExploreSideNav, type ExploreSection } from './explore/ExploreSideNav'
-import { LandmarksMeshViewer } from './explore/LandmarksMeshViewer'
+import { ExploreLandmarksPanel } from './explore/ExploreLandmarksPanel'
 import { PatientExploreSummary } from './explore/PatientExploreSummary'
 import { PhysioExplorePanel } from './explore/PhysioExplorePanel'
 import { ExploreAudioPanel } from './explore/ExploreAudioPanel'
@@ -102,9 +101,6 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
   const [textSearch, setTextSearch] = useState('')
   const [timeFilterOn, setTimeFilterOn] = useState(false)
   const [timeRangePct, setTimeRangePct] = useState<[number, number]>([0, 100])
-  const [landmarkPreview, setLandmarkPreview] = useState<ParsedLandmarks | null>(null)
-  const [landmarkPreviewTitle, setLandmarkPreviewTitle] = useState('')
-  const [landmarkPreviewLoading, setLandmarkPreviewLoading] = useState(false)
   const [audioClipCounts, setAudioClipCounts] = useState<{ voice: number | null; ambient: number | null }>({
     voice: null,
     ambient: null,
@@ -248,7 +244,6 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
       if (!clinicalPatient?.id || !selectedSessionId) return
       setCategory(cat)
       setDetailLoading(true)
-      setLandmarkPreview(null)
       try {
         if (cat === 'face' || cat === 'pose' || cat === 'pain') {
           const all = await landmarksService.list({
@@ -304,7 +299,6 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
   )
 
   useEffect(() => {
-    setLandmarkPreview(null)
     setTimeFilterOn(false)
     setTimeRangePct([0, 100])
   }, [selectedSessionId])
@@ -319,20 +313,13 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
     setExploreSection(section)
   }, [])
 
-  async function openLandmarkViewer(row: LandmarksOut) {
-    if (!selectedSessionId) return
-    setLandmarkPreviewLoading(true)
-    setLandmarkPreview(null)
-    try {
-      const doc = await fetchLandmarksDocument(selectedSessionId, row)
-      setLandmarkPreview(doc)
-      setLandmarkPreviewTitle(row.object_key.split('/').slice(-2).join('/') || row.id)
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'No se pudo abrir el JSON de landmarks.')
-    } finally {
-      setLandmarkPreviewLoading(false)
-    }
-  }
+  const filteredLandmarks = useMemo(() => {
+    return landmarks.filter((row) => {
+      const ms = landmarkRecordedAtMs(row.object_key)
+      if (Number.isNaN(ms)) return true
+      return inSessionRange(new Date(ms).toISOString())
+    })
+  }, [inSessionRange, landmarks])
 
   if (resolving) {
     return (
@@ -352,7 +339,6 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
     )
   }
 
-  const filteredLandmarks = landmarks
   const filteredAudio = audioClips.filter((c) => inSessionRange(c.start_ts))
   const filteredVoiceNotes = filteredAudio.filter((c) => isVoiceNoteClip(c.kind))
   const filteredAmbientAudio = filteredAudio.filter((c) => !isVoiceNoteClip(c.kind))
@@ -508,41 +494,17 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
             <section className="nilo-explore__detail">
               {detailLoading && <p className="nilo-explore__placeholder">Cargando…</p>}
 
-        {landmarkPreviewLoading && <p className="nilo-explore__placeholder">Descargando malla…</p>}
-        {landmarkPreview && !landmarkPreviewLoading && (
-          <LandmarksMeshViewer data={landmarkPreview} title={landmarkPreviewTitle} />
-        )}
-
-        {category === 'face' || category === 'pose' || category === 'pain' ? (
-          <>
-            {category === 'pain' && (
-              <p className="nilo-explore__pain-hint">
-                {overview?.pain_events ?? 0} episodios de dolor en resumen · la expresión facial comparte los mismos
-                lotes de landmarks.
-              </p>
-            )}
-            <ul className="nilo-explore__list">
-              {filteredLandmarks.map((row) => (
-                <li key={row.id} className="nilo-explore__row nilo-explore__row--action">
-                  <MaterialIcon
-                    name={category === 'pose' ? 'accessibility_new' : 'face'}
-                    size={22}
-                  />
-                  <div className="nilo-explore__row-text">
-                    <strong>{row.id.slice(-8)}</strong>
-                    <span title={row.object_key}>{row.object_key.split('/').slice(-2).join('/')}</span>
-                    <span>{row.size_bytes != null ? `${Math.round(row.size_bytes / 1024)} KB` : row.status}</span>
-                  </div>
-                  <button type="button" className="nilo-explore__play" onClick={() => void openLandmarkViewer(row)}>
-                    Visualizar malla
-                  </button>
-                </li>
-              ))}
-              {!detailLoading && filteredLandmarks.length === 0 && (
-                <p className="nilo-explore__placeholder">Sin lotes en esta sesión.</p>
-              )}
-            </ul>
-          </>
+        {(category === 'face' || category === 'pose' || category === 'pain') && selectedSessionId ? (
+          <ExploreLandmarksPanel
+            sessionId={selectedSessionId}
+            rows={filteredLandmarks}
+            loading={detailLoading}
+            painHint={
+              category === 'pain'
+                ? `${overview?.pain_events ?? 0} episodios de dolor en resumen · misma señal que expresión facial.`
+                : undefined
+            }
+          />
         ) : null}
 
         {category === 'voice' && selectedSessionId ? (

@@ -31,9 +31,11 @@ const POSE_CONNECTIONS: [number, number][] = [
 interface LandmarksMeshViewerProps {
   data: ParsedLandmarks
   title?: string
+  /** Vista embebida en el panel explorar (fondo negro a ancho completo). */
+  layout?: 'default' | 'stage'
 }
 
-export function LandmarksMeshViewer({ data, title }: LandmarksMeshViewerProps) {
+export function LandmarksMeshViewer({ data, title, layout = 'default' }: LandmarksMeshViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [frameIndex, setFrameIndex] = useState(0)
   const [playbackFps, setPlaybackFps] = useState(data.fps || 15)
@@ -48,7 +50,7 @@ export function LandmarksMeshViewer({ data, title }: LandmarksMeshViewerProps) {
     if (!ctx) return
     const w = canvas.width
     const h = canvas.height
-    ctx.fillStyle = '#0f172a'
+    ctx.fillStyle = layout === 'stage' ? '#000000' : '#0f172a'
     ctx.fillRect(0, 0, w, h)
 
     const frame = data.frames[frameIndex]
@@ -94,7 +96,7 @@ export function LandmarksMeshViewer({ data, title }: LandmarksMeshViewerProps) {
       padding,
       h - padding,
     )
-  }, [data, frameCount, frameIndex])
+  }, [data, frameCount, frameIndex, layout])
 
   useEffect(() => {
     draw()
@@ -108,10 +110,15 @@ export function LandmarksMeshViewer({ data, title }: LandmarksMeshViewerProps) {
     return () => window.clearInterval(interval)
   }, [playing, playbackFps, frameCount])
 
+  const rootClass =
+    layout === 'stage' ? 'nilo-lm-viewer nilo-lm-viewer--stage' : 'nilo-lm-viewer'
+  const canvasClass =
+    layout === 'stage' ? 'nilo-lm-viewer__canvas nilo-lm-viewer__canvas--stage' : 'nilo-lm-viewer__canvas'
+
   return (
-    <div className="nilo-lm-viewer">
-      {title && <p className="nilo-lm-viewer__title">{title}</p>}
-      <canvas ref={canvasRef} className="nilo-lm-viewer__canvas" width={640} height={400} />
+    <div className={rootClass}>
+      {title && layout === 'default' && <p className="nilo-lm-viewer__title">{title}</p>}
+      <canvas ref={canvasRef} className={canvasClass} width={640} height={400} />
       <div className="nilo-lm-viewer__controls">
         <button type="button" className="nilo-lm-viewer__btn" onClick={() => setPlaying((p) => !p)}>
           <MaterialIcon name={playing ? 'pause' : 'play_arrow'} size={22} />
