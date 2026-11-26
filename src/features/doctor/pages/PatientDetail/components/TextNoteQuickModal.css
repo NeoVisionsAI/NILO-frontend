@@ -1,0 +1,184 @@
+.nilo-tnote-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.nilo-tnote-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(2px);
+}
+
+.nilo-tnote-modal__panel {
+  position: relative;
+  width: min(480px, 100%);
+  max-height: min(90vh, 640px);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 22px 18px;
+  border-radius: 20px;
+  background: var(--m3-surface-container-lowest, #fff);
+  border: 1px solid var(--m3-outline-variant);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
+}
+
+.nilo-tnote-modal__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.nilo-tnote-modal__head-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--m3-primary-fixed, rgba(0, 97, 148, 0.12));
+  color: var(--m3-primary);
+  flex-shrink: 0;
+}
+
+.nilo-tnote-modal__head > div:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+
+.nilo-tnote-modal__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--m3-on-surface);
+}
+
+.nilo-tnote-modal__subtitle {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--m3-on-surface-variant);
+}
+
+.nilo-tnote-modal__close {
+  width: 36px;
+  height: 36px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--m3-on-surface-variant);
+}
+
+.nilo-tnote-modal__close:hover {
+  background: var(--m3-surface-container-high);
+}
+
+.nilo-tnote-modal__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--m3-surface-container-low);
+  border: 1px solid var(--m3-outline-variant);
+}
+
+.nilo-tnote-modal__meta-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--m3-on-surface-variant);
+}
+
+.nilo-tnote-modal__meta-row > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.nilo-tnote-modal__meta-k {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--m3-outline);
+}
+
+.nilo-tnote-modal__meta-v {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--m3-on-surface);
+  word-break: break-word;
+}
+
+.nilo-tnote-modal__field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nilo-tnote-modal__field-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--m3-on-surface);
+}
+
+.nilo-tnote-modal__textarea {
+  width: 100%;
+  min-height: 140px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--m3-outline-variant);
+  background: var(--m3-surface);
+  font-size: 14px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.nilo-tnote-modal__textarea:focus {
+  outline: 2px solid color-mix(in srgb, var(--m3-primary) 35%, transparent);
+  border-color: var(--m3-primary);
+}
+
+.nilo-tnote-modal__textarea:disabled {
+  opacity: 0.65;
+}
+
+.nilo-tnote-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.nilo-tnote-modal__btn {
+  min-height: 40px;
+  padding: 0 18px;
+  border-radius: 9999px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.nilo-tnote-modal__btn--ghost {
+  background: transparent;
+  border: 1px solid var(--m3-outline-variant);
+  color: var(--m3-on-surface);
+}
+
+.nilo-tnote-modal__btn--primary {
+  background: var(--m3-primary);
+  color: var(--m3-on-primary);
+}
+
+.nilo-tnote-modal__btn--primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}

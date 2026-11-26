@@ -241,6 +241,9 @@ function AudioClipRow({
   return (
     <article className={`nilo-audio-clip${onDelete ? ' nilo-audio-clip--with-del' : ''}`}>
       <div className="nilo-audio-clip__leading">
+        {onDelete ? (
+          <ExploreDeleteButton entityLabel="clip de audio" onDelete={() => onDelete(clip)} />
+        ) : null}
         <button
           type="button"
           className="nilo-explore-round-btn nilo-explore-round-btn--play"
@@ -293,11 +296,6 @@ function AudioClipRow({
           }}
         />
       </div>
-      {onDelete ? (
-        <div className="nilo-audio-clip__trailing">
-          <ExploreDeleteButton entityLabel="clip de audio" onDelete={() => onDelete(clip)} />
-        </div>
-      ) : null}
     </article>
   )
 }

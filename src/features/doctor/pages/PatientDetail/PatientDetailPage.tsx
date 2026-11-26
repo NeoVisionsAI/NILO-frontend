@@ -36,6 +36,8 @@ import {
   setIngestionDevPanelVisible,
 } from '@/dev/ingestion-dev-panel'
 import { SessionIngestionDevPanel } from './components/dev/SessionIngestionDevPanel'
+import { TextNoteQuickModal } from './components/TextNoteQuickModal'
+import './components/TextNoteQuickModal.css'
 import { PatientDetailHeader, type PatientViewMode } from './components/PatientDetailHeader'
 import { SessionExploreTab } from './tabs/SessionExploreTab'
 import './PatientDetailPage.css'
@@ -89,6 +91,7 @@ export function PatientDetailPage() {
   const [activeMonitoringSession, setActiveMonitoringSession] = useState<MonitoringSession | null>(null)
   const [loadingActiveSession, setLoadingActiveSession] = useState(false)
   const [showIngestionDev, setShowIngestionDev] = useState(() => isIngestionDevPanelVisible())
+  const [textNoteModalOpen, setTextNoteModalOpen] = useState(false)
 
   const activeSection = findPatientSection(recordSections, activeSectionId) ?? recordSections[0]
 
@@ -221,7 +224,12 @@ export function PatientDetailPage() {
       return
     }
 
-    if (action.actionKey === 'text-note' || action.actionKey === 'audio-note') {
+    if (action.actionKey === 'text-note') {
+      setTextNoteModalOpen(true)
+      return
+    }
+
+    if (action.actionKey === 'audio-note') {
       openSessionNotesModule(action)
       return
     }
@@ -570,6 +578,17 @@ export function PatientDetailPage() {
       </div>
 
       <PatientQuickActionsFab onSelect={openModule} />
+
+      <TextNoteQuickModal
+        open={textNoteModalOpen}
+        patientName={fullName}
+        userPatientId={p.id}
+        nodeId={assignedNodeId || undefined}
+        session={activeMonitoringSession}
+        sessionIdFallback={ingestionSessionId}
+        sessionLoading={loadingActiveSession}
+        onClose={() => setTextNoteModalOpen(false)}
+      />
 
       <ConfirmDialog
         open={confirmDelete}
