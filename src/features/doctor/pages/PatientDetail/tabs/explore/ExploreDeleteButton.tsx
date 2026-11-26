@@ -2,6 +2,7 @@ import { useState, type MouseEvent, type PointerEvent } from 'react'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { toast } from '@/lib/toast'
+import '../../components/condata/CondataModuleLayout.css'
 import './ExploreDeleteButton.css'
 
 interface ExploreDeleteButtonProps {
@@ -27,15 +28,17 @@ export function ExploreDeleteButton({
   }
 
   return (
-  <div className="nilo-explore-del-host">
+    <div className="nilo-explore-del-host">
       <button
         type="button"
-        className={`nilo-explore-del${compact ? ' nilo-explore-del--compact' : ''}`}
+        className={`nilo-cmodule__action-btn nilo-cmodule__action-btn--danger nilo-explore-del${compact ? ' nilo-explore-del--compact' : ''}`}
         aria-label={`Eliminar ${entityLabel}`}
         title="Eliminar"
+        style={{ cursor: 'pointer' }}
         onClick={openConfirm}
       >
         <MaterialIcon name="delete" size={compact ? 18 : 20} />
+        <span className="nilo-explore-del__label">Eliminar</span>
       </button>
       <ConfirmDialog
         open={open}

@@ -29,10 +29,12 @@
 
 .nilo-audio-clip__actions {
   position: relative;
-  z-index: 3;
+  z-index: 130;
   display: flex;
   align-items: center;
   flex-shrink: 0;
+  cursor: pointer !important;
+  pointer-events: auto !important;
 }
 
 .nilo-audio-clip--error {
