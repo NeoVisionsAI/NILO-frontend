@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
-import { computeWaveformPeaks, drawSmoothWaveform } from '@/lib/audio-waveform'
+import {
+  AUDIO_WAVE_PLACEHOLDER_PEAKS,
+  computeWaveformPeaks,
+  drawSmoothWaveform,
+} from '@/lib/audio-waveform'
 import { parseApiDateMs } from '@/lib/parse-api-datetime'
 import {
   fetchClinicalAudioPlaybackUrl,
@@ -29,14 +33,22 @@ function formatClipTime(iso: string): string {
   return new Date(ms).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })
 }
 
+function audioDurationSeconds(el: HTMLAudioElement, clip: AudioRecording): number {
+  if (Number.isFinite(el.duration) && el.duration > 0) return el.duration
+  if (clip.duration_seconds != null && clip.duration_seconds > 0) return clip.duration_seconds
+  return 0
+}
+
 function AudioWaveformCanvas({
   peaks,
   progress,
   onSeek,
+  pending,
 }: {
   peaks: number[]
   progress: number
   onSeek: (ratio: number) => void
+  pending?: boolean
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
@@ -103,7 +115,7 @@ function AudioWaveformCanvas({
   return (
     <canvas
       ref={canvasRef}
-      className="nilo-audio-clip__wave"
+      className={`nilo-audio-clip__wave${pending ? ' nilo-audio-clip__wave--pending' : ''}`}
       role="slider"
       aria-label="Posición en el audio"
       aria-valuemin={0}
@@ -150,30 +162,41 @@ function AudioClipRow({ clip, url }: { clip: AudioRecording; url: string | null 
   const togglePlay = useCallback(() => {
     const el = audioRef.current
     if (!el) return
-    if (el.paused) void el.play()
-    else el.pause()
+    if (el.paused) {
+      setPlaying(true)
+      const dur = audioDurationSeconds(el, clip)
+      if (dur > 0) setProgress(Math.min(1, el.currentTime / dur))
+      void el.play().catch(() => setPlaying(false))
+    } else {
+      el.pause()
+    }
   }, [])
 
-  const seek = useCallback((ratio: number) => {
-    const el = audioRef.current
-    if (!el || !Number.isFinite(el.duration)) return
-    el.currentTime = ratio * el.duration
-    setProgress(ratio)
-  }, [])
+  const seek = useCallback(
+    (ratio: number) => {
+      const el = audioRef.current
+      const dur = el ? audioDurationSeconds(el, clip) : 0
+      if (!el || dur <= 0) return
+      el.currentTime = ratio * dur
+      setProgress(ratio)
+    },
+    [clip],
+  )
 
   useEffect(() => {
     if (!playing) return
     let raf = 0
     const tick = () => {
       const el = audioRef.current
-      if (el && Number.isFinite(el.duration) && el.duration > 0) {
-        setProgress(el.currentTime / el.duration)
+      if (el) {
+        const dur = audioDurationSeconds(el, clip)
+        if (dur > 0) setProgress(Math.min(1, el.currentTime / dur))
       }
       raf = requestAnimationFrame(tick)
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [playing])
+  }, [clip, playing])
 
   if (!url) {
     return (
@@ -196,15 +219,12 @@ function AudioClipRow({ clip, url }: { clip: AudioRecording; url: string | null 
             {clip.duration_seconds != null ? `${Math.round(clip.duration_seconds)} s` : clip.status}
           </span>
         </div>
-        {peaksLoading && <div className="nilo-audio-clip__wave-skel" aria-hidden />}
-        {peaks && !peaksLoading && (
-          <AudioWaveformCanvas peaks={peaks} progress={progress} onSeek={seek} />
-        )}
-        {!peaks && !peaksLoading && (
-          <button type="button" className="nilo-audio-clip__fallback" onClick={togglePlay}>
-            Reproducir audio
-          </button>
-        )}
+        <AudioWaveformCanvas
+          peaks={peaks ?? AUDIO_WAVE_PLACEHOLDER_PEAKS}
+          progress={progress}
+          onSeek={seek}
+          pending={peaksLoading || peaks == null}
+        />
         {clip.transcription && (
           <p className="nilo-audio-clip__transcript" title={clip.transcription}>
             {clip.transcription}
@@ -214,9 +234,21 @@ function AudioClipRow({ clip, url }: { clip: AudioRecording; url: string | null 
       <audio
         ref={audioRef}
         className="nilo-audio-clip__audio-hidden"
-        preload="metadata"
+        preload="auto"
         src={url}
-        onPlay={() => setPlaying(true)}
+        onLoadedMetadata={() => {
+          const el = audioRef.current
+          if (!el || !playing) return
+          const dur = audioDurationSeconds(el, clip)
+          if (dur > 0) setProgress(Math.min(1, el.currentTime / dur))
+        }}
+        onPlay={() => {
+          setPlaying(true)
+          const el = audioRef.current
+          if (!el) return
+          const dur = audioDurationSeconds(el, clip)
+          if (dur > 0) setProgress(Math.min(1, el.currentTime / dur))
+        }}
         onPause={() => setPlaying(false)}
         onEnded={() => {
           setPlaying(false)

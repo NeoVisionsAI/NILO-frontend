@@ -1,3 +1,9 @@
+/** Silueta neutra mientras se decodifica el fichero (misma longitud que picos reales). */
+export const AUDIO_WAVE_PLACEHOLDER_PEAKS: number[] = Array.from({ length: 140 }, (_, i) => {
+  const t = i / 140
+  return 0.07 + 0.14 * (Math.sin(t * Math.PI * 6.5) ** 2) * (0.55 + 0.45 * Math.sin(t * Math.PI * 2.1 + 0.6))
+})
+
 /** Suaviza picos para una silueta más continua (media móvil). */
 export function smoothWaveformPeaks(peaks: number[], radius = 3): number[] {
   if (peaks.length < 3) return peaks

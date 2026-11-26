@@ -71,6 +71,10 @@
   background: color-mix(in srgb, var(--m3-surface-container) 70%, transparent);
 }
 
+.nilo-audio-clip__wave--pending {
+  opacity: 0.72;
+}
+
 .nilo-audio-clip__wave-skel {
   height: 42px;
   border-radius: 8px;
