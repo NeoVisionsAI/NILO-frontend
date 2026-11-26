@@ -64,14 +64,15 @@
 
 .nilo-audio-clip__wave {
   width: 100%;
-  height: 36px;
+  height: 42px;
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: 10px;
   display: block;
+  background: color-mix(in srgb, var(--m3-surface-container) 70%, transparent);
 }
 
 .nilo-audio-clip__wave-skel {
-  height: 36px;
+  height: 42px;
   border-radius: 8px;
   background: linear-gradient(
     90deg,

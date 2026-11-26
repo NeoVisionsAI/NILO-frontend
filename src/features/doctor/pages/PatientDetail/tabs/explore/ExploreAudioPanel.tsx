@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
-import { computeWaveformPeaks } from '@/lib/audio-waveform'
+import { computeWaveformPeaks, drawSmoothWaveform } from '@/lib/audio-waveform'
 import { parseApiDateMs } from '@/lib/parse-api-datetime'
 import {
   fetchClinicalAudioPlaybackUrl,
@@ -52,22 +52,52 @@ function AudioWaveformCanvas({
     if (!ctx) return
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     ctx.clearRect(0, 0, w, h)
+
     const mid = h / 2
-    const barW = w / peaks.length
-    const playedBars = Math.floor(progress * peaks.length)
-    for (let i = 0; i < peaks.length; i += 1) {
-      const amp = peaks[i] * (h * 0.42)
-      const x = i * barW + barW * 0.15
-      const bw = Math.max(1.2, barW * 0.7)
-      ctx.fillStyle = i <= playedBars ? '#2563eb' : 'rgba(100, 116, 139, 0.55)'
-      if (typeof ctx.roundRect === 'function') {
-        ctx.beginPath()
-        ctx.roundRect(x, mid - amp, bw, amp * 2, 1)
-        ctx.fill()
-      } else {
-        ctx.fillRect(x, mid - amp, bw, amp * 2)
-      }
+    const padX = 2
+    const drawW = w - padX * 2
+
+    const grayGrad = ctx.createLinearGradient(0, 0, 0, h)
+    grayGrad.addColorStop(0, 'rgba(148, 163, 184, 0.55)')
+    grayGrad.addColorStop(0.45, 'rgba(148, 163, 184, 0.22)')
+    grayGrad.addColorStop(0.55, 'rgba(148, 163, 184, 0.22)')
+    grayGrad.addColorStop(1, 'rgba(148, 163, 184, 0.55)')
+
+    const blueGrad = ctx.createLinearGradient(0, 0, 0, h)
+    blueGrad.addColorStop(0, 'rgba(37, 99, 235, 0.92)')
+    blueGrad.addColorStop(0.42, 'rgba(59, 130, 246, 0.38)')
+    blueGrad.addColorStop(0.58, 'rgba(59, 130, 246, 0.38)')
+    blueGrad.addColorStop(1, 'rgba(37, 99, 235, 0.92)')
+
+    ctx.save()
+    ctx.translate(padX, 0)
+    drawSmoothWaveform(ctx, peaks, drawW, h, grayGrad)
+
+    const playedPx = Math.max(0, progress * drawW)
+    if (playedPx > 0.5) {
+      ctx.save()
+      ctx.beginPath()
+      ctx.rect(0, 0, playedPx, h)
+      ctx.clip()
+      drawSmoothWaveform(ctx, peaks, drawW, h, blueGrad)
+      ctx.restore()
     }
+    ctx.restore()
+
+    const needleX = padX + progress * drawW
+    ctx.strokeStyle = 'rgba(37, 99, 235, 0.9)'
+    ctx.lineWidth = 1.5
+    ctx.beginPath()
+    ctx.moveTo(needleX, 3)
+    ctx.lineTo(needleX, h - 3)
+    ctx.stroke()
+
+    ctx.strokeStyle = 'rgba(15, 23, 42, 0.06)'
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    ctx.moveTo(padX, mid)
+    ctx.lineTo(w - padX, mid)
+    ctx.stroke()
   }, [peaks, progress])
 
   return (
