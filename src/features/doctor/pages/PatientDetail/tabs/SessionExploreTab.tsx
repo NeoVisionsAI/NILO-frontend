@@ -6,11 +6,10 @@ import {
   emptyPatientStats,
   type PatientExploreStats,
 } from '@/lib/explore-patient-stats'
-import { isoInRange, sessionBounds, sessionOverlapsInterval } from '@/lib/explore-time'
+import { isoInRange, sessionBounds } from '@/lib/explore-time'
 import { matchesLandmarkCaptureKind } from '@/lib/landmark-capture-kind'
 import { landmarkRecordedAtMs } from '@/lib/landmark-object-key-datetime'
 import { isVoiceNoteClip } from '@/lib/audio-waveform'
-import { parseApiDateMs } from '@/lib/parse-api-datetime'
 import { audioRecordingService } from '@/services/audio-recording.service'
 import { landmarksService, type LandmarksCaptureKind, type LandmarksOut } from '@/services/landmarks.service'
 import { monitoringSessionService } from '@/services/monitoring-session.service'
@@ -28,16 +27,17 @@ import { ExploreLandmarksPanel } from './explore/ExploreLandmarksPanel'
 import { PatientExploreSummary } from './explore/PatientExploreSummary'
 import { PhysioExplorePanel } from './explore/PhysioExplorePanel'
 import { ExploreAudioPanel } from './explore/ExploreAudioPanel'
+import { ExploreSessionHeaderActions } from './explore/ExploreSessionPicker'
 import { SessionTimeRangeBar } from './explore/SessionTimeRangeBar'
 import './SessionExploreTab.css'
 import './explore/ExploreSideNav.css'
 import './explore/ExploreAudioPanel.css'
 import './explore/PatientExploreSummary.css'
+import './explore/ExploreSessionPicker.css'
 import './explore/SessionTimeRangeBar.css'
 
 const SECTION_TITLES: Record<ExploreSection, string> = {
   summary: 'Resumen del paciente',
-  session: 'Sesión y filtros',
   face: 'Expresión facial',
   pose: 'Postura / esqueleto',
   voice: 'Notas de voz',
@@ -56,33 +56,12 @@ interface SessionExploreTabProps {
   preferredSessionId?: string | null
 }
 
-function formatDt(iso: string): string {
-  const ms = parseApiDateMs(iso)
-  if (Number.isNaN(ms)) return iso
-  return new Date(ms).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' })
-}
-
-function formatSessionOption(session: MonitoringSession): string {
-  const name = session.display_name?.trim()
-  const start = formatDt(session.started_at)
-  if (session.status === 'active') {
-    const base = name ? `${name} · ${start}` : start
-    return `${base} · en curso`
-  }
-  const end = session.ended_at ? formatDt(session.ended_at) : 'sin cierre'
-  const base = name ? `${name}` : 'Sesión'
-  return `${base} · ${start} → ${end}`
-}
-
 export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }: SessionExploreTabProps) {
   const { clinicalPatient, loading: resolving } = useClinicalPatientResolution(userPatientId)
   const [sessions, setSessions] = useState<MonitoringSession[]>([])
   const [sessionsLoading, setSessionsLoading] = useState(false)
-  const [sessionFilterStart, setSessionFilterStart] = useState('')
-  const [sessionFilterEnd, setSessionFilterEnd] = useState('')
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
   const [overview, setOverview] = useState<SessionOverview | null>(null)
-  const [overviewLoading, setOverviewLoading] = useState(false)
   const [patientStats, setPatientStats] = useState<PatientExploreStats>(emptyPatientStats(true))
   const [exploreSection, setExploreSection] = useState<ExploreSection>('summary')
   const [category, setCategory] = useState<ExploreCategory | null>(null)
@@ -150,19 +129,6 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
     })
   }, [sessions, preferredSessionId])
 
-  const intervalFilterOn = Boolean(sessionFilterStart && sessionFilterEnd)
-
-  const filteredSessions = useMemo(() => {
-    if (!intervalFilterOn) return sessions
-    return sessions.filter((s) => sessionOverlapsInterval(s, sessionFilterStart, sessionFilterEnd))
-  }, [intervalFilterOn, sessionFilterEnd, sessionFilterStart, sessions])
-
-  useEffect(() => {
-    if (selectedSessionId && !filteredSessions.some((s) => s.id === selectedSessionId)) {
-      setSelectedSessionId(filteredSessions[0]?.id ?? null)
-    }
-  }, [filteredSessions, selectedSessionId])
-
   const selectedSession = sessions.find((s) => s.id === selectedSessionId) ?? null
 
   const { fromMs, toMs } = useMemo(() => {
@@ -188,7 +154,6 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
       return
     }
     let cancelled = false
-    setOverviewLoading(true)
     void monitoringSessionService
       .overview(selectedSessionId, { silent: true })
       .then((o) => {
@@ -196,9 +161,6 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
       })
       .catch(() => {
         if (!cancelled) setOverview(null)
-      })
-      .finally(() => {
-        if (!cancelled) setOverviewLoading(false)
       })
     return () => {
       cancelled = true
@@ -300,7 +262,7 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
 
   useEffect(() => {
     if (!selectedSessionId) return
-    if (exploreSection === 'summary' || exploreSection === 'session') return
+    if (exploreSection === 'summary') return
     void loadCategory(exploreSection as ExploreCategory)
   }, [exploreSection, loadCategory, selectedSessionId])
 
@@ -343,8 +305,8 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
     .filter((n) => !textQuery || n.body.toLowerCase().includes(textQuery))
   const filteredPhysio = physioReadings.filter((r) => inSessionRange(r.timestamp))
 
-  const showDataPane =
-    exploreSection !== 'summary' && exploreSection !== 'session' && Boolean(selectedSessionId)
+  const showDataPane = exploreSection !== 'summary' && Boolean(selectedSessionId)
+  const showSessionTimeBar = exploreSection !== 'summary' && Boolean(selectedSession)
 
   const isLandmarkSection =
     exploreSection === 'face' || exploreSection === 'pose' || exploreSection === 'pain'
@@ -365,130 +327,28 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
       <div className="nilo-explore__main">
         <header className="nilo-explore__pane-head">
           <h2 className="nilo-explore__pane-title">{SECTION_TITLES[exploreSection]}</h2>
-          {selectedSession && (
-            <button
-              type="button"
-              className="nilo-explore__pane-session"
-              title={`Copiar id: ${selectedSession.id}`}
-              onClick={() => {
-                void navigator.clipboard.writeText(selectedSession.id).then(() => toast.success('Id de sesión copiado.'))
-              }}
-            >
-              {selectedSession.status === 'active' && <span className="nilo-explore__pane-session-dot" aria-hidden />}
-              <span className="nilo-explore__pane-session-label">
-                {selectedSession.display_name?.trim() || formatDt(selectedSession.started_at)}
-              </span>
-              <code className="nilo-explore__pane-session-id">{selectedSession.id.slice(-10)}</code>
-            </button>
-          )}
+          <ExploreSessionHeaderActions
+            sessions={sessions}
+            selectedSessionId={selectedSessionId}
+            sessionsLoading={sessionsLoading}
+            onSessionChange={setSelectedSessionId}
+            onViewAll={() => toast.info('«Ver todo»: próximamente. Puede ser costoso en sesiones largas.')}
+          />
         </header>
 
         <div className="nilo-explore__pane-scroll" aria-live="polite">
           {exploreSection === 'summary' && <PatientExploreSummary stats={patientStats} />}
 
-          {exploreSection === 'session' && (
-            <div className="nilo-explore__session-pane">
-              <header className="nilo-explore__toolbar">
-                <div className="nilo-explore__interval">
-                  <label className="nilo-explore__session-dt">
-                    <span>Inicio</span>
-                    <input
-                      type="datetime-local"
-                      value={sessionFilterStart}
-                      onChange={(e) => setSessionFilterStart(e.target.value)}
-                    />
-                  </label>
-                  <label className="nilo-explore__session-dt">
-                    <span>Fin</span>
-                    <input
-                      type="datetime-local"
-                      value={sessionFilterEnd}
-                      onChange={(e) => setSessionFilterEnd(e.target.value)}
-                    />
-                  </label>
-                </div>
-                {(sessionFilterStart || sessionFilterEnd) && (
-                  <button
-                    type="button"
-                    className="nilo-explore__filter-clear"
-                    onClick={() => {
-                      setSessionFilterStart('')
-                      setSessionFilterEnd('')
-                    }}
-                  >
-                    Limpiar intervalo
-                  </button>
-                )}
-                <label className="nilo-explore__session-pick">
-                  <span>Sesión</span>
-                  <select
-                    value={selectedSessionId ?? ''}
-                    disabled={sessionsLoading || filteredSessions.length === 0}
-                    onChange={(e) => setSelectedSessionId(e.target.value || null)}
-                  >
-                    {filteredSessions.length === 0 ? (
-                      <option value="">
-                        {intervalFilterOn ? 'Sin sesiones en ese intervalo' : 'Sin sesiones'}
-                      </option>
-                    ) : (
-                      filteredSessions.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {formatSessionOption(s)}
-                        </option>
-                      ))
-                    )}
-                  </select>
-                </label>
-                {!intervalFilterOn && (sessionFilterStart || sessionFilterEnd) && (
-                  <p className="nilo-explore__interval-hint">Indica inicio y fin para filtrar sesiones.</p>
-                )}
-              </header>
-
-              {selectedSession?.status !== 'active' && selectedSession && (
-                <div className="nilo-explore__session-card">
-                  <div className="nilo-explore__session-card-main">
-                    <h3 className="nilo-explore__session-title">
-                      {selectedSession.display_name?.trim() || 'Sesión archivada'}
-                    </h3>
-                    <p className="nilo-explore__session-dates">
-                      <MaterialIcon name="event" size={16} />
-                      {formatDt(selectedSession.started_at)}
-                      {selectedSession.ended_at ? ` → ${formatDt(selectedSession.ended_at)}` : ''}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    className="nilo-explore__id-pill"
-                    title="Id sesión (Mongo / MinIO)"
-                    onClick={() => {
-                      void navigator.clipboard
-                        .writeText(selectedSession.id)
-                        .then(() => toast.success('Id copiado.'))
-                    }}
-                  >
-                    <code>{selectedSession.id}</code>
-                    <MaterialIcon name="content_copy" size={16} />
-                  </button>
-                  {overviewLoading && <span className="nilo-explore__loading">Actualizando conteos…</span>}
-                </div>
-              )}
-
-              {selectedSession && (
-                <SessionTimeRangeBar
-                  session={selectedSession}
-                  enabled={timeFilterOn}
-                  onEnabledChange={setTimeFilterOn}
-                  rangePct={timeRangePct}
-                  onRangePctChange={setTimeRangePct}
-                  fromMs={fromMs}
-                  toMs={toMs}
-                />
-              )}
-
-              {!selectedSession && (
-                <p className="nilo-explore__placeholder">Selecciona o filtra una sesión para explorar sus datos.</p>
-              )}
-            </div>
+          {showSessionTimeBar && selectedSession && (
+            <SessionTimeRangeBar
+              session={selectedSession}
+              enabled={timeFilterOn}
+              onEnabledChange={setTimeFilterOn}
+              rangePct={timeRangePct}
+              onRangePctChange={setTimeRangePct}
+              fromMs={fromMs}
+              toMs={toMs}
+            />
           )}
 
           {showDataPane && (
@@ -571,12 +431,9 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
             </section>
           )}
 
-          {exploreSection !== 'summary' &&
-            exploreSection !== 'session' &&
-            !showDataPane &&
-            !selectedSessionId && (
-              <p className="nilo-explore__placeholder">Primero elige una sesión en «Sesión y filtros».</p>
-            )}
+          {exploreSection !== 'summary' && !selectedSessionId && (
+            <p className="nilo-explore__placeholder">Elige una sesión en el selector de la cabecera.</p>
+          )}
         </div>
       </div>
     </div>

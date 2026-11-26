@@ -4,7 +4,6 @@ import './ExploreSideNav.css'
 
 export type ExploreSection =
   | 'summary'
-  | 'session'
   | 'face'
   | 'pose'
   | 'voice'
@@ -29,7 +28,6 @@ interface NavCategory {
 
 const PRIMARY: Array<{ id: ExploreSection; label: string; icon: string }> = [
   { id: 'summary', label: 'Resumen', icon: 'dashboard' },
-  { id: 'session', label: 'Sesión y filtros', icon: 'tune' },
 ]
 
 const DATA_CATEGORIES: NavCategory[] = [
@@ -92,7 +90,7 @@ export function ExploreSideNav({
 
       <p className="nilo-explore-nav__group">Datos de sesión</p>
       {!sessionSelected && (
-        <p className="nilo-explore-nav__hint">Elige una sesión en «Sesión y filtros».</p>
+        <p className="nilo-explore-nav__hint">Elige una sesión en la cabecera.</p>
       )}
       {DATA_CATEGORIES.map((cat) => {
         const count = categoryBadge(cat, overview, audioClipCounts)

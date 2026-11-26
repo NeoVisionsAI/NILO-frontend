@@ -38,7 +38,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 16px;
+  gap: 12px 16px;
   padding: 14px 18px 10px;
   border-bottom: 1px solid var(--m3-outline-variant);
   background: var(--m3-surface-container-lowest, var(--m3-surface));
