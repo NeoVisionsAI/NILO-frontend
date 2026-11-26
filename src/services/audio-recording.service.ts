@@ -8,6 +8,9 @@ import type {
 import { buildQueryString } from '@/types/admin-common'
 import { putPresignedObject } from '@/lib/presigned-upload'
 
+/** Transcribe en CPU puede tardar varios minutos; margen amplio frente al timeout HTTP por defecto (15 s). */
+export const AUDIO_TRANSCRIBE_TIMEOUT_MS = 300_000
+
 export const audioRecordingService = {
   requestUpload(body: AudioUploadRequest): Promise<AudioUploadResponse> {
     return api.post<AudioUploadResponse>('/audio', body)
@@ -46,7 +49,7 @@ export const audioRecordingService = {
     return api.postUrlEncoded<AudioRecording>(
       `/audio/${audioId}/transcribe`,
       body.size > 0 ? body : undefined,
-      { silent: true },
+      { silent: true, timeoutMs: AUDIO_TRANSCRIBE_TIMEOUT_MS },
     )
   },
 

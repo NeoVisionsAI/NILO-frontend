@@ -193,6 +193,18 @@
   color: #dc2626;
 }
 
+.nilo-anote-modal__rec-time {
+  margin-left: 2px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, Menlo, Monaco, monospace;
+  background: color-mix(in srgb, #dc2626 12%, var(--m3-surface));
+  color: #b91c1c;
+}
+
 .nilo-anote-modal__rec-dot {
   width: 10px;
   height: 10px;

@@ -8,6 +8,7 @@ import {
   transcriptionStatusLabel,
 } from '@/lib/voice-note-transcription'
 import { audioRecordingService } from '@/services/audio-recording.service'
+import { ApiError } from '@/services/api'
 import type { AudioRecording } from '@/types/monitoring-session'
 import './VoiceNoteTranscriptBlock.css'
 
@@ -64,8 +65,9 @@ export function VoiceNoteTranscriptBlock({
       } else if (normalizeTranscriptionStatus(updated.transcription_status) === 'failed') {
         toast.error('No se pudo transcribir la nota de voz.')
       }
-    } catch {
-      toast.error('Error al solicitar la transcripción.')
+    } catch (err) {
+      const detail = err instanceof ApiError && err.message ? err.message : null
+      toast.error(detail ? `Transcripción: ${detail}` : 'Error al solicitar la transcripción.')
       try {
         const fresh = await audioRecordingService.get(clip.id)
         mergeClip(fresh)

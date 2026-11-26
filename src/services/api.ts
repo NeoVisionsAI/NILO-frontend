@@ -12,10 +12,10 @@ import { toast } from '@/lib/toast'
 const REFRESH_KEY = 'nilo.refresh'
 export const REQUEST_TIMEOUT_MS = 15_000
 
-function fetchWithTimeout(url: string, init: RequestInit = {}): Promise<Response> {
+function fetchWithTimeout(url: string, init: RequestInit = {}, timeoutMs = REQUEST_TIMEOUT_MS): Promise<Response> {
   return fetch(url, {
     ...init,
-    signal: init.signal ?? AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    signal: init.signal ?? AbortSignal.timeout(timeoutMs),
   })
 }
 
@@ -93,6 +93,8 @@ interface RequestOptions extends RequestInit {
   auth?: boolean
   /** Si true, no muestra toast automático ante error. */
   silent?: boolean
+  /** Tiempo máximo de la petición (p. ej. transcribe CPU 10–60 s). */
+  timeoutMs?: number
 }
 
 async function parseError(res: Response): Promise<string> {
@@ -108,7 +110,7 @@ async function parseError(res: Response): Promise<string> {
 }
 
 async function request<T>(path: string, options: RequestOptions = {}, isRetry = false): Promise<T> {
-  const { auth = true, silent = false, ...init } = options
+  const { auth = true, silent = false, timeoutMs, ...init } = options
 
   const headers = new Headers(init.headers)
   const isUrlEncoded = init.body instanceof URLSearchParams
@@ -121,11 +123,15 @@ async function request<T>(path: string, options: RequestOptions = {}, isRetry = 
   startActivity()
   let res: Response
   try {
-    res = await fetchWithTimeout(`${env.apiBaseUrl}${path}`, { ...init, headers })
+    res = await fetchWithTimeout(`${env.apiBaseUrl}${path}`, { ...init, headers }, timeoutMs)
   } catch {
     endActivity()
-    if (!silent) toast.error('No se pudo conectar con el servidor.')
-    throw new ApiError(0, 'No se pudo conectar con el servidor.')
+    const timedOut = timeoutMs != null && timeoutMs > REQUEST_TIMEOUT_MS
+    const msg = timedOut
+      ? 'La operación tardó demasiado. Si es una transcripción, espera y reintenta.'
+      : 'No se pudo conectar con el servidor.'
+    if (!silent) toast.error(msg)
+    throw new ApiError(0, msg)
   }
   endActivity()
 
@@ -149,14 +155,14 @@ async function request<T>(path: string, options: RequestOptions = {}, isRetry = 
 }
 
 async function requestBlob(path: string, options: RequestOptions = {}, isRetry = false): Promise<Blob> {
-  const { auth = true, silent = false, ...init } = options
+  const { auth = true, silent = false, timeoutMs, ...init } = options
   const headers = new Headers(init.headers)
   if (auth && accessToken) headers.set('Authorization', `Bearer ${accessToken}`)
 
   startActivity()
   let res: Response
   try {
-    res = await fetchWithTimeout(`${env.apiBaseUrl}${path}`, { ...init, headers })
+    res = await fetchWithTimeout(`${env.apiBaseUrl}${path}`, { ...init, headers }, timeoutMs)
   } catch {
     endActivity()
     if (!silent) toast.error('No se pudo conectar con el servidor.')

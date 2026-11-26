@@ -16,6 +16,7 @@ import {
   listMediaInputDevices,
 } from '@/lib/media-devices'
 import { audioRecordingService } from '@/services/audio-recording.service'
+import { ApiError } from '@/services/api'
 import type { AudioRecording, MonitoringSession } from '@/types/monitoring-session'
 import { formatExploreSessionLabel } from '../tabs/explore/ExploreSessionPicker'
 import { useClinicalPatientResolution } from './condata/useClinicalPatientResolution'
@@ -35,6 +36,16 @@ interface AudioNoteQuickModalProps {
   onClose: () => void
 }
 
+function formatRecordingElapsed(totalSeconds: number): string {
+  const s = Math.max(0, Math.floor(totalSeconds))
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const sec = s % 60
+  const mm = m.toString().padStart(2, '0')
+  const ss = sec.toString().padStart(2, '0')
+  return h > 0 ? `${h}:${mm}:${ss}` : `${m}:${ss}`
+}
+
 export function AudioNoteQuickModal({
   open,
   patientName,
@@ -52,6 +63,7 @@ export function AudioNoteQuickModal({
   const [micDeviceId, setMicDeviceId] = useState('')
   const [micsLoading, setMicsLoading] = useState(false)
   const [recording, setRecording] = useState(false)
+  const [recordingElapsedSec, setRecordingElapsedSec] = useState(0)
   const [uploading, setUploading] = useState(false)
   const [transcribing, setTranscribing] = useState(false)
   const [savedClip, setSavedClip] = useState<AudioRecording | null>(null)
@@ -80,6 +92,7 @@ export function AudioNoteQuickModal({
     chunksRef.current = []
     startedAtRef.current = null
     setRecording(false)
+    setRecordingElapsedSec(0)
   }
 
   function resetAll() {
@@ -125,6 +138,18 @@ export function AudioNoteQuickModal({
       cancelled = true
     }
   }, [open])
+
+  useEffect(() => {
+    if (!recording) {
+      setRecordingElapsedSec(0)
+      return
+    }
+    const startedMs = startedAtRef.current?.getTime() ?? Date.now()
+    const tick = () => setRecordingElapsedSec((Date.now() - startedMs) / 1000)
+    tick()
+    const id = window.setInterval(tick, 200)
+    return () => window.clearInterval(id)
+  }, [recording])
 
   useEffect(() => {
     if (!open) return
@@ -238,8 +263,13 @@ export function AudioNoteQuickModal({
         try {
           const updated = await requestVoiceTranscription(created.id)
           setSavedClip(updated)
-        } catch {
-          toast.error('No se pudo transcribir automáticamente. Puedes generarla o escribirla abajo.')
+        } catch (err) {
+          const detail = err instanceof ApiError && err.message ? err.message : null
+          toast.error(
+            detail && detail !== 'No se pudo conectar con el servidor.'
+              ? `Transcripción: ${detail}`
+              : 'No se pudo transcribir automáticamente. Usa «Generar transcripción» o escríbela abajo.',
+          )
         } finally {
           setTranscribing(false)
         }
@@ -355,6 +385,9 @@ export function AudioNoteQuickModal({
             <span className="nilo-anote-modal__rec-live" aria-live="polite">
               <span className="nilo-anote-modal__rec-dot" />
               Grabando…
+              <time className="nilo-anote-modal__rec-time" dateTime={`PT${Math.floor(recordingElapsedSec)}S`}>
+                {formatRecordingElapsed(recordingElapsedSec)}
+              </time>
             </span>
           ) : null}
         </div>
