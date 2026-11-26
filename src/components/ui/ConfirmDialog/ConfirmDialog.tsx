@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import './ConfirmDialog.css'
 
@@ -36,9 +37,18 @@ export function ConfirmDialog({
     return () => window.removeEventListener('keydown', onKey)
   }, [open, busy, onCancel])
 
+  useEffect(() => {
+    if (!open) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [open])
+
   if (!open) return null
 
-  return (
+  const dialog = (
     <div className="nilo-confirm m3" role="dialog" aria-modal="true" aria-labelledby="nilo-confirm-title">
       <div className="nilo-confirm__backdrop" onClick={() => !busy && onCancel()} />
       <div className="nilo-confirm__panel">
@@ -70,4 +80,6 @@ export function ConfirmDialog({
       </div>
     </div>
   )
+
+  return createPortal(dialog, document.body)
 }

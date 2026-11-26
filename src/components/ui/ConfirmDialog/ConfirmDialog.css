@@ -1,7 +1,7 @@
 .nilo-confirm {
   position: fixed;
   inset: 0;
-  z-index: 2200;
+  z-index: 12000;
   display: flex;
   align-items: center;
   justify-content: center;

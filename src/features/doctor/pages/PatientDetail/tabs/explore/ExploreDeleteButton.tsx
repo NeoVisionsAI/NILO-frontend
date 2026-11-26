@@ -27,7 +27,11 @@ export function ExploreDeleteButton({
         className={`nilo-explore-del${compact ? ' nilo-explore-del--compact' : ''}`}
         aria-label={`Eliminar ${entityLabel}`}
         title="Eliminar"
-        onClick={() => setOpen(true)}
+        onClick={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          setOpen(true)
+        }}
       >
         <MaterialIcon name="delete" size={compact ? 18 : 20} />
       </button>
