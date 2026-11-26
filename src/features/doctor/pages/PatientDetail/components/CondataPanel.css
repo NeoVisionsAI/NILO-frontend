@@ -102,3 +102,7 @@
 .nilo-condata__body--fill {
   overflow: hidden;
 }
+
+.nilo-condata__body--explore {
+  overflow: visible;
+}

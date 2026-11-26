@@ -43,7 +43,8 @@
   border-bottom: 1px solid var(--m3-outline-variant);
   background: var(--m3-surface-container-lowest, var(--m3-surface));
   position: relative;
-  z-index: 3;
+  z-index: 1;
+  overflow: hidden;
 }
 
 .nilo-explore__pane-title {
@@ -115,18 +116,8 @@
   min-height: 0;
   overflow-y: auto;
   padding: 16px 18px 20px;
-  pointer-events: auto;
   position: relative;
-  z-index: 1;
-}
-
-/* Borrado en explorar: siempre puntero y por encima de capas del clip/fila */
-.nilo-explore .nilo-explore-del-host,
-.nilo-explore .nilo-explore-del,
-.nilo-explore .nilo-explore-del:hover,
-.nilo-explore .nilo-audio-clip__actions {
-  cursor: pointer !important;
-  pointer-events: auto !important;
+  z-index: 2;
 }
 
 .nilo-explore__session-pane {
@@ -295,7 +286,6 @@
   border-radius: 12px;
   background: var(--m3-surface-container);
   border: 1px solid var(--m3-outline-variant);
-  isolation: isolate;
 }
 
 .nilo-explore__row-text {

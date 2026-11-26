@@ -458,6 +458,10 @@
   flex-direction: column;
 }
 
+.nilo-pdetail__content--explore {
+  overflow: visible;
+}
+
 /* Pestañas: estados vacío / placeholder */
 .nilo-pdetail-tab {
   display: flex;

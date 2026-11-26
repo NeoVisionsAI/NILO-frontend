@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import { toast } from '@/lib/toast'
 import {
@@ -8,7 +9,7 @@ import {
 } from '@/lib/explore-patient-stats'
 import { isoInRange, sessionBounds } from '@/lib/explore-time'
 import { matchesLandmarkCaptureKind } from '@/lib/landmark-capture-kind'
-import { landmarkRecordedAtMs } from '@/lib/landmark-object-key-datetime'
+import { formatLandmarkChipLabel, landmarkRecordedAtMs } from '@/lib/landmark-object-key-datetime'
 import { isVoiceNoteClip } from '@/lib/audio-waveform'
 import { audioRecordingService } from '@/services/audio-recording.service'
 import { landmarksService, type LandmarksCaptureKind, type LandmarksOut } from '@/services/landmarks.service'
@@ -31,6 +32,7 @@ import { PhysioExplorePanel } from './explore/PhysioExplorePanel'
 import { ExploreAudioPanel } from './explore/ExploreAudioPanel'
 import { ExploreSessionHeaderActions } from './explore/ExploreSessionPicker'
 import { ExploreDeleteButton } from './explore/ExploreDeleteButton'
+import type { ExploreDeleteAction } from './explore/explore-delete-types'
 import { SessionTimeRangeBar } from './explore/SessionTimeRangeBar'
 import './SessionExploreTab.css'
 import './explore/ExploreSideNav.css'
@@ -83,6 +85,12 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
     voice: null,
     ambient: null,
   })
+  const [pendingDelete, setPendingDelete] = useState<ExploreDeleteAction | null>(null)
+  const [deleteBusy, setDeleteBusy] = useState(false)
+
+  const promptDelete = useCallback((action: ExploreDeleteAction) => {
+    setPendingDelete(action)
+  }, [])
 
   const loadSessions = useCallback(async () => {
     if (!clinicalPatient?.id) {
@@ -390,9 +398,15 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
             sessionId={selectedSessionId}
             rows={landmarkPanelRows}
             loading={landmarkPanelLoading}
-            onDeleteLandmark={async (row) => {
-              await landmarksService.remove(row.id)
-              await refreshAfterDelete()
+            onDeleteLandmark={(row) => {
+              promptDelete({
+                itemLabel: formatLandmarkChipLabel(row.object_key),
+                entityLabel: 'lote de landmarks',
+                run: async () => {
+                  await landmarksService.remove(row.id)
+                  await refreshAfterDelete()
+                },
+              })
             }}
           />
         ) : null}
@@ -411,12 +425,17 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
                 </div>
                 <ExploreDeleteButton
                   compact
-                  itemLabel={new Date(ev.start_ts).toLocaleString('es-ES')}
                   entityLabel="episodio de dolor"
-                  onConfirmDelete={async () => {
-                    await painEventService.remove(ev.id)
-                    await refreshAfterDelete()
-                  }}
+                  onDelete={() =>
+                    promptDelete({
+                      itemLabel: new Date(ev.start_ts).toLocaleString('es-ES'),
+                      entityLabel: 'episodio de dolor',
+                      run: async () => {
+                        await painEventService.remove(ev.id)
+                        await refreshAfterDelete()
+                      },
+                    })
+                  }
                 />
               </li>
             ))}
@@ -431,9 +450,19 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
             clips={filteredVoiceNotes}
             sessionId={selectedSessionId}
             variant="voice"
-            onDeleteClip={async (clip) => {
-              await audioRecordingService.remove(clip.id)
-              await refreshAfterDelete()
+            onDeleteClip={(clip) => {
+              const label = new Date(clip.start_ts).toLocaleString('es-ES', {
+                dateStyle: 'short',
+                timeStyle: 'short',
+              })
+              promptDelete({
+                itemLabel: label,
+                entityLabel: 'clip de audio',
+                run: async () => {
+                  await audioRecordingService.remove(clip.id)
+                  await refreshAfterDelete()
+                },
+              })
             }}
           />
         ) : null}
@@ -443,9 +472,19 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
             clips={filteredAmbientAudio}
             sessionId={selectedSessionId}
             variant="ambient"
-            onDeleteClip={async (clip) => {
-              await audioRecordingService.remove(clip.id)
-              await refreshAfterDelete()
+            onDeleteClip={(clip) => {
+              const label = new Date(clip.start_ts).toLocaleString('es-ES', {
+                dateStyle: 'short',
+                timeStyle: 'short',
+              })
+              promptDelete({
+                itemLabel: label,
+                entityLabel: 'clip de audio',
+                run: async () => {
+                  await audioRecordingService.remove(clip.id)
+                  await refreshAfterDelete()
+                },
+              })
             }}
           />
         ) : null}
@@ -472,12 +511,17 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
                 {selectedSessionId ? (
                   <ExploreDeleteButton
                     compact
-                    itemLabel={note.body.slice(0, 48) + (note.body.length > 48 ? '…' : '')}
                     entityLabel="nota de texto"
-                    onConfirmDelete={async () => {
-                      await monitoringSessionService.deleteTextNote(selectedSessionId, note.id)
-                      await refreshAfterDelete()
-                    }}
+                    onDelete={() =>
+                      promptDelete({
+                        itemLabel: note.body.slice(0, 48) + (note.body.length > 48 ? '…' : ''),
+                        entityLabel: 'nota de texto',
+                        run: async () => {
+                          await monitoringSessionService.deleteTextNote(selectedSessionId, note.id)
+                          await refreshAfterDelete()
+                        },
+                      })
+                    }
                   />
                 ) : null}
               </li>
@@ -503,12 +547,17 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
                   )}
                   <ExploreDeleteButton
                     compact
-                    itemLabel={item.object_key?.split('/').pop() ?? item.id.slice(-8)}
                     entityLabel="segmento de vídeo"
-                    onConfirmDelete={async () => {
-                      await videoSegmentService.remove(item.id)
-                      await refreshAfterDelete()
-                    }}
+                    onDelete={() =>
+                      promptDelete({
+                        itemLabel: item.object_key?.split('/').pop() ?? item.id.slice(-8),
+                        entityLabel: 'segmento de vídeo',
+                        run: async () => {
+                          await videoSegmentService.remove(item.id)
+                          await refreshAfterDelete()
+                        },
+                      })
+                    }
                   />
                 </div>
               </li>
@@ -522,9 +571,15 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
               {category === 'physio' && !detailLoading ? (
                 <PhysioExplorePanel
                   readings={filteredPhysio}
-                  onDeleteReading={async (r) => {
-                    await physiologicalService.remove(r.id)
-                    await refreshAfterDelete()
+                  onDeleteReading={(r) => {
+                    promptDelete({
+                      itemLabel: new Date(r.timestamp).toLocaleString('es-ES'),
+                      entityLabel: 'lectura fisiológica',
+                      run: async () => {
+                        await physiologicalService.remove(r.id)
+                        await refreshAfterDelete()
+                      },
+                    })
                   }}
                 />
               ) : null}
@@ -536,6 +591,33 @@ export function SessionExploreTab({ userPatientId, nodeId, preferredSessionId }:
           )}
         </div>
       </div>
+      <ConfirmDialog
+        open={pendingDelete != null}
+        title={pendingDelete ? `Eliminar ${pendingDelete.entityLabel}` : 'Eliminar'}
+        message={
+          pendingDelete
+            ? `¿Eliminar «${pendingDelete.itemLabel}»? Esta operación no se puede deshacer. Se borrará el registro en el sistema y el fichero asociado en almacenamiento (MinIO), si existe.`
+            : ''
+        }
+        confirmLabel="Eliminar"
+        tone="danger"
+        busy={deleteBusy}
+        onCancel={() => !deleteBusy && setPendingDelete(null)}
+        onConfirm={() => {
+          if (!pendingDelete) return
+          setDeleteBusy(true)
+          void pendingDelete
+            .run()
+            .then(() => {
+              toast.success(`${pendingDelete.entityLabel} eliminado.`)
+              setPendingDelete(null)
+            })
+            .catch(() => {
+              toast.error(`No se pudo eliminar el ${pendingDelete.entityLabel.toLowerCase()}.`)
+            })
+            .finally(() => setDeleteBusy(false))
+        }}
+      />
     </div>
   )
 }

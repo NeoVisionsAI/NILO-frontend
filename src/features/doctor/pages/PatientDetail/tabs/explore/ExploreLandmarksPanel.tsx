@@ -17,7 +17,7 @@ interface ExploreLandmarksPanelProps {
   rows: LandmarksOut[]
   loading: boolean
   painHint?: string
-  onDeleteLandmark?: (row: LandmarksOut) => Promise<void>
+  onDeleteLandmark?: (row: LandmarksOut) => void
 }
 
 export function ExploreLandmarksPanel({
@@ -103,9 +103,8 @@ export function ExploreLandmarksPanel({
         {activeRow && onDeleteLandmark && (
           <ExploreDeleteButton
             compact
-            itemLabel={formatLandmarkChipLabel(activeRow.object_key)}
             entityLabel="lote de landmarks"
-            onConfirmDelete={() => onDeleteLandmark(activeRow)}
+            onDelete={() => onDeleteLandmark(activeRow)}
           />
         )}
       </div>

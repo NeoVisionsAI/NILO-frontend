@@ -13,7 +13,7 @@ type ViewMode = 'chart' | 'bar' | 'table'
 
 interface PhysioExplorePanelProps {
   readings: PhysiologicalReading[]
-  onDeleteReading?: (reading: PhysiologicalReading) => Promise<void>
+  onDeleteReading?: (reading: PhysiologicalReading) => void
 }
 
 function metricKeys(readings: PhysiologicalReading[]): string[] {
@@ -101,9 +101,8 @@ export function PhysioExplorePanel({ readings, onDeleteReading }: PhysioExploreP
                     <td>
                       <ExploreDeleteButton
                         compact
-                        itemLabel={new Date(r.timestamp).toLocaleString('es-ES')}
                         entityLabel="lectura fisiológica"
-                        onConfirmDelete={() => onDeleteReading(r)}
+                        onDelete={() => onDeleteReading(r)}
                       />
                     </td>
                   ) : null}

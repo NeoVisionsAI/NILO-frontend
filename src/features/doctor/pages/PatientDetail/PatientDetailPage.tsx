@@ -544,7 +544,9 @@ export function PatientDetailPage() {
       )}
 
       <div className="nilo-pdetail__workspace">
-        <div className="nilo-pdetail__content">
+        <div
+          className={`nilo-pdetail__content${condataMode === 'explore' ? ' nilo-pdetail__content--explore' : ''}`}
+        >
           <CondataPanel
             icon={condataIcon()}
             title={condataTitle()}
@@ -553,11 +555,13 @@ export function PatientDetailPage() {
             backLabel={condataBackLabel()}
             headerAction={condataHeaderAction()}
             bodyClassName={
-              condataMode === 'module' &&
-              activeModule?.actionKey === 'pain-episode' &&
-              moduleView === 'add'
-                ? 'nilo-condata__body--fill'
-                : undefined
+              condataMode === 'explore'
+                ? 'nilo-condata__body--explore'
+                : condataMode === 'module' &&
+                    activeModule?.actionKey === 'pain-episode' &&
+                    moduleView === 'add'
+                  ? 'nilo-condata__body--fill'
+                  : undefined
             }
           >
             {renderCondataBody()}

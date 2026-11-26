@@ -21,7 +21,7 @@ interface ExploreAudioPanelProps {
   clips: AudioRecording[]
   sessionId: string
   variant: ExploreAudioVariant
-  onDeleteClip?: (clip: AudioRecording) => Promise<void>
+  onDeleteClip?: (clip: AudioRecording) => void
 }
 
 interface ClipEntry {
@@ -140,7 +140,7 @@ function AudioClipRow({
 }: {
   clip: AudioRecording
   url: string | null
-  onDelete?: (clip: AudioRecording) => Promise<void>
+  onDelete?: (clip: AudioRecording) => void
 }) {
   const audioRef = useRef<HTMLAudioElement>(null)
   const [playing, setPlaying] = useState(false)
@@ -270,9 +270,8 @@ function AudioClipRow({
         <div className="nilo-audio-clip__actions">
           <ExploreDeleteButton
             compact
-            itemLabel={formatClipTime(clip.start_ts)}
             entityLabel="clip de audio"
-            onConfirmDelete={() => onDelete(clip)}
+            onDelete={() => onDelete(clip)}
           />
         </div>
       ) : null}

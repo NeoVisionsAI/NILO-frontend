@@ -1,61 +1,45 @@
-.nilo-explore-del-host {
-  position: relative;
-  z-index: 120;
-  flex-shrink: 0;
-  pointer-events: auto !important;
-  cursor: pointer !important;
-}
-
-.nilo-explore-del-host:hover {
-  cursor: pointer !important;
-}
-
 .nilo-explore-del {
-  position: relative;
-  z-index: 1;
   flex-shrink: 0;
-  min-width: max-content;
-  cursor: pointer !important;
-  pointer-events: auto !important;
-  touch-action: manipulation;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  width: 36px;
+  height: 36px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #dc2626;
+  border: 1px solid color-mix(in srgb, #dc2626 40%, var(--m3-outline-variant));
+  background: color-mix(in srgb, #dc2626 8%, var(--m3-surface));
+  cursor: pointer;
+  position: relative;
+  z-index: 5;
   transition:
-    background-color 0.15s ease,
+    background 0.15s ease,
     border-color 0.15s ease,
-    transform 0.1s ease,
-    box-shadow 0.15s ease;
-}
-
-.nilo-explore-del:hover {
-  cursor: pointer !important;
-  background: rgba(220, 38, 38, 0.16);
-  border-color: #dc2626;
-  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.12);
-}
-
-.nilo-explore-del .material-symbols-outlined,
-.nilo-explore-del .nilo-micon,
-.nilo-explore-del__label {
-  pointer-events: none;
-  cursor: pointer !important;
+    transform 0.1s ease;
 }
 
 .nilo-explore-del--compact {
-  height: 34px;
-  padding: 0 12px;
-  font-size: 12px;
-  font-weight: 700;
+  width: 32px;
+  height: 32px;
 }
 
-.nilo-explore-del__label {
-  white-space: nowrap;
+.nilo-explore-del:hover {
+  cursor: pointer;
+  background: color-mix(in srgb, #dc2626 16%, var(--m3-surface));
+  border-color: #dc2626;
 }
 
 .nilo-explore-del:active {
-  transform: scale(0.97);
+  transform: scale(0.94);
 }
 
 .nilo-explore-del:focus-visible {
   outline: 2px solid #dc2626;
   outline-offset: 2px;
+}
+
+.nilo-explore-del .material-symbols-outlined,
+.nilo-explore-del .nilo-micon {
+  pointer-events: none;
+  color: #dc2626;
 }

@@ -20,21 +20,29 @@
   border-radius: 14px;
   border: 1px solid var(--m3-outline-variant);
   background: var(--m3-surface-container-low);
-  isolation: isolate;
 }
 
 .nilo-audio-clip--with-del {
   grid-template-columns: 40px minmax(0, 1fr) auto;
 }
 
+.nilo-audio-clip--with-del .nilo-audio-clip__play {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.nilo-audio-clip--with-del .nilo-audio-clip__body {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+}
+
 .nilo-audio-clip__actions {
-  position: relative;
-  z-index: 130;
+  grid-column: 3;
+  grid-row: 1;
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  cursor: pointer !important;
-  pointer-events: auto !important;
 }
 
 .nilo-audio-clip--error {
