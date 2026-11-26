@@ -54,6 +54,24 @@ function AudioWaveformCanvas({
   pending?: boolean
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [layoutSize, setLayoutSize] = useState({ w: 0, h: 0 })
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    const wrap = canvas?.parentElement
+    if (!wrap) return
+
+    const measure = () => {
+      const w = wrap.clientWidth
+      const h = canvas?.clientHeight ?? 0
+      setLayoutSize((prev) => (prev.w === w && prev.h === h ? prev : { w, h }))
+    }
+    measure()
+
+    const ro = new ResizeObserver(() => measure())
+    ro.observe(wrap)
+    return () => ro.disconnect()
+  }, [])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -113,23 +131,25 @@ function AudioWaveformCanvas({
     ctx.moveTo(padX, mid)
     ctx.lineTo(w - padX, mid)
     ctx.stroke()
-  }, [peaks, progress])
+  }, [peaks, progress, layoutSize.w, layoutSize.h])
 
   return (
-    <canvas
-      ref={canvasRef}
-      className={`nilo-audio-clip__wave${pending ? ' nilo-audio-clip__wave--pending' : ''}`}
-      role="slider"
-      aria-label="Posición en el audio"
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-valuenow={Math.round(progress * 100)}
-      onClick={(e) => {
-        const rect = e.currentTarget.getBoundingClientRect()
-        const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
-        onSeek(ratio)
-      }}
-    />
+    <div className="nilo-audio-clip__wave-wrap">
+      <canvas
+        ref={canvasRef}
+        className={`nilo-audio-clip__wave${pending ? ' nilo-audio-clip__wave--pending' : ''}`}
+        role="slider"
+        aria-label="Posición en el audio"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(progress * 100)}
+        onClick={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect()
+          const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
+          onSeek(ratio)
+        }}
+      />
+    </div>
   )
 }
 
